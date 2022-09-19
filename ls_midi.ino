@@ -501,8 +501,11 @@ void handleMidiInput(unsigned long nowMicros) {
               if (userFirmwareActive) {
                 layer = LED_LAYER_CUSTOM2;
               }
-              if (midiData2 <= COLOR_PINK && midiData2 != COLOR_OFF) {
-                setLed(midiCellColCC, midiCellRowCC, midiData2, cellOn, layer);
+              if (midiData2 <= ((COLOR_PINK * 2) + 1) && midiData2 != COLOR_OFF) {
+                setLed(midiCellColCC, midiCellRowCC,
+                       midiData2 % (COLOR_PINK + 1),
+                       midiData2 > COLOR_PINK ? cellFocusPulse : cellOn, 
+                       layer);
               }
               else {
                 setLed(midiCellColCC, midiCellRowCC, COLOR_OFF, cellOff, layer);
