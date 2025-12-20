@@ -1679,6 +1679,23 @@ void highlightPossibleNoteCells(byte split, byte notenum) {
       setLed(col, row, Split[split].colorPlayed, cellOn, LED_LAYER_PLAYED);
     }
   }
+  // light the other half of the split too
+  byte o_split = 1 - split;
+  if (!Global.splitActive || Split[o_split].ccFaders || Split[o_split].sequencer || Split[o_split].strum) {
+    return;
+  }
+  if (Split[o_split].lowRowMode != lowRowNormal) {
+    row = 1;
+  }
+  else {
+    row = 0;
+  }
+  for (; row < NUMROWS; ++row) {
+    short col = getNoteNumColumn(o_split, notenum, row);
+    if (col > 0) {
+      setLed(col, row, Split[split].colorPlayed, cellOn, LED_LAYER_CUSTOM1);
+    }
+  }
 }
 
 boolean resetExactNoteCell(byte split, byte notenum, byte channel) {
@@ -1713,6 +1730,23 @@ void resetPossibleNoteCells(byte split, byte notenum) {
     short col = getNoteNumColumn(split, notenum, row);
     if (col > 0) {
       setLed(col, row, COLOR_OFF, cellOff, LED_LAYER_PLAYED);
+    }
+  }
+  // reset the other half of the split too
+  byte o_split = 1 - split;
+  if (!Global.splitActive || Split[o_split].ccFaders || Split[o_split].sequencer || Split[o_split].strum) {
+    return;
+  }
+  if (Split[o_split].lowRowMode != lowRowNormal) {
+    row = 1;
+  }
+  else {
+    row = 0;
+  }
+  for (; row < NUMROWS; ++row) {
+    short col = getNoteNumColumn(o_split, notenum, row);
+    if (col > 0) {
+      setLed(col, row, COLOR_OFF, cellOff, LED_LAYER_CUSTOM1);
     }
   }
 }
@@ -1950,8 +1984,11 @@ void preSendTimbre(byte split, byte yValue, byte note, byte channel) {
       break;
 
     case timbreChannelPressure:
-      midiSendAfterTouch(yValue, channel);
+    {
+      byte sendVal = midiMaxChannelTimbre(channel, split);
+      midiSendAfterTouch(sendVal, channel);
       break;
+    }
 
     default:
     {
@@ -2007,8 +2044,11 @@ void preSendLoudness(byte split, byte pressureValueLo, short pressureValueHi, by
       break;
 
     case loudnessChannelPressure:
-      midiSendAfterTouch(pressureValueLo, channel);
+    {
+      byte sendVal = midiMaxChannelLoudness(channel, split);
+      midiSendAfterTouch(sendVal, channel);
       break;
+    }
 
     case loudnessCC11:
       // if the low row is down, only send the CC for Z if it's not being sent by the low row already
@@ -2933,4 +2973,53 @@ void midiSendStop() {
   else {
     queueMidiMessage(MIDIStop, 0, 0, 0);
   }
+}
+
+// Return the maximum timbre (Y) value among all active touches assigned to `channel`.
+// The returned value is already scaled with the limits of the provided `split`.
+static byte midiMaxChannelTimbre(byte channel, byte split) {
+  if (channel < 1 || channel > 16) return 0;
+  byte maxVal = 0;
+
+  for (byte c = 0; c < NUMCOLS; ++c) {
+    int32_t mask = rowsInColsTouched[c];
+    if (!mask) continue;
+    for (byte r = 0; r < NUMROWS; ++r) {
+      if ((mask & ((int32_t)1 << r)) == 0) continue;
+      TouchInfo &t = touchInfo[c][r];
+      if (!t.hasNote()) continue;
+      if (t.channel != channel) continue;
+      byte rawY = t.calibratedY();
+      byte v = applyLimits(rawY, Split[split].minForY, Split[split].maxForY, fxdLimitsForYRatio[split]);
+      if (v > maxVal) maxVal = v;
+    }
+  }
+
+  return maxVal;
+}
+
+// Return the maximum loudness (Z) value among all active touches assigned to `channel`.
+// The returned value is scaled according to the limits of the provided `split` and
+// is in the 0..127 range (same scale used by midiSendAfterTouch).
+static byte midiMaxChannelLoudness(byte channel, byte split) {
+  if (channel < 1 || channel > 16) return 0;
+  byte maxVal = 0;
+
+  for (byte c = 0; c < NUMCOLS; ++c) {
+    int32_t mask = rowsInColsTouched[c];
+    if (!mask) continue;
+    for (byte r = 0; r < NUMROWS; ++r) {
+      if ((mask & ((int32_t)1 << r)) == 0) continue;
+      TouchInfo &t = touchInfo[c][r];
+      if (!t.hasNote()) continue;
+      if (t.channel != channel) continue;
+      // use the internal pressureZ (0..1016) and scale it to 0..127 the same way
+      // as `scale1016to127` used for `valueZ` in the touch handling code.
+      byte p127 = scale1016to127(t.pressureZ, true);
+      byte v = applyLimits(p127, Split[split].minForZ, Split[split].maxForZ, fxdLimitsForZRatio[split]);
+      if (v > maxVal) maxVal = v;
+    }
+  }
+
+  return maxVal;
 }

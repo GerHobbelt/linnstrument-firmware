@@ -342,21 +342,26 @@ boolean hasTouchInSplitOnRow(byte split, byte row) {
 }
 
 void handleSlideTransferCandidate(byte siblingCol) {
-  // if the pressure gets higher than adjacent cell, the slide is transitioning over
   if (isReadyForSlideTransfer(siblingCol)) {
+    if (!userFirmwareActive && Split[sensorSplit].colorPlayed != 0 && Split[sensorSplit].playedTouchMode == playedSame) {
+      short noteBefore = transposedNote(sensorSplit, siblingCol, sensorRow);
+      short noteAfter = transposedNote(sensorSplit, sensorCol, sensorRow);
+      
+      if (noteBefore != noteAfter) {
+        resetPossibleNoteCells(sensorSplit, noteBefore);
+        highlightPossibleNoteCells(sensorSplit, noteAfter);
+      }
+    }
+    // ----------------------------------
+
     transferFromSameRowCell(siblingCol);
- 
-    // if a slide transfer happened, but the pitch hold was still quantized, reset the
-    // X rate and threshold exceed count so that the real X position will be used as soon as
-    // the transfer cell is active, this makes the onset of slides from a stationary position
-    // smoother when quantize hold is on
+
     if (fxdRateXThreshold[sensorSplit] - sensorCell->fxdRateX > 0) {
       sensorCell->fxdRateX = fxdRateXThreshold[sensorSplit];
       sensorCell->fxdRateCountX = 0;
     }
 
     if (userFirmwareActive) {
-      // if user firmware is active, we implement a particular transition scheme to allow touches to be tracked over MIDI
       sensorCell->note = sensorCol;
       midiSendControlChange(119, siblingCol, sensorCell->channel, true);
       midiSendNoteOn(LEFT, sensorCol, sensorCell->velocity, sensorCell->channel);
@@ -374,10 +379,8 @@ void handleSlideTransferCandidate(byte siblingCol) {
     if (cell(siblingCol, sensorRow).touched != untouchedCell) {
       cellTouched(siblingCol, sensorRow, transferCell);
     }
-    
-    handleXYZupdate();
+    handleXYZupdate();   
   }
-  // otherwise act as if this new touch never happend
   else {
     cellTouched(transferCell);
   }
@@ -478,6 +481,12 @@ boolean handleNewTouch() {
           initVelocity();
           calcVelocity(sensorCell->velocityZ);
           result = true;
+
+          // Autoselect the current split when playing
+          if (Global.splitActive && Global.currentPerSplit != sensorSplit) {
+            Global.currentPerSplit = sensorSplit;
+            updateSwitchLeds();
+          }
         }
         else {
           cellTouched(untouchedCell);
@@ -1766,39 +1775,28 @@ void handleTouchRelease() {
       }
       // if no notes are active anymore, reset the highlighted cells
       else if (Split[sensorSplit].playedTouchMode == playedSame) {
-        // calculate the difference between the octave offset when the note was turned on and the octave offset
-        // that is currently in use on the split, since the octave can change on the fly, while playing,
-        // hence changing the position of notes on the surface
-        short octaveOffsetDifference = Split[sensorSplit].transposeOctave - sensorCell->octaveOffset;
-        short realSensorNote = sensorCell->note + octaveOffsetDifference;
+        byte sp = sensorSplit;
+        short currentVisualNote = transposedNote(sp, sensorCol, sensorRow);
 
-        // ensure that no other notes of the same value are still active
         boolean allNotesOff = true;
-
-        // iterate over all the rows
         for (byte row = 0; row < NUMROWS && allNotesOff; ++row) {
-
-          // continue while there are touched columns in the row
           int32_t colsInRowTouched = colsInRowsTouched[row];
           while (colsInRowTouched) {
             byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
             
-            // if another touch in the same split has the same note, the lights should remain lit
             if (!(sensorCol == touchedCol && sensorRow == row) &&
-                sensorSplit == getSplitOf(touchedCol) &&
+                sp == getSplitOf(touchedCol) &&
                 cell(touchedCol, row).touched == touchedCell &&
-                cell(touchedCol, row).note + Split[sensorSplit].transposeOctave - cell(touchedCol, row).octaveOffset == realSensorNote) {
+                transposedNote(sp, touchedCol, row) == currentVisualNote) {
               allNotesOff = false;
               break;
             }
-
-            // exclude the cell we just processed by flipping its bit
             colsInRowTouched &= ~(1 << touchedCol);
           }
         }
 
         if (allNotesOff) {
-          resetPossibleNoteCells(sensorSplit, realSensorNote);
+          resetPossibleNoteCells(sp, currentVisualNote);
         }
       }
     }

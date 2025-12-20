@@ -108,7 +108,7 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define LED_FLASH_DELAY  50000        // the time before a led is turned off when flashing or pulsing, in microseconds
 
 #define DEFAULT_MAINLOOP_DIVIDER      2
-#define DEFAULT_LED_REFRESH           333
+#define DEFAULT_LED_REFRESH           333  // microseconds per column (was 333) — lower reduces flicker
 #define DEFAULT_MIDI_DECIMATION       8000
 #define DEFAULT_MIDI_INTERVAL         235
 
