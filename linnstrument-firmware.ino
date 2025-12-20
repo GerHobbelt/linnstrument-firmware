@@ -225,7 +225,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define ROWOFFSET_ZERO             0x7f
 
 #define DEFAULT_MAINLOOP_DIVIDER      2
-#define DEFAULT_LED_REFRESH           333
+#define DEFAULT_LED_REFRESH           333      // microseconds per column (was 333) — lower reduces flicker
 #define DEFAULT_MIDI_DECIMATION       8000
 #define DEFAULT_MIDI_INTERVAL         235
 
@@ -239,8 +239,8 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 // Values related to the Z sensor, continuous pressure
 #define DEFAULT_SENSOR_SENSITIVITY_Z  75       // by default the sensor Z sensitivity is unchanged, ie. 75%
-#define DEFAULT_SENSOR_LO_Z           120      // lowest acceptable raw Z value to start a touch
-#define DEFAULT_SENSOR_FEATHER_Z      80       // lowest acceptable raw Z value to continue a touch
+#define DEFAULT_SENSOR_LO_Z           40       // lowest acceptable raw Z value to start a touch (was 100/120)
+#define DEFAULT_SENSOR_FEATHER_Z      20       // lowest acceptable raw Z value to continue a touch (was 65/80)
 #define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
 #define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure
 
