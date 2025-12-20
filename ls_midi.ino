@@ -1794,6 +1794,23 @@ void highlightPossibleNoteCells(byte split, byte notenum) {
       setLed(col, row, Split[split].colorPlayed, cellOn, LED_LAYER_PLAYED);
     }
   }
+  // light the other half of the split too
+  byte o_split = 1 - split;
+  if (!Global.splitActive || Split[o_split].ccFaders || Split[o_split].sequencer || Split[o_split].strum) {
+    return;
+  }
+  if (Split[o_split].lowRowMode != lowRowNormal) {
+    row = 1;
+  }
+  else {
+    row = 0;
+  }
+  for (; row < NUMROWS; ++row) {
+    short col = getNoteNumColumn(o_split, notenum, row);
+    if (col > 0) {
+      setLed(col, row, Split[split].colorPlayed, cellOn, LED_LAYER_CUSTOM1);
+    }
+  }
 }
 
 boolean resetExactNoteCell(byte split, byte notenum, byte channel) {
@@ -1828,6 +1845,23 @@ void resetPossibleNoteCells(byte split, byte notenum) {
     short col = getNoteNumColumn(split, notenum, row);
     if (col > 0) {
       setLed(col, row, COLOR_OFF, cellOff, LED_LAYER_PLAYED);
+    }
+  }
+  // reset the other half of the split too
+  byte o_split = 1 - split;
+  if (!Global.splitActive || Split[o_split].ccFaders || Split[o_split].sequencer || Split[o_split].strum) {
+    return;
+  }
+  if (Split[o_split].lowRowMode != lowRowNormal) {
+    row = 1;
+  }
+  else {
+    row = 0;
+  }
+  for (; row < NUMROWS; ++row) {
+    short col = getNoteNumColumn(o_split, notenum, row);
+    if (col > 0) {
+      setLed(col, row, COLOR_OFF, cellOff, LED_LAYER_CUSTOM1);
     }
   }
 }
