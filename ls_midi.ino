@@ -57,12 +57,16 @@ byte initialMidiClockMessageCount = 0;                     // the first MIDI clo
 boolean receivedSongPositionPointer = false;               // tracks whether a song position pointer message was received before the MIDI clock start
 boolean standaloneMidiClockRunning = false;                // indicates whether the MIDI Clock is sending data in a standalone fashion, without sequencer
 
-byte lastRpnMsb = 127;
-byte lastRpnLsb = 127;
-byte lastNrpnMsb = 127;
-byte lastNrpnLsb = 127;
-byte lastDataMsb = 0;
-byte lastDataLsb = 0;
+byte lastRpnMsb;
+byte lastRpnLsb;
+byte lastNrpnMsb;
+byte lastNrpnLsb;
+byte lastDataMsb;
+byte lastDataLsb;
+// flags to ensure robust RPN/NRPN parsing
+boolean isValidRpn = false;        // not true until both bytes of the parameter number are received
+boolean isValidNrpn = false;       // ditto
+signed char lastCC = -1;
 
 inline boolean isMidiUsingDIN() {
   return Global.midiIO == 0;
@@ -424,7 +428,7 @@ void handleMidiInput(unsigned long nowMicros) {
         // if faders are set up to handle a particular incoming CC,
         // these CCs will update the faders and not control any of the
         // LinnStrument features
-        if (ccSplit != -1) {
+        else if (!userFirmwareActive && ccSplit != -1) {
           // possible further restriction: replace the previous line with the following line
           // else if (!userFirmwareActive && ccSplit != -1 && Split[ccSplit].ccFaders) {
           boolean handled = false;
@@ -443,6 +447,8 @@ void handleMidiInput(unsigned long nowMicros) {
             if ((displayMode == displayNormal && Split[ccSplit].ccFaders) || displayMode == displayVolume) {
               updateDisplay();
             }
+            // if a fader intercepts a CC, don't apply that CC to RPN/NRPN construction
+            lastCC = -1;
             break;
           }
         }
@@ -518,6 +524,8 @@ void handleMidiInput(unsigned long nowMicros) {
             }
             break;
         }
+        lastCC = midiData1;
+        break;        
       }
       default:
         // don't handle other MIDI messages
