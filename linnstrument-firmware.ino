@@ -1092,7 +1092,7 @@ const int32_t FXD_CONST_1016 = FXD_FROM_INT(1016);
 
 const int CALX_VALUE_MARGIN = 85;                         // 4095 / 48
 const int32_t FXD_CALX_HALF_UNIT = FXD_MAKE(85.3125);     // 4095 / 48
-const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(128);     // 4095 / 32
+const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(170);     // full cell width (~4095 / 24), accept any X within cell bounds
 const int32_t FXD_CALX_FULL_UNIT = FXD_MAKE(170.625);     // 4095 / 24
 const int32_t CALX_QUARTER_UNIT = FXD_TO_INT(FXD_CALX_FULL_UNIT) / 4;
 
