@@ -46,8 +46,8 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 /******************************************** CONSTANTS ******************************************/
 
 const char* OSVersion = "234.";
-const char* OSVersionBuild = ".072";
-const char* microLinnOSVersion = ".000";
+const char* OSVersionBuild = ".079";
+const char* microLinnOSVersion = ".901";
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -131,7 +131,7 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
 #define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure                          
 
-#define MAX_TOUCHES_IN_COLUMN  3
+#define MAX_TOUCHES_IN_COLUMN  MAXROWS
 
 // Sequencer constants
 #define MAX_PROJECTS              16
@@ -1105,7 +1105,7 @@ const int32_t FXD_CONST_1016 = FXD_FROM_INT(1016);
 
 const int CALX_VALUE_MARGIN = 85;                         // 4095 / 48
 const int32_t FXD_CALX_HALF_UNIT = FXD_MAKE(85.3125);     // 4095 / 48
-const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(128);     // 4095 / 32
+const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(170);     // full cell width (~4095 / 24), accept any X within cell bounds
 const int32_t FXD_CALX_FULL_UNIT = FXD_MAKE(170.625);     // 4095 / 24
 const int32_t CALX_QUARTER_UNIT = FXD_TO_INT(FXD_CALX_FULL_UNIT) / 4;
 
