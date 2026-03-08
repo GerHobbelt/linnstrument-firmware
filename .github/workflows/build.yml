@@ -24,7 +24,7 @@ jobs:
       run:  |
         echo 'Run number ${{ github.run_number }}'
         arduino-cli compile --export-binaries --fqbn arduino:sam:arduino_due_x ./linnstrument-firmware.ino
-        mv build/arduino.sam.arduino_due_x/linnstrument-firmware.ino.bin linnstrument-fork-build${{ github.run_number }}.bin
+        cp build/arduino.sam.arduino_due_x/linnstrument-firmware.ino.bin linnstrument-firmware.ino.bin
 
     - name: Publish Release
       uses: "marvinpinto/action-automatic-releases@latest"
@@ -34,4 +34,4 @@ jobs:
           prerelease: true
           title: "${{ github.ref_name }} (build ${{ github.run_number }})"
           files: |
-            *.bin
+            linnstrument-firmware.ino.bin
