@@ -212,8 +212,6 @@ void transferToSameRowCell(byte col) {
 }
 
 boolean isPhantomTouchIndividual() {
-  // when the device is calibrated we fully rely on the plausability of the X readings to determine
-  // if a touch is a phantom touch or not
   if (Device.calibrated) {
     if (hasImpossibleX()) {
       sensorCell->setPhantoms(sensorCol, sensorCol, sensorRow, sensorRow);
@@ -252,22 +250,27 @@ boolean isPhantomTouchContextual() {
         // then the current sensor completed a rectangle by being the fourth corner
         if (rowsInColsTouched[touchedCol] & (int32_t)(1 << touchedRow)) {
 
-          // since we found four corners, we now have to determine which ones are
-          // real presses and which ones are phantom presses, so we're looking for
-          // the other corner that was scanned twice to determine which one has the
-          // lowest pressure, this is the most likely to be the phantom press
-          if ((cell(touchedCol, touchedRow).isHigherPhantomPressure(sensorCell->currentRawZ) &&
-               cell(sensorCol, touchedRow).isHigherPhantomPressure(sensorCell->currentRawZ) &&
-               cell(touchedCol, sensorRow).isHigherPhantomPressure(sensorCell->currentRawZ))) {
+          // skip rectangles beyond phantom-relevant column range
+          byte colSpan = (touchedCol > sensorCol) ? (touchedCol - sensorCol) : (sensorCol - touchedCol);
+          if (colSpan <= PHANTOM_COLUMN_RANGE) {
 
-            // store coordinates of the rectangle, which also serves as an indicator that we
-            // should stop looking for a phantom press
-            cell(sensorCol, sensorRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
-            cell(touchedCol, touchedRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
-            cell(sensorCol, touchedRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
-            cell(touchedCol, sensorRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
+            // since we found four corners, we now have to determine which ones are
+            // real presses and which ones are phantom presses, so we're looking for
+            // the other corner that was scanned twice to determine which one has the
+            // lowest pressure, this is the most likely to be the phantom press
+            if ((cell(touchedCol, touchedRow).isHigherPhantomPressure(sensorCell->currentRawZ) &&
+                 cell(sensorCol, touchedRow).isHigherPhantomPressure(sensorCell->currentRawZ) &&
+                 cell(touchedCol, sensorRow).isHigherPhantomPressure(sensorCell->currentRawZ))) {
 
-            return true;
+              // store coordinates of the rectangle, which also serves as an indicator that we
+              // should stop looking for a phantom press
+              cell(sensorCol, sensorRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
+              cell(touchedCol, touchedRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
+              cell(sensorCol, touchedRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
+              cell(touchedCol, sensorRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
+
+              return true;
+            }
           }
         }
 
@@ -856,7 +859,7 @@ boolean handleXYZupdate() {
       return true;
 
     case velocityNew:
-      if (isPhantomTouchIndividual() || isPhantomTouchContextual()) {
+      if (isPhantomTouchContextual()) {
         cellTouched(untouchedCell);
         return false;
       }
