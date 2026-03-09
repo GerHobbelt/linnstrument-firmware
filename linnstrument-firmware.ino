@@ -131,7 +131,7 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
 #define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure                          
 
-#define MAX_TOUCHES_IN_COLUMN  3
+#define MAX_TOUCHES_IN_COLUMN  MAXROWS
 
 // Sequencer constants
 #define MAX_PROJECTS              16

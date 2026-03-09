@@ -856,7 +856,7 @@ boolean handleXYZupdate() {
       return true;
 
     case velocityNew:
-      if (isPhantomTouchIndividual() || isPhantomTouchContextual()) {
+      if (isPhantomTouchContextual()) {
         cellTouched(untouchedCell);
         return false;
       }
