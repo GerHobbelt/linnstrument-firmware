@@ -422,6 +422,20 @@ inline boolean TouchInfo::isStableYTouch() {
 
 inline boolean TouchInfo::isActiveTouch() {
   refreshZ();
+  // Detect ghost notes at rectangle corners: if Z drops below 50% of its
+  // peak and other touches exist on the same row AND column, treat this
+  // as a released finger with only phantom crosstalk remaining.
+  if (velocity && peakRawZ > 0 && currentRawZ < peakRawZ / 2) {
+    int32_t rowsInCol = rowsInColsTouched[sensorCol] & ~(int32_t)(1 << sensorRow);
+    int32_t colsInRow = colsInRowsTouched[sensorRow] & ~(int32_t)(1 << sensorCol);
+    if (rowsInCol && colsInRow) {
+      return false;
+    }
+  }
+  // Once velocity is calculated, require real Z signal (not just featherTouch).
+  if (velocity) {
+    return velocityZ > 0 || pressureZ > 0;
+  }
   return featherTouch || velocityZ > 0 || pressureZ > 0;
 }
 
@@ -465,6 +479,9 @@ inline void TouchInfo::refreshZ() {
     unsigned short previousPreviousRawZ = previousRawZ;
     previousRawZ = currentRawZ;
     currentRawZ = readZ();
+    if (currentRawZ > peakRawZ) {
+      peakRawZ = currentRawZ;
+    }
     featherTouch = false;
     velocityZ = 0;
     pressureZ = 0;
@@ -594,7 +611,10 @@ void TouchInfo::setPhantoms(byte col1, byte col2, byte row1, byte row2) {
 }
 
 boolean TouchInfo::isHigherPhantomPressure(short other) {
-  return hasNote() || currentRawZ > other;
+  // 1.125x margin: all three other corners must have >12.5% higher Z than the
+  // candidate to reject it. Catches phantom crosstalk up to ~89% of real Z
+  // while preventing cascade rejection of similar-pressure real touches.
+  return currentRawZ > other + (other >> 3);
 }
 
 boolean TouchInfo::hasRogueSweepX() {
@@ -602,7 +622,7 @@ boolean TouchInfo::hasRogueSweepX() {
 }
 
 boolean TouchInfo::hasUsableX() {
-    return !phantomSet || !rogueSweepX;
+    return !phantomSet && !rogueSweepX;
 }
 
 void TouchInfo::clearMusicalData() {
@@ -636,6 +656,7 @@ void TouchInfo::clearSensorData() {
   featherTouch = false;
   velocityZ = 0;
   pressureZ = 0;
+  peakRawZ = 0;
   shouldRefreshZ = true;
   pendingReleaseCount = 0;
   didMove = false;
