@@ -64,6 +64,8 @@ https://github.com/rogerlinndesign/linnstrument-firmware/compare/5258d4a...roger
 
 MUST-DO #1: UNINSTALL
 
+in shorts and longs, data is stored LSB first (little-endian)
+
   16    72.1
 11692              sizeof(config)
        11692       sizeof(ConfigurationVLatest)
@@ -299,7 +301,9 @@ tried to add a few more colors, but only violet was distinct enough from the oth
 
 add double-stops, finish pullOffModes
 
-add Y-maximizing option: OFF X Z X+Z Y X+Y Y+Z XYZ
+add the existing Y-maximizing option? OFF X Z X+Z Y X+Y Y+Z XYZ (still jumpy when going small-Y to large-Y)
+  use averaging instead of maximizing?
+  what if user wants to be jumpy?
 
 add M/P (Mono/Poly) footswitch? force hammer-ons or double-stops
 
@@ -477,7 +481,11 @@ Roger's idea for a transpose function for the low row
 https://www.kvraudio.com/forum/viewtopic.php?t=594760 
 https://www.kvraudio.com/forum/viewtopic.php?t=596619
 
-midi looper?
+turn the sequencer into a midi looper? just needs live input
+
+NRPNs 62/162 (toggle sequencer play) and 66/166 (toggle sequencer mute) could return the current play or mute state
+  value = seqState[split].running or value = seqState[split].muted
+  but seqState is not a global var, it's local to sequencer.ino
 
 drum pad mode, besides ON and OFF, add MRMB/MRB for marimba mode
   this adds an 8th column and gets the midi notes from the current scale, transposable
@@ -602,6 +610,8 @@ and a little high-pass filtering on long slides. Gives it an electric guitar fee
 pdxindy says: I have a number of percussive presets that have env decay short and release long so if I tap the key it rings out 
 but hold it, it is short and muted. Makes for a pleasing playing style. (linn min note length is 35/70ms)
 
+The Reaper script "MIDI CC Mapper X" can remap any MIDI input along a user-drawn curve.
+
 https://vi-control.net/community/threads/what-i-would-like-to-see-in-the-audio-modeling-swam-viola-and-cello.169483/
 https://www.youtube.com/watch?v=9cNMm53CqBs continuum raga
 
@@ -614,12 +624,14 @@ cleanup: search for "delete", "uncomment", "later" and "bug"
 ********************************************************************************************************************/
 
 #ifdef DEBUG_ENABLED
-  const byte MAX_IMPORT_TYPE = 16;     // 16 = calibration data, convenience for devs and safety for beta testers
-  const byte MAX_EXPORT_TYPE = 17;     // 17 = full data dump of config, not importable, used for examining the data
+  const byte MAX_IMPORT_TYPE = 17;     // 17 = calibration data, convenience for devs and safety for beta testers
+  const byte MAX_EXPORT_TYPE = 18;     // 18 = full data dump of config, not importable, used for examining the data
 #else
-  const byte MAX_IMPORT_TYPE = 15;
-  const byte MAX_EXPORT_TYPE = 15;
+  const byte MAX_IMPORT_TYPE = 16;
+  const byte MAX_EXPORT_TYPE = 16;
 #endif
+
+const short MICROLINN_BULK_EXPORT_DELAY = 1200;            // microseconds delay in microLinnSendPolyPressure()
 
 // virtual edosteps needed = 7 * maxRowOffset + 24 * maxColOffset + 1 = 368 max, but up it to 512 to give the guitar tuning more leeway
 const byte MICROLINN_MAX_ROW_OFFSET = 25;                  // if this is changed, change it in initMicroLinnData() too
@@ -4755,7 +4767,7 @@ void exportMicroLinnData(int exportType) {
   if (exportType == 3 && audienceMessageToEdit == -1)         {microLinnScrollSmall("FIRST EDIT AN AUDIENCE MESSAGE"); return;}
   if (exportType >= 6 && exportType <= 8 && !isMicroLinnOn()) {microLinnScrollSmall("FIRST SELECT AN EDO"); return;}
 
-  if (exportType < 17) {        // 17 is for debugging, has no NRPN 300 or header
+  if (exportType < 18) {        // 18 is for debugging, has no NRPN 300 or header
     byte midiData = inRange(exportType, 5, 8) ? Global.microLinn.EDO : 0;             // the edo says where to load import types 5-8
     midiSendNRPN(300, (exportType << 7) + midiData, 1);
     microLinnSendPolyPressure(Device.version, Device.microLinn.MLversion, 9);         // export header, channel is 1-indexed
@@ -4878,33 +4890,39 @@ void exportMicroLinnData(int exportType) {
                                   Device.microLinn.fretboards[i+1]);
       }
       break;
-    case 13:   // export the Global and Split structs
+    case 13:   // export one Split struct
+      array = (byte *) &config.settings.split[Global.currentPerSplit];
+      for (unsigned short i = 0; i < sizeof(SplitSettings); i += 2) {
+        microLinnSendPolyPressure(array[i], array[i+1]);
+      }
+      break;
+    case 14:   // export the Global and Split structs
       array = (byte *) &config.settings;
       for (unsigned short i = 0; i < sizeof(PresetSettings); i += 2) {
         microLinnSendPolyPressure(array[i], array[i+1]);
       }
       break;
-    case 14:   // export all 6 presets
+    case 15:   // export all 6 presets/memories
       array = (byte *) &config.preset[0];
       for (unsigned short i = 0; i < NUMPRESETS * sizeof(PresetSettings); i += 2) {
         microLinnSendPolyPressure(array[i], array[i+1]);
       }
       break;
-    case 15:   // export All User Settings
+    case 16:   // export All User Settings
       array = (byte *) &config.device.minUSBMIDIInterval;                // skip over version, serialMode, and all calibration data
       n = (byte *) &config.project - array;                              // stop short of the current sequencer project
       for (unsigned short i = 0; i < n; i += 2) {
         microLinnSendPolyPressure(array[i], array[i+1]);
       }
       break;
-    case 16:   // export calibration data (experimental)
+    case 17:   // export calibration data (experimental, use at your own risk!)
       array = (byte *) &Device.calRows;
       n = sizeof(Device.calRows) + sizeof(Device.calCols) + sizeof(Device.calCrc) + 3 * sizeof(boolean);  
       for (unsigned short i = 0; i < n; i += 2) {
         microLinnSendPolyPressure(array[i], array[i+1]);
       }
       break;
-    case 17:   // full dump of config, for debugging updating/importing, only exported never imported, no NRPN 300 or header
+    case 18:   // full dump of config, for debugging updating/importing, only exported never imported, no NRPN 300 or header
       array = (byte *) &Device;
       for (unsigned short i = 1; i < sizeof(config); i += 1) {           // start at 1 to align with Reaper's 1-indexed numbering
         microLinnSendPolyPressure(0, array[i]);                          // only 1 byte per midi message, for easy readability
@@ -4925,7 +4943,7 @@ void microLinnSendPolyPressure(byte data1, byte data2) {
 void microLinnSendPolyPressure(byte data1, byte data2, byte channel) {   // channel is 1-indexed
   if (data1 > 127) {data1 -= 128; channel += 1;}                         // convert 8 bits to 7, store the 8th bit in the channel
   if (data2 > 127) {data2 -= 128; channel += 2;} 
-  delayUsec(1200);                                                       // don't overflow the midi queue, see handlePendingMidi()
+  delayUsec(MICROLINN_BULK_EXPORT_DELAY);                                // don't overflow the midi queue, see handlePendingMidi()
   resetLastMidiPolyPressure(data1, channel);                             // to ensure it isn't screened out as redundant
   midiSendPolyPressure(data1, data2, channel);
 }
@@ -4986,19 +5004,23 @@ void microLinnDeduceImportSize(byte version, byte MLversion) {
     case 12:  // 3 edo arrays for all edos
       microLinnImportSize = 3 * MICROLINN_ARRAY_SIZE;
       break;
-    case 13:  // 1 preset
+    case 13:  // settings for the current split
+      if (version == Device.version && MLversion == Device.microLinn.MLversion)
+        microLinnImportSize = sizeof(SplitSettings);
+      break;
+    case 14:  // Global settings and both Split settings
       if (version == Device.version && MLversion == Device.microLinn.MLversion)
         microLinnImportSize = sizeof(PresetSettings);
       break;
-    case 14:  // all 6 presets
+    case 15:  // all 6 presets/memories
       if (version == Device.version && MLversion == Device.microLinn.MLversion)
         microLinnImportSize = NUMPRESETS * sizeof(PresetSettings);
       break;
-    case 15:  // all user settings
+    case 16:  // all user settings
       arrayPtr = (byte *) &config.device.minUSBMIDIInterval;          // skip over version, serialMode, and all calibration data
       microLinnImportSize = (byte *) &config.project - arrayPtr;      // stop short of the current sequencer project
       break;
-    case 16:  // calibration data, 1803 bytes (experimental)
+    case 17:  // calibration data, 1803 bytes (experimental)
       microLinnImportSize = sizeof(Device.calRows) + sizeof(Device.calCols) + sizeof(Device.calCrc) + 3 * sizeof(boolean); 
       break;
   }
@@ -5236,7 +5258,12 @@ void receiveMicroLinnPolyPressure(byte data1, byte data2, byte channel) {
       }
       break;
 
-    case 13:   // 1 preset = 596 bytes for version 72.1
+    case 13:   // 1 split = 113 bytes for version 72.1
+      if (i == 0) microLinnImportXen = true;
+      microLinnImportSplit(data1, data2, i, 0, Global.currentPerSplit);
+      break;
+
+    case 14:   // Global and both Split settings = 596 bytes for version 72.1
       if (i == 0) microLinnImportXen = true;
       if (i < sizeof(GlobalSettings)) {
         microLinnImportGlobal(data1, data2, i, 0);               // import into Global and Split
@@ -5245,7 +5272,7 @@ void receiveMicroLinnPolyPressure(byte data1, byte data2, byte channel) {
       }
       break;
 
-    case 14:   // all 6 presets = 3576 bytes for version 72.1
+    case 15:   // all 6 presets = 3576 bytes for version 72.1
       m = i % sizeof(PresetSettings);                            // m = index into the preset
       n = (i - m) / NUMPRESETS;                                  // n = which preset
       if (m == 0) microLinnImportXen = true;                     // reset the flag for each new preset
@@ -5256,7 +5283,7 @@ void receiveMicroLinnPolyPressure(byte data1, byte data2, byte channel) {
       }
       break;
 
-    case 15:   // all user settings = 8508 bytes for version 72.0
+    case 16:   // all user settings = 8508 bytes for version 72.0
       ptrStart = (byte *) &Device.minUSBMIDIInterval;            // start at Device.minUSBMIDIInterval, after calibration data
       ptrEnd = (byte *) &Global;                                 // stop short of Global
       m = ptrEnd - ptrStart;                                     // m = size of Device settings in the import
@@ -5275,7 +5302,7 @@ void receiveMicroLinnPolyPressure(byte data1, byte data2, byte channel) {
       }
       break;
 
-    case 16:   // calibration data (experimental)
+    case 17:   // calibration data (experimental)
       array = (byte *) &Device.calRows;
       array[i] = data1; 
       if (i+1 < microLinnImportSize) array[i+1] = data2;
@@ -5508,10 +5535,14 @@ void microLinnImportGlobal(byte data1, byte data2, unsigned short i, byte preset
   }
 }
 
-void microLinnImportSplits(byte data1, byte data2, unsigned short i,  byte presetNum) {       // version 72.1 size is 113 bytes per side
-  if (i < 0 || i >= 2 * sizeof(SplitSettings)) return;
+void microLinnImportSplits(byte data1, byte data2, unsigned short i,  byte presetNum) {
   byte side = (i < sizeof(SplitSettings) ? LEFT : RIGHT);
   if (side == RIGHT) i -= sizeof(SplitSettings);
+  microLinnImportSplit(data1, data2, i, presetNum, side);
+}
+
+void microLinnImportSplit(byte data1, byte data2, unsigned short i,  byte presetNum, byte side) {       // version 72.1 size is 113 bytes per side
+  if (i < 0 || i >= sizeof(SplitSettings)) return;
   SplitSettings *spl = (presetNum == 0 ? &Split[side] : &config.preset[presetNum - 1].split[side]);
   if (i >= 102 && !microLinnImportXen) return;
   unsigned short number = data1 | (data2 << 8);
@@ -5581,7 +5612,8 @@ void microLinnImportSplits(byte data1, byte data2, unsigned short i,  byte prese
     if (microLinnInRange(data1, 0, 7))    spl->lowRowMode = data1;
     if (microLinnInRange(data2, 0, 1))    spl->lowRowCCXBehavior = data2;
   } else if (i == 76) {
-    if (microLinnInRange(number, 0, 128)) spl->ccForLowRow = number;
+    if (microLinnInRange(data1, 0, 128))  spl->ccForLowRow = data1;
+    if (microLinnInRange(data2, 0, 1))    spl->lowRowBendBehavior = data2;
   } else if (i == 78) {
     if (microLinnInRange(data1,  0, 2))   spl->lowRowCCXYZBehavior = data1;      // ignore data2 = padding
   } else if (i == 80) {

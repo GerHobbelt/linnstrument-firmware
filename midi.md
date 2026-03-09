@@ -192,6 +192,7 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 64    | 1     | Split Left Sequencer Next Pattern
 | 65    | 0-3   | Split Left Sequencer Select Pattern Number
 | 66    | 1     | Split Left Sequencer Toggle Mute
+| 67    | 0-1   | Split Left Low Row Bend Behavior (0: Bend, 1: Transpose)
 | 100   | 0-2   | Split Right MIDI Mode (0: One Channel, 1: Channel Per Note, 2: Channel Per Row)
 | 101   | 0-16  | Split Right MIDI Main Channel (0 = disable the main channel / report that the main channel is disabled)
 | 102   | 0-1   | Split Right MIDI Per Note Channel 1 (0: Off, 1: On)
@@ -259,6 +260,7 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 164   | 1     | Split Right Sequencer Next Pattern
 | 165   | 0-3   | Split Right Sequencer Select Pattern Number
 | 166   | 1     | Split Right Sequencer Toggle Mute
+| 167   | 0-1   | Split Right Low Row Bend Behavior (0: Bend, 1: Transpose)
 | 200   | 0-1   | Global Split Active (0: Inactive, 1: Active)
 | 201   | 0-1   | Global Selected Split (0: Left Split, 1: Right Split)
 | 202 * | 2-25  | Global Split Point Column
@@ -403,18 +405,18 @@ All importing is blocked unless "Allow Importing" is manually turned on. All exp
 Importing is automatically turned off every time the user unplugs the Linnstrument, for security reasons.
 
 bulk export request format:
-NRPN 299 = (MSB 2, LSB 43), channel 0, value = 2048 + export type = (MSB 16, LSB 1-15)
+NRPN 299 = (MSB 2, LSB 43), channel 1, value = 2048 + export type = (MSB 16, LSB 1-15)
 
 bulk export format:
-NRPN 300 = (MSB 2, LSB 44), channel 0, value: MSB = export type = 1-15, LSB = current edo if export type = 5..8
-Polypressure header, channel 8, value: LSB = Device.version, MSB = Device.microLinn.MLversion
+NRPN 300 = (MSB 2, LSB 44), channel 1, value: MSB = export type = 1-15, LSB = current edo if export type = 5..8
+Polypressure header, channel 9, value: LSB = Device.version, MSB = Device.microLinn.MLversion
 (multiple polypressure data messages on channels 0..3)
-Polypressure footer, channel 12, value: MSB = export type = 1-15, LSB = 0
+Polypressure footer, channel 13, value: MSB = export type = 1-15, LSB = 0
 In each polypressure message, the MSB appears as the note number and the LSB appears as the velocity
 
-For the polypressure data messages, channels 1-3 are used to store the 8th bit of each byte:
-channel 1 or 3 = add 128 to LSB when importing 
-channel 2 or 3 = add 128 to MSB when importing
+For the polypressure data messages, channels 2-4 are used to store the 8th bit of each byte:
+channel 2 or 4 = add 128 to LSB when importing 
+channel 3 or 4 = add 128 to MSB when importing
 
 Type        # of data bytes     Settings exported                    Notes
 -------------------------------------------------------------------------------------------------------
