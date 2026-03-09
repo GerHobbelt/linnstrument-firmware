@@ -165,7 +165,7 @@ void updateDisplay() {
       break;
     case displayLowRowBendConfig:
       paintLowRowBendConfigDisplay(Global.currentPerSplit);
-      break;      
+      break;
     case displayLowRowCCXConfig:
       paintLowRowCCXConfigDisplay(Global.currentPerSplit);
       break;
@@ -468,7 +468,7 @@ void paintNormalDisplaySplit(byte split, byte leftEdge, byte rightEdge) {
       if (!userFirmwareActive && row == 0 && Split[split].lowRowMode != lowRowNormal) {
         if (Split[split].lowRowMode == lowRowBend && Split[split].lowRowBendBehavior == lowRowBendTranspose) {
           paintLowRowTranspose(split);
-        }        
+        }
         if (Split[split].lowRowMode == lowRowCCX && Split[split].lowRowCCXBehavior == lowRowCCFader) {
           paintCCFaderDisplayRow(split, 0, Split[split].colorLowRow, Split[split].ccForLowRow, faderLeft, faderLength, LED_LAYER_LOWROW);
         }

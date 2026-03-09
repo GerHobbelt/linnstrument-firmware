@@ -379,7 +379,7 @@ void storeSettingsToPreset(byte p) {
 // On subsequent startups, these values are overwritten by loading the settings stored in flash.
 void initializeDeviceSettings() {
   // when a new mainstream version is released, update 16 to 17 to reflect Geert's Feb 2026 changes
-  Device.version = 16 + MICROLINN_VERSION_OFFSET;          // 16 is the latest non-MicroLinn version (created in 2023)
+  Device.version = 17 + MICROLINN_VERSION_OFFSET;          // 16 is the latest non-MicroLinn version (created in 2023)
   Device.serialMode = false;
   Device.sleepAnimationActive = false;
   Device.sleepActive = false;
@@ -670,7 +670,7 @@ void initializePresetSettings() {
         p.split[s].colorSequencerEvent = COLOR_ORANGE;
         p.split[s].colorSequencerDisabled = COLOR_LIME;
         p.split[s].playedTouchMode = playedCell;
-        p.split[s].lowRowBendBehavior = lowRowBendBend;        
+        p.split[s].lowRowBendBehavior = lowRowBendBend;
         p.split[s].lowRowCCXBehavior = lowRowCCHold;
         p.split[s].ccForLowRow = 1;
         p.split[s].lowRowCCXYZBehavior = lowRowCCHold;
@@ -1668,7 +1668,7 @@ void handlePerSplitSettingHold() {
             resetNumericDataChange();
             setDisplayMode(displayLowRowBendConfig);
             updateDisplay();
-            break;          
+            break;
           case 5:
             lowRowCCXConfigState = 1;
             resetNumericDataChange();

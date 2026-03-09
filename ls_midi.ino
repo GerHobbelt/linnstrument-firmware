@@ -290,6 +290,7 @@ void handleMidiInput(unsigned long nowMicros) {
     }
 
     int split = determineSplitForChannel(midiChannel);
+    int ccSplit = determineControlChangeSplitForChannel(midiChannel);
 
     if (midiStatus == MIDISongPositionPointer) {
       receivedSongPositionPointer = true;
@@ -355,20 +356,20 @@ void handleMidiInput(unsigned long nowMicros) {
 
       case MIDIChannelPressure:
       {
-        if (split != -1) {
+        if (ccSplit != -1) {
           bool handled = false;
 
           for (byte f = 0; f < 8; ++f) {
-            unsigned short cc = Split[split].ccForFader[f];
+            unsigned short cc = Split[ccSplit].ccForFader[f];
             if (cc == 128) {
-              ccFaderValues[split][cc] = midiData1;
+              ccFaderValues[ccSplit][cc] = midiData1;
               handled = true;
             }
           }
 
           if (handled)
           {
-            if ((displayMode == displayNormal && Split[split].ccFaders) || displayMode == displayVolume) {
+            if ((displayMode == displayNormal && Split[ccSplit].ccFaders) || displayMode == displayVolume) {
               updateDisplay();
             }
           }
@@ -396,9 +397,9 @@ void handleMidiInput(unsigned long nowMicros) {
         // if faders are set up to handle a particular incoming CC,
         // these CCs will update the faders and not control any of the
         // LinnStrument features
-        else if (!userFirmwareActive && split != -1) {
+        else if (!userFirmwareActive && ccSplit != -1) {
         // possible further restriction: replace the previous line with the following line
-        // else if (!userFirmwareActive && split != -1 && Split[split].ccFaders) {
+        // else if (!userFirmwareActive && ccSplit != -1 && Split[ccSplit].ccFaders) {
           bool handled = false;
           for (byte f = 0; f < 8; ++f) {
             unsigned short cc = Split[split].ccForFader[f];
@@ -408,7 +409,7 @@ void handleMidiInput(unsigned long nowMicros) {
             }
           }
 
-         // if the CC was handled by faders, update the display if needed
+          // if the CC was handled by faders, update the display if needed
           if (handled) 
           { 
             if ((displayMode == displayNormal && Split[split].ccFaders) ||
@@ -425,7 +426,7 @@ void handleMidiInput(unsigned long nowMicros) {
         // supported incoming MIDI CC messages
         switch (midiData1) {
           case 0:
-            if (split != -1) {
+            if (ccSplit != -1) {
               midiBank[split] = midiData2;
               if (displayMode == displayPreset) updateDisplay();
             }

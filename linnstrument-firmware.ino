@@ -716,9 +716,9 @@ struct SplitSettings {
   byte colorSequencerDisabled;            // color for sequencer low row step that's not being played
   byte playedTouchMode;                   // see PlayedTouchMode values
   byte lowRowMode;                        // see LowRowMode values
+  byte lowRowBendBehavior;                // see LowRowBendBehavior values (assumes little-endian byte order)
   byte lowRowCCXBehavior;                 // see LowRowCCBehavior values
   byte ccForLowRow;                       // 0-128 (with 128 being placeholder for ChannelPressure)
-  byte lowRowBendBehavior;                // see LowRowBendBehavior values (assumes little-endian byte order)
   byte lowRowCCXYZBehavior;               // see LowRowCCBehavior values
 //byte padding4;                          // see padding1
   unsigned short ccForLowRowX;            // 0-128 (with 128 being placeholder for ChannelPressure)

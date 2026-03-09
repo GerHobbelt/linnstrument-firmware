@@ -463,7 +463,7 @@ Color Values
 | 4     | Cyan
 | 5     | Blue
 | 6     | Magenta
-| 7     | Black
+| 7     | Black / Off
 | 8     | White
 | 9     | Orange
 | 10    | Lime
