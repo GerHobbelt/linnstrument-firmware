@@ -478,6 +478,12 @@ boolean handleNewTouch() {
           initVelocity();
           calcVelocity(sensorCell->velocityZ);
           result = true;
+
+          // Autoselect the current split when playing
+          if (Global.splitActive && Global.currentPerSplit != sensorSplit) {
+            Global.currentPerSplit = sensorSplit;
+            updateSwitchLeds();
+          }
         }
         else {
           cellTouched(untouchedCell);
