@@ -16,6 +16,8 @@ limitations under the License.
 This displays evolved animations for each touch based on the global settings.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 int32_t colsInRowsAnimated[MAXROWS];
 unsigned long touchAnimationLastMoment[MAXCOLS][MAXROWS];
 unsigned long touchAnimationSpeed[MAXCOLS][MAXROWS];

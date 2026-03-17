@@ -18,7 +18,9 @@ system clock when that is active and with the internal tracking of how notes map
 the actual cell that was pressed, allowing velocity to be continuously varied during the arpeggiator
 sequence.
 ***************************************************************************************************/
-     
+
+#include "ls_compiler_tweaks.h"
+
 signed char playingArpNote[NUMSPLITS];                // the last note played by the arpeggiator or -1 if no note is still playing
 signed char playingArpChannel[NUMSPLITS];             // the last channel played by the arpeggiator or -1 if no note is still playing
 signed char stepArpNote[NUMSPLITS];                   // the current step note of the arpeggiator or -1 if it should be starting from scratch

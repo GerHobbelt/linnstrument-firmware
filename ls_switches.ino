@@ -23,6 +23,8 @@ are read subsequently, state is compared to these OFF states to insure valid pre
 normally-open and normally-closed switches.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 void initializeSwitches() {
   // read initial state of each in order to determine if nornally-open or
   // normally-closed (like VFP2) switches are connected, or if nothing's connected.

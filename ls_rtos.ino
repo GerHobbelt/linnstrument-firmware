@@ -19,6 +19,7 @@ switches at specific time interals, all in the background. This should be used i
 Arduino's delayMicroseconds() function.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
 
 // delayUsec:
 // use to insert a brief time delay.

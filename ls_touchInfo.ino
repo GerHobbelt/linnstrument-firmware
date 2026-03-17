@@ -17,6 +17,8 @@ These are the methods of the TouchInfo class, handling data related to the touch
 each individual cell.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 /********************** the curve was generated with the following C program **********************
 #include <stdio.h>
 #include <math.h>

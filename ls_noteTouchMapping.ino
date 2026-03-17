@@ -20,6 +20,8 @@ This entire structure is intended to be used by the arpeggiator, requiring a min
 iteration to constitute the arpeggiated sequence.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 void resetAllTouches() {
   midiSendNoteOffForAllTouches(LEFT);
   midiSendNoteOffForAllTouches(RIGHT);

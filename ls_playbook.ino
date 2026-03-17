@@ -16,6 +16,8 @@ limitations under the License.
 This cycles through a series of images to creation an animated playbook.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 const int CHRISTMAS_FRAME_COUNT = 7;
 const char* CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
     " W    W       W    W  W   "
