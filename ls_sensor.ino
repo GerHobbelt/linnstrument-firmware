@@ -16,6 +16,8 @@ limitations under the License.
 These functions handle the sensing of touches on the LinnStrument's touch surface.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 // These are the rectified pressure sensititivies for each column
 // CAREFUL, contrary to all the other arrays these are rows first and columns second since it makes it much easier to visualize and edit the
 // actual values in a spreadsheet

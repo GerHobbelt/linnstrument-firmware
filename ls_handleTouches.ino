@@ -17,6 +17,8 @@ These routines handle the processing of new touch events, continuous updates of 
 released touch events
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 void cellTouched(TouchState state) {
   cellTouched(sensorCol, sensorRow, state);
 };

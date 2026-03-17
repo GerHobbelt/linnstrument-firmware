@@ -21,6 +21,8 @@ This function also takes cell that are outside the low row into account, to trig
 operations for those when needed.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 enum ColumnState {
   inactive,
   pressed,
