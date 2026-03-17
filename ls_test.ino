@@ -16,6 +16,8 @@ limitations under the License.
 Assorted debug functions. 
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 
 void debugPrint(int level, const char* msg) {
   if (Device.serialMode && (debugLevel >= level)) {

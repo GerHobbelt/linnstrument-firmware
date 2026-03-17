@@ -25,6 +25,8 @@ For the Y values, it simply measures the top and bottom extremes for cells in 5 
 calculate for each cell the ratio that converts this to usable CC values.
 ***************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 byte CALROWNUM = 4;
 byte CALCOLNUM = 9;
 

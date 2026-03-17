@@ -16,6 +16,8 @@ limitations under the License.
 These implement the polyphonic expressive step sequencer, independently for each split.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 const byte SEQ_FADER_TOP = 3;
 byte SEQ_FADER_LENGTH;
 byte SEQ_FADER_RIGHT;

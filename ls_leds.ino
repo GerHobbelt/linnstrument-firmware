@@ -16,6 +16,8 @@ limitations under the License.
 These functions handle the low-level communication with LinnStrument's 208 RGB LEDs.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 /*
  LinnStrument contains an array of 208 RGB LEDs arranged in a 26 by 8 matrix.
  Only one column (8 LEDs) can be turned on at a time and the columns are refreshed one at a time.

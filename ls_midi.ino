@@ -16,6 +16,7 @@ limitations under the License.
 These are the MIDI functions for the LinnStrument
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
 #include "ls_bytebuffer.h"
 #include "ls_midi.h"
 

@@ -19,6 +19,8 @@ Several sized of fonts are defined to take up a different amount of space on the
 surface.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 struct Character {
   byte width;
   const char* data;
