@@ -28,8 +28,7 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 =======================================================================================================================
 =====================================================================================================================*/
 
-
-
+#include "ls_compiler_tweaks.h"
 
 /*************************************** INCLUDED LIBRARIES **************************************/
 #include <SPI.h>
@@ -1127,9 +1126,9 @@ unsigned long lastReset;                            // the last time a reset was
 
 short lastReadSensorRawZ = 0;                       // the last pressure value that was read straight off of the sensor without any sensor bias nor sensitivity calibration
 
-byte globalColor = COLOR_BLUE;                      // color for global, split point and transpose settings
-byte globalAltColor = COLOR_CYAN;                   // alternate color for global, split point and transpose settings
-byte globalLowRowColor = COLOR_GREEN;               // color for low row painting in global settings
+constexpr const byte globalColor = COLOR_BLUE;                      // color for global, split point and transpose settings
+constexpr const byte globalAltColor = COLOR_CYAN;                   // alternate color for global, split point and transpose settings
+constexpr const byte globalLowRowColor = COLOR_GREEN;               // color for low row painting in global settings
 
 boolean changedSplitPoint = false;                  // reflects whether the split point was changed
 boolean splitButtonDown = false;                    // reflects state of Split button
