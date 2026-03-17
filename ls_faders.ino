@@ -16,6 +16,8 @@ limitations under the License.
 These functions handle the CC faders for each split
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 #define CC_FADER_NUMBER_OFFSET 1
 
 void handleFaderTouch(boolean newVelocity) {
