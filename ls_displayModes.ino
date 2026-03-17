@@ -69,6 +69,8 @@ displayMicroLinnFretboardEditor : edit the fret markers for the current edo
 These routines handle the painting of these display modes on LinnStument's 208 LEDs.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 
 unsigned long displayModeStart = 0;    // indicates when the current display mode was activated
 boolean blinkMiddleRootNote = false;   // indicates whether the middle root note should be blinking

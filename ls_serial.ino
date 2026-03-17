@@ -16,6 +16,8 @@ limitations under the License.
 
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 // Handshake codes for settings transfer
 const char* countDownCode = "5, 4, 3, 2, 1 ...\n";
 const byte countDownLength = 18;

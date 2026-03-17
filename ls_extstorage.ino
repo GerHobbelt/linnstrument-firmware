@@ -20,6 +20,7 @@ The new firmware is then responsible of applying the received settings and possi
 some transformation logic if the settings structure changed for the new firmware.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
 #include "ls_extstorageMicroLinn.h"
 
 /**************************************** Configuration V1 ****************************************
