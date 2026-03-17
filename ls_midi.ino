@@ -424,6 +424,8 @@ void handleMidiInput(unsigned long nowMicros) {
         // these CCs will update the faders and not control any of the
         // LinnStrument features
         if (ccSplit != -1) {
+          // possible further restriction: replace the previous line with the following line
+          // else if (!userFirmwareActive && ccSplit != -1 && Split[ccSplit].ccFaders) {
           boolean handled = false;
 
           for (byte f = 0; f < 8; ++f) {
