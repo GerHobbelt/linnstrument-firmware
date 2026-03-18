@@ -19,7 +19,7 @@ released touch events
 
 #include "ls_compiler_tweaks.h"
 
-void cellTouched(TouchState state) {
+inline void cellTouched(TouchState state) {
   cellTouched(sensorCol, sensorRow, state);
 };
 void cellTouched(byte col, byte row, TouchState state) {
@@ -56,7 +56,7 @@ void cellTouched(byte col, byte row, TouchState state) {
 
 #define TRANSFER_SLIDE_PROXIMITY 100
 
-byte countTouchesForMidiChannel(byte split, byte col, byte row) {
+inline byte countTouchesForMidiChannel(byte split, byte col, byte row) {
   if (!cell(col, row).hasNote()) {
     return 0;
   }
@@ -64,7 +64,7 @@ byte countTouchesForMidiChannel(byte split, byte col, byte row) {
   return noteTouchMapping[split].getMusicalTouchCount(cell(col, row).channel);
 }
 
-const int32_t PENDING_RELEASE_RATE_X = FXD_FROM_INT(5);
+constexpr const int32_t PENDING_RELEASE_RATE_X = FXD_FROM_INT(5);
 
 boolean potentialSlideTransferCandidate(byte col) {
   if (controlModeActive) return false;
@@ -98,12 +98,12 @@ boolean potentialSlideTransferCandidate(byte col) {
      abs(sensorCell->calibratedX() - cell(col, sensorRow).currentCalibratedX) < TRANSFER_SLIDE_PROXIMITY);   // both cells are touched simultaneously on the edges
 }
 
-boolean isReadyForSlideTransfer(byte col) {
+inline boolean isReadyForSlideTransfer(byte col) {
   return cell(col, sensorRow).pendingReleaseCount ||                 // there's a pending release waiting
     sensorCell->currentRawZ > cell(col, sensorRow).currentRawZ;      // the cell pressure is higher
 }
 
-boolean hasImpossibleX() {             // checks whether the calibrated X is outside of the possible bounds for the current cell
+inline boolean hasImpossibleX() {             // checks whether the calibrated X is outside of the possible bounds for the current cell
   return Device.calibrated &&
     (sensorCell->calibratedX() < FXD_TO_INT(Device.calRows[sensorCol][0].fxdReferenceX - FXD_CALX_PHANTOM_RANGE) ||
      sensorCell->calibratedX() > FXD_TO_INT(Device.calRows[sensorCol][0].fxdReferenceX + FXD_CALX_PHANTOM_RANGE));
@@ -508,17 +508,17 @@ boolean handleNewTouch() {
 }
 
 // Calculate the transposed note number for the current cell by taken the transposition settings into account
-short cellTransposedNote(byte split) {
+inline short cellTransposedNote(byte split) {
   return transposedNote(split, sensorCol, sensorRow);
 }
 
-short transposedNote(byte split, byte col, byte row) {
+inline short transposedNote(byte split, byte col, byte row) {
   if (isMicroLinnOn()) return getMicroLinnVirtualEdostep(split, col, row);        // virtual edosteps don't transpose
   return getNoteNumber(split, col, row) + Split[split].transposePitch + Split[split].transposeOctave;
 }
 
 // Check if the currently scanned cell is a focused cell
-boolean isFocusedCell() {
+inline boolean isFocusedCell() {
   return isFocusedCell(sensorCol, sensorRow);
 }
 
@@ -533,16 +533,16 @@ boolean isFocusedCell(byte col, byte row) {
 }
 
 // Check if X expression should be sent for this cell
-boolean isXExpressiveCell() {
+inline boolean isXExpressiveCell() {
   return isFocusedCell();
 }
 
-boolean isXExpressiveCell(byte col, byte row) {
+inline boolean isXExpressiveCell(byte col, byte row) {
   return isFocusedCell(col, row);
 }
 
 // Check if Y expression should be sent for this cell
-boolean isYExpressiveCell() {
+inline boolean isYExpressiveCell() {
   if (Split[sensorSplit].expressionForY == timbrePolyPressure) {
     return true;
   }
@@ -552,7 +552,7 @@ boolean isYExpressiveCell() {
 }
 
 // Check if Z expression should be sent for this cell
-boolean isZExpressiveCell() {
+inline boolean isZExpressiveCell() {
   if (Split[sensorSplit].expressionForZ == loudnessPolyPressure) {
     return true;
   }
@@ -565,7 +565,7 @@ boolean isZExpressiveCell() {
 // they are the work of KVR forum member teknico, many thanks! 
 // Individually expressive notes on the same channel
 // only when there's just one note, or using PolyAT
-boolean hasZExpressiveNotes() {
+inline boolean hasZExpressiveNotes() {
   return ((countTouchesForMidiChannel(sensorSplit, sensorCol, sensorRow) == 1) ||
     (Split[sensorSplit].expressionForZ == loudnessPolyPressure));
 }
@@ -1329,11 +1329,11 @@ void handleStrummedRowChange(boolean newFretting, byte velocity) {
   }
 }
 
-boolean isStrummedSplit(byte split) {
+inline boolean isStrummedSplit(byte split) {
   return Global.splitActive && Split[otherSplit(split)].strum;
 }
 
-boolean isStrummingSplit(byte split) {
+inline boolean isStrummingSplit(byte split) {
   return Global.splitActive && Split[split].strum;
 }
 
@@ -1515,7 +1515,7 @@ void handleNewControlModeTouch() {
   setLed(sensorCol, sensorRow, Split[Global.currentPerSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
 }
 
-unsigned short handleZExpression() {
+short handleZExpression() {
   unsigned short preferredPressure = sensorCell->pressureZ;
 
   // handle pressure transition between adjacent cells if they are not playing their own note
@@ -1555,7 +1555,7 @@ unsigned short handleZExpression() {
   return preferredPressure;
 }
 
-const int32_t fxdRateXSamples = FXD_FROM_INT(5);    // the number of samples over which the average rate of change of X is calculated
+constexpr const int32_t fxdRateXSamples = FXD_FROM_INT(5);    // the number of samples over which the average rate of change of X is calculated
 
 short handleXExpression() {
   sensorCell->refreshX();
@@ -1675,11 +1675,11 @@ short handleXExpression() {
   return result;
 }
 
-boolean doQuantizeHold() {
+inline boolean doQuantizeHold() {
   return !userFirmwareActive && Split[sensorSplit].pitchCorrectHold != pitchCorrectHoldOff;
 }
 
-boolean isQuantizeHoldStable() {
+inline boolean isQuantizeHoldStable() {
   return sensorCell->fxdRateCountX >= fxdPitchHoldSamples[sensorSplit];
 }
 
@@ -1712,7 +1712,7 @@ short handleYExpression() {
   return FXD_TO_INT(fxdAveragedTimbre);
 }
 
-void releaseChannel(byte split, byte channel) {
+inline void releaseChannel(byte split, byte channel) {
   if (Split[split].midiMode == channelPerNote) {
     splitChannels[split].release(channel);
   }
@@ -2053,7 +2053,7 @@ void handleTouchRelease() {
   postTouchRelease();
 }
 
-void postTouchRelease() {
+inline void postTouchRelease() {
   sensorCell->clearAllPhantoms();
 
   // reset velocity calculations
@@ -2066,7 +2066,7 @@ void postTouchRelease() {
 #endif  
 }
 
-void handleOpenStringsRelease() {
+inline void handleOpenStringsRelease() {
   if (cellsTouched == 0) {
     // turn off all the notes of sounding open strings since no touches are active at all anymore
     for (byte row = 0; row < NUMROWS; ++row) {

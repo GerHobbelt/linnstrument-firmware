@@ -151,7 +151,7 @@ void handleSerialIO() {
   }
 }
 
-boolean waitForSerialAck() {
+inline boolean waitForSerialAck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
   lastSerialMoment = millis();
@@ -159,7 +159,7 @@ boolean waitForSerialAck() {
   return true;
 }
 
-boolean waitForSerialCheck() {
+inline boolean waitForSerialCheck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
   lastSerialMoment = millis();
@@ -167,7 +167,7 @@ boolean waitForSerialCheck() {
   return true;
 }
 
-char waitForSerialCRC() {
+inline char waitForSerialCRC() {
   if (!serialWaitForMaximumTwoSeconds()) return 0;
   char ack = Serial.read();
   lastSerialMoment = millis();
@@ -369,7 +369,7 @@ void serialLightLed() {
   updateDisplay();
 }
 
-int32_t serialSendProjectSize() {
+inline int32_t serialSendProjectSize() {
   // send the size of a project
   int32_t projectSize = sizeof(SequencerProject);
   Serial.write((byte*)&projectSize, sizeof(int32_t));

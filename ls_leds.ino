@@ -71,15 +71,15 @@ void initializeLeds() {
   }
 }
 
-void initializeLedLayers() {
+inline void initializeLedLayers() {
   memset(leds[bufferedLeds], 0, LED_ARRAY_SIZE);
 }
 
-void initializeLedsLayer(byte layer) {
+inline void initializeLedsLayer(byte layer) {
   memset(&leds[bufferedLeds][layer * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
 }
 
-int getActiveCustomLedPattern() {
+inline int getActiveCustomLedPattern() {
   return Global.activeNotes - 9;
 }
 
@@ -127,17 +127,17 @@ void clearStoredCustomLedLayer(int pattern)
   }
 }
 
-void startBufferedLeds() {
+inline void startBufferedLeds() {
   bufferedLeds = 1;
   memcpy(leds[bufferedLeds], leds[visibleLeds], LED_ARRAY_SIZE);
 }
 
-void finishBufferedLeds() {
+inline void finishBufferedLeds() {
   memcpy(leds[visibleLeds], leds[bufferedLeds], LED_ARRAY_SIZE);
   bufferedLeds = 0;
 }
 
-inline byte getCombinedLedData(byte col, byte row) {
+byte getCombinedLedData(byte col, byte row) {
   byte data = 0;
   byte layer = MAX_LED_LAYERS;
   do {
@@ -168,11 +168,11 @@ inline byte getCombinedLedData(byte col, byte row) {
   return data;
 }
 
-void setLed(byte col, byte row, byte color, CellDisplay disp) {
+inline void setLed(byte col, byte row, byte color, CellDisplay disp) {
   setLed(col, row, color, disp, LED_LAYER_MAIN);
 }
 
-void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer) {
+inline void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer) {
   if (col >= NUMCOLS || row >= NUMROWS || layer > MAX_LED_LAYERS) return;
 
   if (color == COLOR_OFF) {
@@ -193,57 +193,57 @@ void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer) {
   }
 }
 
-byte getLedColor(byte col, byte row, byte layer) {
+inline byte getLedColor(byte col, byte row, byte layer) {
   if (col >= NUMCOLS || row >= NUMROWS || layer > MAX_LED_LAYERS) return COLOR_OFF;
   return (ledVisible(layer, col, row) >> 3) & B00011111;
 }
 
 // light up a single LED with the default color
-void lightLed(byte col, byte row) {
+inline void lightLed(byte col, byte row) {
   setLed(col, row, globalColor, cellOn);
 }
 
 // clear a single LED
-void clearLed(byte col, byte row) {
+inline void clearLed(byte col, byte row) {
   clearLed(col, row, LED_LAYER_MAIN);
   clearLed(col, row, LED_LAYER_LOWROW);
 }
 
-void clearLed(byte col, byte row, byte layer) {
+inline void clearLed(byte col, byte row, byte layer) {
   setLed(col, row, COLOR_OFF, cellOff, layer);
 }
 
 // Turns all LEDs off
-void clearFullDisplay() {
+inline void clearFullDisplay() {
   clearSwitches();
   clearDisplay();
 }
 
 // Turns all LEDs off in columns 1 or higher
-void clearDisplay() {
+inline void clearDisplay() {
   for (byte col = 1; col < NUMCOLS; ++col) {
     clearColumn(col);
   }
 }
 
 // Turns all LEDs off in column 0
-void clearSwitches() {
+inline void clearSwitches() {
   clearColumn(0);
 }
 
-void clearColumn(byte col) {
+inline void clearColumn(byte col) {
   for (byte row = 0; row < NUMROWS; ++row) {
     clearLed(col, row);
   }
 }
 
-void clearRow(byte row) {
+inline void clearRow(byte row) {
   for (byte col = 0; col < NUMCOLS; ++col) {
     clearLed(col, row);
   }
 }
 
-void completelyRefreshLeds() {
+inline void completelyRefreshLeds() {
   for (byte row = 0; row < NUMROWS; ++row) {
     for (byte col = 0; col < NUMCOLS; ++col) {
       ledBuffered(LED_LAYER_COMBINED, col, row) = getCombinedLedData(col, row);
@@ -252,17 +252,17 @@ void completelyRefreshLeds() {
   }
 }
 
-void clearDisplayImmediately() {
+inline void clearDisplayImmediately() {
   // disable the outputs of the LED driver chips
   digitalWrite(37, HIGH);
 }
 
-void disableLedDisplay() {
+inline void disableLedDisplay() {
   ledDisplayEnabled = false;
   clearDisplayImmediately();
 }
 
-void enableLedDisplay() {
+inline void enableLedDisplay() {
   // enable the outputs of the LED driver chips
   digitalWrite(37, LOW);
   ledDisplayEnabled = true;
