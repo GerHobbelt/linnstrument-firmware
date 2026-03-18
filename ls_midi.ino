@@ -64,7 +64,7 @@ byte lastNrpnLsb = 127;
 byte lastDataMsb = 0;
 byte lastDataLsb = 0;
 
-boolean isMidiUsingDIN() {
+inline boolean isMidiUsingDIN() {
   return Global.midiIO == 0;
 }
 
@@ -1958,12 +1958,12 @@ void preSendPitchBend(byte split, int pitchValue) {
 }
 
 // Called to send a Pitch Bend message. Depending on mode, sends different Bend data
-void preSendPitchBend(byte split, int pitchValue, byte channel) {
+inline void preSendPitchBend(byte split, int pitchValue, byte channel) {
   midiSendPitchBend(scalePitch(split, pitchValue), channel);    // Send the bend amount as a difference from bend center (8192)
 }
 
 // Calculate the real value if custom limits are set
-byte applyLimits(byte value, byte minValue, byte maxValue, int32_t ratio) {
+inline byte applyLimits(byte value, byte minValue, byte maxValue, int32_t ratio) {
   if (minValue != 0 || maxValue != 127) {
     value = minValue + FXD_TO_INT(FXD_MUL(FXD_FROM_INT(value), ratio));
   }
@@ -1971,7 +1971,7 @@ byte applyLimits(byte value, byte minValue, byte maxValue, int32_t ratio) {
   return value;
 }
 
-unsigned short applyLimits1016(unsigned short value, byte minValue, byte maxValue, int32_t ratio) {
+inline unsigned short applyLimits1016(unsigned short value, byte minValue, byte maxValue, int32_t ratio) {
   if (minValue != 0 || maxValue != 127) {
     value = minValue * 8 + FXD_TO_INT(FXD_MUL(FXD_FROM_INT(value), ratio));
   }
@@ -2095,7 +2095,7 @@ void preSendLoudness(byte split, byte pressureValueLo, short pressureValueHi, by
   }
 }
 
-void resetLastMidiPolyPressure(byte note, byte channel) {
+inline void resetLastMidiPolyPressure(byte note, byte channel) {
   note = constrain(note, 0, 127);
   channel = constrain(channel-1, 0, 15);
 
@@ -2103,7 +2103,7 @@ void resetLastMidiPolyPressure(byte note, byte channel) {
   lastMomentMidiPP[channel][note] = 0;
 }
 
-void resetLastMidiAfterTouch(byte channel) {
+inline void resetLastMidiAfterTouch(byte channel) {
   channel = constrain(channel-1, 0, 15);
 
   lastValueMidiAT[channel] = 0xFF;
@@ -2177,7 +2177,7 @@ void preResetLastMidiCC(byte split, byte controlnum) {
   }
 }
 
-void resetLastMidiCC(byte controlnum, byte channel) {
+inline void resetLastMidiCC(byte controlnum, byte channel) {
   controlnum = constrain(controlnum, 0, 127);
   channel = constrain(channel-1, 0, 15);
 
@@ -2185,7 +2185,7 @@ void resetLastMidiCC(byte controlnum, byte channel) {
   lastMomentMidiCC[channel][controlnum] = 0;
 }
 
-void resetLastMidiPitchBend(byte channel) {
+inline void resetLastMidiPitchBend(byte channel) {
   channel = constrain(channel-1, 0, 15);
   
   lastValueMidiPB[channel] = 0x7FFF;
@@ -2265,7 +2265,7 @@ void initializeLastMidiTracking() {
   }
 }
 
-void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
+inline void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
   // we always queue four bytes and will process them as MIDI messages in the handlePendingMidi
   midiOutQueue.push(channel & 0x0F);
   midiOutQueue.push((byte)type);
@@ -2365,22 +2365,22 @@ void handlePendingMidi(unsigned long now) {
   }
 }
 
-void preSendFader(byte split, byte v) {
+inline void preSendFader(byte split, byte v) {
 }
 
-void preSendVolume(byte split, byte v) {
+inline void preSendVolume(byte split, byte v) {
   preSendControlChange(split, 7, v, false);
 }
 
-void preSendSustain(byte split, byte v) {
+inline void preSendSustain(byte split, byte v) {
   preSendControlChange(split, 64, v, true);
 }
 
-void preSendSwitchSustain(byte whichSwitch, byte split, byte v) {
+inline void preSendSwitchSustain(byte whichSwitch, byte split, byte v) {
   preSendControlChange(split, Global.ccForSwitchSustain[whichSwitch], v, true);
 }
 
-void preSendSwitchCC65(byte whichSwitch, byte split, byte v) {
+inline void preSendSwitchCC65(byte whichSwitch, byte split, byte v) {
   preSendControlChange(split, Global.ccForSwitchCC65[whichSwitch], v, true);
 }
 
@@ -2531,7 +2531,7 @@ void midiSendAllNotesOff(byte split) {
   }
 }
 
-void midiSendControlChange(byte controlnum, byte controlval, byte channel) {
+inline void midiSendControlChange(byte controlnum, byte controlval, byte channel) {
   midiSendControlChange(controlnum, controlval, channel, false);
 }
 
@@ -2678,14 +2678,14 @@ void midiSendNoteOn(byte split, byte notenum, byte velocity, byte channel) {
   }
 }
 
-boolean hasActiveMidiNote(byte split, byte notenum, byte channel) {
+inline boolean hasActiveMidiNote(byte split, byte notenum, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
   channel = constrain(channel-1, 0, 15);
   return lastValueMidiNotesOn[split][notenum][channel] > 0;
 }
 
-void midiSendNoteOff(byte split, byte notenum, byte channel) {
+inline void midiSendNoteOff(byte split, byte notenum, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
   channel = constrain(channel-1, 0, 15);
@@ -2696,7 +2696,7 @@ void midiSendNoteOff(byte split, byte notenum, byte channel) {
   }
 }
 
-void midiSendNoteOffWithVelocity(byte split, byte notenum, byte velocity, byte channel) {
+inline void midiSendNoteOffWithVelocity(byte split, byte notenum, byte velocity, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
   channel = constrain(channel-1, 0, 15);
@@ -2744,7 +2744,7 @@ void midiSendNoteOffForAllTouches(byte split) {
   }
 }
 
-boolean hasPreviousPitchBendValue(byte channel) {
+inline boolean hasPreviousPitchBendValue(byte channel) {
   channel = constrain(channel-1, 0, 15);
   return lastValueMidiPB[channel] != 0x2000 && lastValueMidiPB[channel] != 0x7FFF;
 }
@@ -2793,7 +2793,7 @@ void midiSendProgramChange(byte preset, byte channel) {
   }
 }
 
-void midiSendAfterTouch(byte value, byte channel) {
+inline void midiSendAfterTouch(byte value, byte channel) {
   midiSendAfterTouch(value, channel, false);
 }
 
@@ -2940,7 +2940,7 @@ void midiSendMpePitchBendRange(byte split) {
   }
 }
 
-bool isStandaloneMidiClockRunning() {
+inline bool isStandaloneMidiClockRunning() {
   return standaloneMidiClockRunning;
 }
 
@@ -2968,7 +2968,7 @@ void standaloneMidiClockStop() {
   }
 }
 
-void midiSendStart() {
+inline void midiSendStart() {
   if (Device.serialMode) {
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.println("midiSendStart");
@@ -2979,7 +2979,7 @@ void midiSendStart() {
   }
 }
 
-void midiSendTimingClock() {
+inline void midiSendTimingClock() {
   if (Device.serialMode) {
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.println("midiSendTimingClock");
@@ -2990,7 +2990,7 @@ void midiSendTimingClock() {
   }
 }
 
-void midiSendStop() {
+inline void midiSendStop() {
   if (Device.serialMode) {
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.println("midiSendStop");

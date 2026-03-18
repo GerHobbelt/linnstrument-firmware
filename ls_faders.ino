@@ -86,7 +86,7 @@ void handleFaderTouch(boolean newVelocity, byte faderLeft, byte faderLength) {
   }
 }
 
-void handleFaderRelease() {
+inline void handleFaderRelease() {
   byte faderLeft, faderLength;
   determineFaderBoundaries(sensorSplit, faderLeft, faderLength);
   handleFaderRelease(faderLeft, faderLength);
@@ -128,7 +128,7 @@ byte calculateFaderValue(short x, byte faderLeft, byte faderLength) {
   return constrain(FXD_TO_INT(fxdFaderValue), 0, 127);
 }
 
-int32_t fxdCalculateFaderPosition(byte value, byte faderLeft, byte faderLength) {
+inline int32_t fxdCalculateFaderPosition(byte value, byte faderLeft, byte faderLength) {
   return fxdCalculateFaderPosition(value, faderLeft, faderLength, FXD_CONST_127);
 }
 
