@@ -52,11 +52,11 @@ void resetArpeggiatorState(byte split) {
   arpOctaveState[split] = 0;
 }
 
-byte getArpeggiatorNote(byte split, byte notenum) {
+inline byte getArpeggiatorNote(byte split, byte notenum) {
   return getOctaveNote(arpOctaveState[split], notenum);
 }
 
-byte getOctaveNote(byte octave, byte notenum) {
+inline byte getOctaveNote(byte octave, byte notenum) {
   if (Global.microLinn.drumPadMode) return getMicroLinnDrumPadMidiNote();
   return notenum + (octave * 12);
 }
@@ -75,13 +75,13 @@ byte getOctaveNote(byte split, byte octave, short notenum) {
 }
 *********************/
 
-void temporarilyEnableArpeggiator() {
+inline void temporarilyEnableArpeggiator() {
   arpTempoDelta[sensorSplit] = 0;
   midiSendNoteOffForAllTouches(sensorSplit);
   resetArpeggiatorState(sensorSplit);
 }
 
-void disableTemporaryArpeggiator() {
+inline void disableTemporaryArpeggiator() {
   turnArpeggiatorOff(sensorSplit);
 }
 
@@ -111,7 +111,7 @@ void handleArpeggiatorNoteOff(byte split, byte notenum, byte channel) {
   }
 }
 
-void turnArpeggiatorOff(byte split) {
+inline void turnArpeggiatorOff(byte split) {
   sendArpeggiatorStepMidiOff(split);
   resetArpeggiatorState( split);
 }

@@ -16,8 +16,6 @@ limitations under the License.
 These implement the polyphonic expressive step sequencer, independently for each split.
 **************************************************************************************************/
 
-#include "ls_compiler_tweaks.h"
-
 const byte SEQ_FADER_TOP = 3;
 byte SEQ_FADER_LENGTH;
 byte SEQ_FADER_RIGHT;
@@ -301,7 +299,7 @@ void initializeSequencer() {
   }
 }
 
-void applySequencerSettings() {
+inline void applySequencerSettings() {
   fxd4CurrentTempo = FXD4_FROM_INT(Project.tempo);  
 }
 
@@ -321,56 +319,56 @@ inline void checkAdvanceSequencer() {
   seqState[RIGHT].advanceSequencer();
 }
 
-boolean sequencerFlashTempoOn() {
+inline boolean sequencerFlashTempoOn() {
   return (clock24PPQ - seqState[Global.currentPerSplit].clock24PPQOffset) == 0;
 }
 
-boolean isSequencerActive() {
+inline boolean isSequencerActive() {
   return Split[Global.currentPerSplit].sequencer;
 }
 
-boolean isVisibleSequencer() {
+inline boolean isVisibleSequencer() {
   return Split[Global.currentPerSplit].sequencer && displayMode == displayNormal;
 }
 
-boolean isVisibleSequencerForSplit(byte split) {
+inline boolean isVisibleSequencerForSplit(byte split) {
   return Split[split].sequencer && displayMode == displayNormal && Global.currentPerSplit == split;
 }
 
-boolean isSequencerEditing() {
+inline boolean isSequencerEditing() {
   return isVisibleSequencer() && seqState[Global.currentPerSplit].editing;
 }
 
-void setSplitSequencerEnabled(byte split, boolean flag) {
+inline void setSplitSequencerEnabled(byte split, boolean flag) {
   if (!flag && Split[split].sequencer) {
     seqState[split].turnOff(true);
   }
   Split[split].sequencer = flag;
 }
 
-void sequencersTurnOn() {
+inline void sequencersTurnOn() {
   seqState[LEFT].turnOn();
   seqState[RIGHT].turnOn();
 }
 
-void sequencersTurnOff(boolean save) {
+inline void sequencersTurnOff(boolean save) {
   seqState[LEFT].turnOff(save);
   seqState[RIGHT].turnOff(save);
 }
 
-void sequencerTurnOn(byte split) {
+inline void sequencerTurnOn(byte split) {
   if (Split[split].sequencer && !seqState[split].running) {
     seqState[split].turnOn();
   }
 }
 
-void sequencerTurnOff(byte split, boolean save) {
+inline void sequencerTurnOff(byte split, boolean save) {
   if (Split[split].sequencer && seqState[split].running) {
     seqState[split].turnOff(save);
   }
 }
 
-void sequencerTogglePlay(byte split) {
+inline void sequencerTogglePlay(byte split) {
   if (!Split[split].sequencer) split = otherSplit(split);        // control the sequencer while playing in the other split
   if (Split[split].sequencer) {
     if (!seqState[split].running) {
@@ -382,7 +380,7 @@ void sequencerTogglePlay(byte split) {
   }
 }
 
-void sequencerToggleMute(byte split) {
+inline void sequencerToggleMute(byte split) {
   if (!Split[split].sequencer) split = otherSplit(split);        // control the sequencer while playing in the other split
   seqState[split].muted = !seqState[split].muted;
   if (seqState[split].muted && seqState[split].running) {
@@ -397,46 +395,46 @@ void sequencerToggleMute(byte split) {
   }
 }
 
-void sequencerPreviousPattern(byte split) {
+inline void sequencerPreviousPattern(byte split) {
   if (!Split[split].sequencer) split = otherSplit(split);        // control the sequencer while playing in the other split
   if (Split[split].sequencer) {
     seqState[split].selectPreviousPattern();
   }
 }
 
-void sequencerNextPattern(byte split) {
+inline void sequencerNextPattern(byte split) {
   if (!Split[split].sequencer) split = otherSplit(split);        // control the sequencer while playing in the other split
   if (Split[split].sequencer) {
     seqState[split].selectNextPattern();
   }
 }
 
-void sequencerSelectPattern(byte split, byte pattern) {
+inline void sequencerSelectPattern(byte split, byte pattern) {
   if (Split[split].sequencer) {
     seqState[split].selectPattern(pattern);
   }
 }
 
-short sequencerCurrentPatternNumber(byte split) {
+inline short sequencerCurrentPatternNumber(byte split) {
   return seqState[split].currentPattern;
 }
 
-boolean sequencerIsRunning() {
+inline boolean sequencerIsRunning() {
   return seqState[LEFT].isRunning() || seqState[RIGHT].isRunning();
 }
 
-boolean isSequencerSettingsDisplayMode() {
+inline boolean isSequencerSettingsDisplayMode() {
   return displayMode == displaySequencerProjects ||
     displayMode == displaySequencerDrum0107 ||
     displayMode == displaySequencerDrum0814 ||
     displayMode == displaySequencerColors;
 }
 
-boolean isSequencerDisplayMode() {
+inline boolean isSequencerDisplayMode() {
   return Split[Global.currentPerSplit].sequencer;
 }
 
-boolean isControlButtonForSequencer() {
+inline boolean isControlButtonForSequencer() {
   if (isSequencerDisplayMode()) {
     switch (sensorRow) {
       case SWITCH_1_ROW:
@@ -641,23 +639,23 @@ void handleSequencerRelease() {
   }
 }
 
-boolean isWithinClearFocusArea() {
+inline boolean isWithinClearFocusArea() {
   return sensorCol > SEQ_EVENTS_WIDTH && sensorCol < SEQ_FADER_LEFT;
 }
 
-boolean isWithinSequencerMuterArea() {
+inline boolean isWithinSequencerMuterArea() {
   return sensorCol == SEQ_MUTER_COLUMN && sensorRow >= SEQ_MUTER_BOTTOM && sensorRow <= SEQ_MUTER_TOP;
 }
 
-boolean isOnSequencerClearAction() {
+inline boolean isOnSequencerClearAction() {
   return sensorCol == SEQ_CLEAR_COLUMN && sensorRow == SEQ_CLEAR_ROW;
 }
 
-boolean isOnSequencerCopyAction() {
+inline boolean isOnSequencerCopyAction() {
   return sensorCol == SEQ_COPY_COLUMN && sensorRow == SEQ_COPY_ROW;
 }
 
-boolean isSequencerNavigationAreaVisible() {
+inline boolean isSequencerNavigationAreaVisible() {
   return LINNMODEL == 200 || !seqState[Global.currentPerSplit].hasFocusEvent();
 }
 
@@ -680,15 +678,15 @@ boolean isWithinSequencerNavigationArea() {
   return false;
 }
 
-boolean isWithinSequencerPatternArea() {
+inline boolean isWithinSequencerPatternArea() {
   return sensorCol >= SEQ_PATTERN_SELECTOR_LEFT && sensorCol <= SEQ_PATTERN_SELECTOR_RIGHT && sensorRow >= SEQ_PATTERN_SELECTOR_BOTTOM && sensorRow <= SEQ_PATTERN_SELECTOR_TOP;
 }
 
-boolean isWithinSequencerPerformanceSettingsArea() {
+inline boolean isWithinSequencerPerformanceSettingsArea() {
   return sensorCol >= SEQ_VIEW_COLUMN && sensorRow <= SEQ_VIEW_TOP && sensorCol <= SEQ_DIRECTION_COLUMN && sensorRow >= SEQ_VIEW_BOTTOM;
 }
 
-boolean isWithinSequencerFaderArea() {
+inline boolean isWithinSequencerFaderArea() {
   return seqState[Global.currentPerSplit].hasFocusEvent() && sensorCol >= SEQ_FADER_LEFT && sensorRow <= SEQ_FADER_TOP;
 }
 
@@ -755,12 +753,12 @@ void handleSequencerLowRowTouch(boolean newVelocity) {
   }
 }
 
-void handleSequencerMuterTouch() {
+inline void handleSequencerMuterTouch() {
   byte mutedSplit = 1 - (sensorRow - SEQ_MUTER_BOTTOM);
   sequencerToggleMute(mutedSplit);
 }
 
-void handleSequencerClearTouch() {
+inline void handleSequencerClearTouch() {
   clearLed(SEQ_COPY_COLUMN, SEQ_COPY_ROW);
   if (cell(SEQ_COPY_COLUMN, SEQ_COPY_ROW).touched != untouchedCell) {
     cellTouched(SEQ_COPY_COLUMN, SEQ_COPY_ROW, ignoredCell);
@@ -768,23 +766,23 @@ void handleSequencerClearTouch() {
   setLed(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW, Split[sensorSplit].colorMain, cellSlowPulse);
 }
 
-void handleSequencerClearRelease() {
+inline void handleSequencerClearRelease() {
   clearLed(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW);
 }
 
-boolean isSwitch1Pressed() {
+inline boolean isSwitch1Pressed() {
   return cell(0, SWITCH_1_ROW).touched == touchedCell;
 }
 
-boolean isSwitch2Pressed() {
+inline boolean isSwitch2Pressed() {
   return cell(0, SWITCH_2_ROW).touched == touchedCell;
 }
 
-boolean isSequencerClearPressed() {
+inline boolean isSequencerClearPressed() {
   return cell(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW).touched == touchedCell;
 }
 
-void handleSequencerCopyTouch() {
+inline void handleSequencerCopyTouch() {
   clearLed(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW);
   if (cell(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW).touched != untouchedCell) {
     cellTouched(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW, ignoredCell);
@@ -792,7 +790,7 @@ void handleSequencerCopyTouch() {
   setLed(SEQ_COPY_COLUMN, SEQ_COPY_ROW, Split[sensorSplit].colorMain, cellSlowPulse);
 }
 
-void handleSequencerCopyRelease() {
+inline void handleSequencerCopyRelease() {
   clearLed(SEQ_COPY_COLUMN, SEQ_COPY_ROW);
   sequencerCopyPatternSource = -1;
   sequencerCopySplitSource = -1;
@@ -802,7 +800,7 @@ void handleSequencerCopyRelease() {
   seqState[sensorSplit].paintLowRow();
 }
 
-boolean isSequencerCopyPressed() {
+inline boolean isSequencerCopyPressed() {
   return cell(SEQ_COPY_COLUMN, SEQ_COPY_ROW).touched == touchedCell;
 }
 
@@ -840,7 +838,7 @@ void handleSequencerViewModeRelease() {
   }
 }
 
-void autoSelectFirstStepForNotesView() {
+inline void autoSelectFirstStepForNotesView() {
   StepSequencerState& state = seqState[sensorSplit];
   if (Split[sensorSplit].sequencerView == sequencerNotes && !state.hasFocus() && !state.isBeingTurnedOff) {
     state.changeFocus(0, -1);
@@ -1016,7 +1014,7 @@ void handleSequencerStepSizeRelease() {
   }
 }
 
-void handleSequencerLoopScreenTouch(boolean newVelocity) {
+inline void handleSequencerLoopScreenTouch(boolean newVelocity) {
   if (newVelocity) {
     StepSequencerState& state = seqState[sensorSplit];
     state.getCurrentPattern().loopScreen = !state.getCurrentPattern().loopScreen;
@@ -1049,7 +1047,7 @@ void handleSequencerDirectionRelease() {
   }
 }
 
-void handleSequencerPerformanceSettingsTouch(boolean newVelocity) {
+inline void handleSequencerPerformanceSettingsTouch(boolean newVelocity) {
   if (sensorCol == SEQ_LOOPSCREEN_COLUMN && sensorRow == SEQ_LOOPSCREEN_ROW) {
     handleSequencerLoopScreenTouch(newVelocity);
   }
@@ -1058,7 +1056,7 @@ void handleSequencerPerformanceSettingsTouch(boolean newVelocity) {
   }
 }
 
-void handleSequencerPerformanceSettingsRelease() {
+inline void handleSequencerPerformanceSettingsRelease() {
   if (sensorCol == SEQ_VIEW_COLUMN) {
     handleSequencerViewModeRelease();
   }
@@ -1247,7 +1245,7 @@ void handleSequencerFaderRelease() {
   }
 }
 
-void handleStepEditingTouchNotes(boolean newVelocity) {
+inline void handleStepEditingTouchNotes(boolean newVelocity) {
   StepSequencerState& state = seqState[sensorSplit];
   
   short noteNum = state.getSensorNotesNoteNum();
@@ -1259,7 +1257,7 @@ void handleStepEditingTouchNotes(boolean newVelocity) {
   state.handleStepEditingTouch(newVelocity, noteNum, stepNum);
 }
 
-void handleStepEditingReleaseNotes() {
+inline void handleStepEditingReleaseNotes() {
   StepSequencerState& state = seqState[sensorSplit];
 
   short noteNum = state.getSensorNotesNoteNum();
@@ -1271,27 +1269,27 @@ void handleStepEditingReleaseNotes() {
   state.handleStepEditingRelease(noteNum, stepNum);
 }
 
-void handleStepEditingTouchScales(boolean newVelocity) {
+inline void handleStepEditingTouchScales(boolean newVelocity) {
   StepSequencerState& state = seqState[sensorSplit];
   state.handleStepEditingTouch(newVelocity, state.getSensorRowNoteNum(), state.getSensorSequencerPosition());
 }
 
-void handleStepEditingReleaseScales() {
+inline void handleStepEditingReleaseScales() {
   StepSequencerState& state = seqState[sensorSplit];
   state.handleStepEditingRelease(state.getSensorRowNoteNum(), state.getSensorSequencerPosition());
 }
 
-void handleStepEditingTouchDrums(boolean newVelocity) {
+inline void handleStepEditingTouchDrums(boolean newVelocity) {
   StepSequencerState& state = seqState[sensorSplit];
   state.handleStepEditingTouch(newVelocity, state.getSensorRowNoteNum(), state.getSensorSequencerPosition());
 }
 
-void handleStepEditingReleaseDrums() {
+inline void handleStepEditingReleaseDrums() {
   StepSequencerState& state = seqState[sensorSplit];
   state.handleStepEditingRelease(state.getSensorRowNoteNum(), state.getSensorSequencerPosition());
 }
 
-void updateSequencerSwitchLeds() {
+inline void updateSequencerSwitchLeds() {
   if (isSequencerDisplayMode()) {
     if (seqState[Global.currentPerSplit].running) {
       setLed(0, SWITCH_2_ROW, COLOR_GREEN, cellOn);
@@ -1306,7 +1304,7 @@ void updateSequencerSwitchLeds() {
   }
 }
 
-void paintSequencerDisplay(byte split) {
+inline void paintSequencerDisplay(byte split) {
   startBufferedLeds();
   clearDisplay();
   seqState[split].paintSequencerUnbuffered();
@@ -1323,7 +1321,7 @@ void paintSequencerDisplay(byte split) {
 static unsigned long lastLegendDisplay = millis();
 static boolean legendVisible = false;
 
-void checkLegendDisplayTimeout(unsigned long nowMillis) {
+inline void checkLegendDisplayTimeout(unsigned long nowMillis) {
   if (legendVisible && calcTimeDelta(nowMillis, lastLegendDisplay) >= 1500) {
     updateDisplay();
     legendVisible = false;
@@ -1411,7 +1409,7 @@ void handleSequencerSettingsLowRowTouch() {
   lastLowRowTouch = nowMillis;
 }
 
-void paintSequencerSettingsLowRow() {
+inline void paintSequencerSettingsLowRow() {
   setLed(6, 0, displayMode == displaySequencerProjects ? Split[Global.currentPerSplit].colorPlayed : Split[Global.currentPerSplit].colorLowRow, cellOn);
   setLed(7, 0, displayMode == displaySequencerDrum0107 ? Split[Global.currentPerSplit].colorPlayed : Split[Global.currentPerSplit].colorLowRow, cellOn);
   setLed(8, 0, displayMode == displaySequencerDrum0814 ? Split[Global.currentPerSplit].colorPlayed : Split[Global.currentPerSplit].colorLowRow, cellOn);
@@ -1432,7 +1430,7 @@ void paintSequencerProjects() {
   paintSequencerSettingsLowRow();
 }
 
-boolean ensureLegendHidden() {
+inline boolean ensureLegendHidden() {
   if (legendVisible) {
     updateDisplay();
     legendVisible = false;
@@ -1458,7 +1456,7 @@ void handleSequencerProjectsNewTouch() {
   }
 }
 
-void startProjectLEDBlink(byte p, byte color) {
+inline void startProjectLEDBlink(byte p, byte color) {
   unsigned long now = millis();
   if (now == 0) {
     now = ~now;
@@ -1530,7 +1528,7 @@ void handleSequencerDrum0107NewTouch() {
   }
 }
 
-void handleSequencerDrum0107Release() {
+inline void handleSequencerDrum0107Release() {
   handleNumericDataReleaseCol(true);
 }
 
@@ -1562,7 +1560,7 @@ void handleSequencerDrum0814NewTouch() {
   }
 }
 
-void handleSequencerDrum0814Release() {
+inline void handleSequencerDrum0814Release() {
   handleNumericDataReleaseCol(true);
 }
 
@@ -1606,7 +1604,7 @@ void handleSequencerColorsNewTouch() {
   }
 }
 
-void handleSequencerColorsRelease() {
+inline void handleSequencerColorsRelease() {
   handleShowSplit();
 }
 
@@ -3277,15 +3275,15 @@ void setPatternChain(byte split) {
   memset(&patternChain[split][lastPattern + 1], -1, 3 - lastPattern);
 }
 
-void resetPatternChain() {
+inline void resetPatternChain() {
   memset(&patternChain, -1, sizeof(patternChain));            // both splits
 }
 
-boolean isWithinSequencerPatternChainClearArea() {           // 2 hidden switches immediately to the left of the pattern selectors
+inline boolean isWithinSequencerPatternChainClearArea() {           // 2 hidden switches immediately to the left of the pattern selectors
   return sensorCol == SEQ_PATTERN_SELECTOR_LEFT - 1 && sensorRow >= SEQ_PATTERN_SELECTOR_BOTTOM && sensorRow <= SEQ_PATTERN_SELECTOR_TOP;
 }
 
-void handleSequencerPatternChainClearTouch() {
+inline void handleSequencerPatternChainClearTouch() {
   byte split = SEQ_PATTERN_SELECTOR_TOP - sensorRow;
   memset(&patternChain[split][0], -1, 4);
   seqState[split].nextPattern = -1;
@@ -3306,7 +3304,7 @@ boolean isPatternChained (byte split, byte pattern) {
   return true;
 }
 
-byte patternChainTouches(byte split) {          // count the touches on the row of 4 pattern selectors
+inline byte patternChainTouches(byte split) {          // count the touches on the row of 4 pattern selectors
   byte touches = 0;
   for (byte p = 0; p < 4; ++p) {
     if (cell(SEQ_PATTERN_SELECTOR_LEFT + p, SEQ_PATTERN_SELECTOR_TOP - split).touched == touchedCell) {
