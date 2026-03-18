@@ -1323,7 +1323,7 @@ void handleNewControlModeTouch() {
   setLed(sensorCol, sensorRow, Split[Global.currentPerSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
 }
 
-short handleZExpression() {
+unsigned short handleZExpression() {
   unsigned short preferredPressure = sensorCell->pressureZ;
 
   // handle pressure transition between adjacent cells if they are not playing their own note
