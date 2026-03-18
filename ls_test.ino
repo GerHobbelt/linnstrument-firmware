@@ -47,6 +47,8 @@ void displayDigitalPins() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
     lastFrame = now;
 
     Serial.println();
@@ -60,6 +62,8 @@ void displayDigitalPins() {
       Serial.print("\t");
     }
     Serial.println();
+
+    endPreventBrightLedFlash();
   }
 }
 
@@ -73,6 +77,8 @@ void displayXFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
     lastFrame = now;
 
     Serial.println();
@@ -93,6 +99,8 @@ void displayXFrame() {
       }
       Serial.println();
     }
+
+    endPreventBrightLedFlash();
   }
 }
 
@@ -106,6 +114,8 @@ void displayYFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
     lastFrame = now;
     
     Serial.println();
@@ -126,6 +136,8 @@ void displayYFrame() {
       }
       Serial.println();
     }
+
+    endPreventBrightLedFlash();
   }
 }
 
@@ -135,6 +147,8 @@ void displayZFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
     lastFrame = now;
     
     Serial.println();
@@ -150,6 +164,8 @@ void displayZFrame() {
       }
       Serial.println();
     }
+
+    endPreventBrightLedFlash();
   }
 }
 
@@ -168,20 +184,28 @@ void displaySurfaceScanTime() {
 }
 
 // displayCellTouchedFrame:
-// For debug, displays an entire frame of raw Z values in the Arduino serial monitor. Values are collected during each full read of the touch surface.
+// For debug, displays an entire frame of 'touch' states in the Arduino serial monitor. Values are collected during each full read of the touch surface.
 void displayCellTouchedFrame() {
-  Serial.println();
-  for (byte x = 0; x < NUMCOLS; ++x) {
-    Serial.print(x);
-    Serial.print("\t");
-  }
-  Serial.println();
-  for (byte y = NUMROWS; y > 0; --y) {
+  static unsigned long lastFrame = 0;
+  unsigned long now = micros();
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
+    Serial.println();
     for (byte x = 0; x < NUMCOLS; ++x) {
-      Serial.print(cell(x, y-1).touched);
+      Serial.print(x);
       Serial.print("\t");
     }
     Serial.println();
+    for (byte y = NUMROWS; y > 0; --y) {
+      for (byte x = 0; x < NUMCOLS; ++x) {
+        Serial.print(cell(x, y-1).touched);
+        Serial.print("\t");
+      }
+      Serial.println();
+    }
+
+    endPreventBrightLedFlash();
   }
 }
 
