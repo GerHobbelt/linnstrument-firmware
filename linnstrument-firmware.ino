@@ -220,14 +220,14 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 
 const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-const int LED_PATTERNS = 3;
+constexpr const int LED_PATTERNS = 3;
 
 // Two buffers of ...
 // A 26 by 8 byte array containing one byte for each LED:
 // bits 4-6: 3 bits to select the color: 0:off, 1:red, 2:yellow, 3:green, 4:cyan, 5:blue, 6:magenta
 // bits 0-2: 0:off, 1: on, 2: pulse
-const unsigned long LED_LAYER_SIZE = MAXCOLS * MAXROWS;
-const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS+1) * LED_LAYER_SIZE;
+constexpr const unsigned long LED_LAYER_SIZE = MAXCOLS * MAXROWS;
+constexpr const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS+1) * LED_LAYER_SIZE;
 
 /******************************************** VELOCITY *******************************************/
 
@@ -894,7 +894,7 @@ OperatingMode operatingMode = modePerformance;
 
 /************************************** FLASH STORAGE LAYOUT *************************************/
 
-static int alignToByteBoundary(int value) {
+static inline int alignToByteBoundary(int value) {
   if (value % 4 == 0) {
     return value;
   }
@@ -902,9 +902,9 @@ static int alignToByteBoundary(int value) {
   return ((value / 4) + 1) * 4;
 }
 
-const int PROJECTS_OFFSET = 4;
-const int PROJECT_VERSION_MARKER_SIZE = 4;
-const int PROJECT_INDEXES_COUNT = 20;
+constexpr const int PROJECTS_OFFSET = 4;
+constexpr const int PROJECT_VERSION_MARKER_SIZE = 4;
+constexpr const int PROJECT_INDEXES_COUNT = 20;
 const int PROJECTS_MARKERS_SIZE = alignToByteBoundary(PROJECT_VERSION_MARKER_SIZE + 2 * PROJECT_INDEXES_COUNT);    // one version marker, two series on indexes for project references
 const int SINGLE_PROJECT_SIZE = alignToByteBoundary(sizeof(SequencerProject));
 const int ALL_PROJECTS_SIZE = PROJECTS_MARKERS_SIZE + (MAX_PROJECTS + 1)*SINGLE_PROJECT_SIZE;
@@ -955,20 +955,20 @@ inline int32_t FXD4_DIV(int32_t a, int32_t b) {
   return ((int32_t)a << FXD4_FBITS) / (int32_t)b;
 }
 
-const int32_t FXD_CONST_1 = FXD_FROM_INT(1);
-const int32_t FXD_CONST_2 = FXD_FROM_INT(2);
-const int32_t FXD_CONST_3 = FXD_FROM_INT(3);
-const int32_t FXD_CONST_50 = FXD_FROM_INT(50);
-const int32_t FXD_CONST_99 = FXD_FROM_INT(99);
-const int32_t FXD_CONST_100 = FXD_FROM_INT(100);
-const int32_t FXD_CONST_127 = FXD_FROM_INT(127);
-const int32_t FXD_CONST_255 = FXD_FROM_INT(255);
-const int32_t FXD_CONST_1016 = FXD_FROM_INT(1016);
+constexpr const int32_t FXD_CONST_1 = FXD_FROM_INT(1);
+constexpr const int32_t FXD_CONST_2 = FXD_FROM_INT(2);
+constexpr const int32_t FXD_CONST_3 = FXD_FROM_INT(3);
+constexpr const int32_t FXD_CONST_50 = FXD_FROM_INT(50);
+constexpr const int32_t FXD_CONST_99 = FXD_FROM_INT(99);
+constexpr const int32_t FXD_CONST_100 = FXD_FROM_INT(100);
+constexpr const int32_t FXD_CONST_127 = FXD_FROM_INT(127);
+constexpr const int32_t FXD_CONST_255 = FXD_FROM_INT(255);
+constexpr const int32_t FXD_CONST_1016 = FXD_FROM_INT(1016);
 
-const int CALX_VALUE_MARGIN = 85;                         // 4095 / 48
-const int32_t FXD_CALX_HALF_UNIT = FXD_MAKE(85.3125);     // 4095 / 48
-const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(128);     // 4095 / 32
-const int32_t FXD_CALX_FULL_UNIT = FXD_MAKE(170.625);     // 4095 / 24
+constexpr const int CALX_VALUE_MARGIN = 85;                         // 4095 / 48
+constexpr const int32_t FXD_CALX_HALF_UNIT = FXD_MAKE(85.3125);     // 4095 / 48
+constexpr const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(128);     // 4095 / 32
+constexpr const int32_t FXD_CALX_FULL_UNIT = FXD_MAKE(170.625);     // 4095 / 24
 const int32_t CALX_QUARTER_UNIT = FXD_TO_INT(FXD_CALX_FULL_UNIT) / 4;
 
 const int32_t FXD_CALY_FULL_UNIT = FXD_FROM_INT(127);     // range of 7-bit CC
