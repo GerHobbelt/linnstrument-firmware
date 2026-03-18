@@ -506,7 +506,8 @@ inline short cellTransposedNote(byte split) {
 }
 
 inline short transposedNote(byte split, byte col, byte row) {
-  if (isMicroLinnOn()) return getMicroLinnVirtualEdostep(split, col, row);        // virtual edosteps don't transpose
+  if (isMicroLinnOn())
+    return getMicroLinnVirtualEdostep(split, col, row);        // virtual edosteps don't transpose
   return getNoteNumber(split, col, row) + Split[split].transposePitch + Split[split].transposeOctave;
 }
 
@@ -1452,7 +1453,8 @@ void sendReleasedNote() {
       while (colsInRowTouched) {
         byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
         byte touchedNote = cell(touchedCol, row).note;
-        if (isMicroLinnOn()) touchedNote = getMicroLinnMidiNote(sensorSplit, touchedNote, cell(touchedCol, row).microLinnGroup);
+        if (isMicroLinnOn()) 
+	  touchedNote = getMicroLinnMidiNote(sensorSplit, touchedNote, cell(touchedCol, row).microLinnGroup);
         
         if (cell(touchedCol, row).touched == touchedCell &&
             touchedNote == sensorNote &&                                         // compare actual midi notes, not edosteps
@@ -1508,7 +1510,7 @@ void handleNewControlModeTouch() {
   setLed(sensorCol, sensorRow, Split[Global.currentPerSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
 }
 
-short handleZExpression() {
+unsigned short handleZExpression() {
   unsigned short preferredPressure = sensorCell->pressureZ;
 
   // handle pressure transition between adjacent cells if they are not playing their own note
@@ -2152,7 +2154,8 @@ inline void updateSensorCell() {
 // getNoteNumber:
 // computes MIDI note number from current row, column, row offset, octave button and transposition amount
 short getNoteNumber(byte split, byte col, byte row) {
-  if (isMicroLinnOn()) return getMicroLinnVirtualEdostep(split, col, row);
+  if (isMicroLinnOn()) 
+    return getMicroLinnVirtualEdostep(split, col, row);
 
   byte notenum = 0;
 
@@ -2174,7 +2177,8 @@ short determineRowOffsetNote(byte split, byte row) {  // determine the col 1 not
     byte lowCol = isLeftHandedSplit(split) ? 25 : 1;
     return getMicroLinnVirtualEdostep(split, lowCol, row);
   }
-  if (Split[split].microLinn.rowOffset != -26) return getMicroLinnRowOffsetNote(split, row);
+  if (Split[split].microLinn.rowOffset != -26) 
+    return getMicroLinnRowOffsetNote(split, row);
 
   short lowest = 30;                                  // 30 = F#2, which is 10 semitones below guitar low E (E3/52). High E = E5/76
 
