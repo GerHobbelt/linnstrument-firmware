@@ -15,7 +15,7 @@ limitations under the License.
 ***************************************************************************************************
 These routines allow text to be drawn and scrolled using the LinnStrument LEDS.
 
-Several sized of fonts are defined to take up a different amount of space on the LinnStrument
+Several sizes of fonts are defined to take up a different amount of space on the LinnStrument
 surface.
 **************************************************************************************************/
 
@@ -2215,7 +2215,7 @@ unsigned font_width_string(const char* str, struct Font* font) {
   unsigned width = 0;
   char c;
   while ((c=*str++) != 0) {
-    char* p = strchr(font->chars,c);
+    const char* p = strchr(font->chars,c);
     if (p) {
       width += (font->data[p - font->chars]->width + 1);
     }
@@ -2232,7 +2232,7 @@ void font_draw_string(int col, int row, const char* str, byte color, struct Font
 
   while ((reversed && i >= 0) || (!reversed && i < (int)strlen(str))) {
     char c = str[i];
-    char* p = strchr(font->chars, c);
+    const char* p = strchr(font->chars, c);
     if (p) {
       int i = p - font->chars;                        // offset into font_chars gives character index
       font_draw_char(col, row, font->data[i]->data, color, font->data[i]->width, font->height, erase, reversed);
@@ -2249,76 +2249,76 @@ void font_draw_string(int col, int row, const char* str, byte color, struct Font
   }
 }
 
-void tinyfont_draw_string(int col, int row, const char* str, byte color) {
+inline void tinyfont_draw_string(int col, int row, const char* str, byte color) {
   tinyfont_draw_string(col, row, str, color, true);
 }
 
-void tinyfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
+inline void tinyfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
   tinyfont_draw_string(col, row, str, color, erase, false);
 }
 
-void tinyfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed) {
+inline void tinyfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed) {
   tinyfont_draw_string(col, row, str, color, erase, reversed, COLOR_OFF);
 }
 
-void tinyfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed, byte seperationColor) {
+inline void tinyfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed, byte seperationColor) {
   font_draw_string(col, row, str, color, &tinyFont, erase, reversed, seperationColor);
 }
 
-void smallfont_draw_string(int col, int row, const char* str, byte color) {
+inline void smallfont_draw_string(int col, int row, const char* str, byte color) {
   smallfont_draw_string(col, row, str, color, true);
 }
 
-void smallfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
+inline void smallfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
   smallfont_draw_string(col, row, str, color, erase, false);
 }
 
-void smallfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed) {
+inline void smallfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed) {
   smallfont_draw_string(col, row, str, color, erase, reversed, COLOR_OFF);
 }
 
-void smallfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed, byte seperationColor) {
+inline void smallfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed, byte seperationColor) {
   font_draw_string(col, row, str, color, &smallFont, erase, reversed, seperationColor);
 }
 
-void bigfont_draw_string(int col, int row, const char* str, byte color) {
+inline void bigfont_draw_string(int col, int row, const char* str, byte color) {
   bigfont_draw_string(col, row, str, color, true);
 }
 
-void bigfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
+inline void bigfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
   bigfont_draw_string(col, row, str, color, erase, false);
 }
 
-void bigfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed) {
+inline void bigfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed) {
   bigfont_draw_string(col, row, str, color, erase, reversed, COLOR_OFF);
 }
 
-void bigfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed, byte seperationColor) {
+inline void bigfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed, byte seperationColor) {
   font_draw_string(col, row, str, color, &bigFont, erase, reversed, seperationColor);
 }
 
-void condfont_draw_string(int col, int row, const char* str, byte color) {
+inline void condfont_draw_string(int col, int row, const char* str, byte color) {
   condfont_draw_string(col, row, str, color, true);
 }
 
-void condfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
+inline void condfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
   condfont_draw_string(col, row, str, color, erase, false);
 }
 
-void condfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed) {
+inline void condfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed) {
   condfont_draw_string(col, row, str, color, erase, reversed, COLOR_OFF);
 }
 
-void condfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed, byte seperationColor) {
+inline void condfont_draw_string(int col, int row, const char* str, byte color, boolean erase, boolean reversed, byte seperationColor) {
   font_draw_string(col, row, str, color, &condFont, erase, reversed, seperationColor);
 }
 
-void adaptfont_draw_string(int col, int row, const char* str, byte color) {
+inline void adaptfont_draw_string(int col, int row, const char* str, byte color) {
   if (LINNMODEL == 200) bigfont_draw_string(col, row, str, color);
   else                  condfont_draw_string(col, row, str, color);
 }
 
-void adaptfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
+inline void adaptfont_draw_string(int col, int row, const char* str, byte color, boolean erase) {
   if (LINNMODEL == 200) bigfont_draw_string(col, row, str, color, erase);
   else                  condfont_draw_string(col, row, str, color, erase);
 }
@@ -2366,11 +2366,11 @@ void font_draw_blank_column(int col, int row, byte height, byte seperationColor)
   }
 }
 
-void small_scroll_text_flipped(const char* str, byte color) {
+inline void small_scroll_text_flipped(const char* str, byte color) {
   font_scroll_text_flipped(&smallFont, str, color);
 }
 
-void big_scroll_text_flipped(const char* str, byte color) {
+inline void big_scroll_text_flipped(const char* str, byte color) {
   font_scroll_text_flipped(&bigFont, str, color);
 }
 
@@ -2404,11 +2404,11 @@ void font_scroll_text_flipped(struct Font* font, const char* str, byte color) {
   ledRefreshInterval = origInterval;
 }
 
-void small_scroll_text(const char* str, byte color) {
+inline void small_scroll_text(const char* str, byte color) {
   font_scroll_text(&smallFont, str, color);
 }
 
-void big_scroll_text(const char* str, byte color) {
+inline void big_scroll_text(const char* str, byte color) {
   font_scroll_text(&bigFont, str, color);
 }
 

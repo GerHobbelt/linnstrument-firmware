@@ -64,7 +64,7 @@ void initializeSwitches() {
   }
 }
 
-boolean isStatefulSwitchAssignment(byte assignment) {
+inline boolean isStatefulSwitchAssignment(byte assignment) {
   return assignment == ASSIGNED_AUTO_OCTAVE ||
          assignment == ASSIGNED_SUSTAIN ||
          assignment == ASSIGNED_CC_65 ||

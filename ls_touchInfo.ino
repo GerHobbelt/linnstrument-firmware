@@ -226,7 +226,7 @@ void initializeTouchInfo() {
 // of data points to be always one more than the number of velocity samples
 
 // This element of the linear regression algorithm is constant based on the number of velocity samples 
-const int VELOCITY_SXX = (VELOCITY_N * VELOCITY_SUMXSQ) - VELOCITY_SUMX * VELOCITY_SUMX;
+constexpr const int VELOCITY_SXX = (VELOCITY_N * VELOCITY_SUMXSQ) - VELOCITY_SUMX * VELOCITY_SUMX;
 
 inline byte scale1016to127(int v, boolean allowZero) {
   // reduce 1016 > 127 by dividing, but we do this so that values are rounded instead of truncated
@@ -315,7 +315,7 @@ VelocityState calcVelocity(unsigned short z) {
   return velocityCalculated;
 }
 
-byte calcPreferredVelocity(byte velocity) {
+inline byte calcPreferredVelocity(byte velocity) {
   // determine the preferred velocity based on the sensitivity settings
   if (Global.velocitySensitivity == velocityFixed) {
     return Global.valueForFixedVelocity;
