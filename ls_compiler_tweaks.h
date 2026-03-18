@@ -53,4 +53,20 @@ static inline T max(T a, T b) {
 
 #endif
 
+// forward declarations:
+void initializeTouchAnimation();
+void initializeTouchInfo();
+void modeLoopManufacturingTest();
+
+void displayDigitalPins();
+void displayXFrame();
+void displayYFrame();
+void displayZFrame();
+void displaySurfaceScanTime();
+void displayCellTouchedFrame();
+void modeLoopManufacturingTest();
+#ifdef DEBUG_ENABLED
+void debugFreeRam();
+#endif
+
 #endif // LS_COMPILER_TWEAKS_H

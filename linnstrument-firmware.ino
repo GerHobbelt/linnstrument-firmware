@@ -871,13 +871,15 @@ struct Configuration config;
 
 /**************************************** SECRET SWITCHES ****************************************/
 
-#define SECRET_SWITCHES 6
+#define SECRET_SWITCHES 8
 #define SWITCH_DEBUGMIDI secretSwitch[0]
 #define SWITCH_XFRAME secretSwitch[1]
 #define SWITCH_YFRAME secretSwitch[2]
 #define SWITCH_ZFRAME secretSwitch[3]
 #define SWITCH_SURFACESCAN secretSwitch[4]
 #define SWITCH_FREERAM secretSwitch[5]
+#define SWITCH_MCU_PINS secretSwitch[6]
+#define SWITCH_TOUCHFRAME secretSwitch[7] 
 
 boolean secretSwitch[SECRET_SWITCHES];  // The secretSwitch* values are controlled by cells in column 18
 
@@ -1319,7 +1321,7 @@ void setup() {
   initializeStorage();
   applyConfiguration();
 
-  for (byte ss=0; ss<SECRET_SWITCHES; ++ss) {
+  for (byte ss = 0; ss < SECRET_SWITCHES; ++ss) {
     secretSwitch[ss] = false;
   }
 
@@ -1480,6 +1482,8 @@ inline void modeLoopPerformance() {
   if (SWITCH_ZFRAME) displayZFrame();                            // Turn on secret switch to display the pressure value of all cells in grid at the end of each total surface scan
   if (SWITCH_SURFACESCAN) displaySurfaceScanTime();              // Turn on secret switch to display the total time for a total surface scan
   if (SWITCH_FREERAM) debugFreeRam();                            // Turn on secret switch to display the available free RAM
+  if (SWITCH_MCU_PINS) displayDigitalPins();                     // Turn on secret switch to display the SAM3X digital pins' status
+  if (SWITCH_TOUCHFRAME) displayCellTouchedFrame();              // Turn on secret switch to display the 'touched' state of all cells in grid at the end of each total surface scan
 #endif
 
   nextSensorCell();                                              // done-- move on to the next sensor cell
