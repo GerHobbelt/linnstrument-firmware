@@ -20,7 +20,7 @@ These functions handle the CC faders for each split
 
 #define CC_FADER_NUMBER_OFFSET 1
 
-void handleFaderTouch(boolean newVelocity) {
+inline void handleFaderTouch(boolean newVelocity) {
   if (sensorCell->velocity) {
     byte faderLeft, faderLength;
     determineFaderBoundaries(sensorSplit, faderLeft, faderLength);
@@ -86,7 +86,7 @@ void handleFaderTouch(boolean newVelocity, byte faderLeft, byte faderLength) {
   }
 }
 
-inline void handleFaderRelease() {
+void handleFaderRelease() {
   byte faderLeft, faderLength;
   determineFaderBoundaries(sensorSplit, faderLeft, faderLength);
   handleFaderRelease(faderLeft, faderLength);
