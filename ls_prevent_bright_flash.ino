@@ -1,0 +1,37 @@
+/************************** ls_prevent_bright_flash: LinnStrument debugging and testing ***************************
+Copyright 2023 Roger Linn Design (https://www.rogerlinndesign.com)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+***************************************************************************************************
+Assorted debug functions. 
+**************************************************************************************************/
+
+#include "ls_compiler_tweaks.h"
+
+// extern bool ledDisplayEnabled;
+
+// Don't have the LEDs flash extra brightly due to the additional delays caused by our debug output activity 
+// (writing to the USB/Serial debug output)
+
+inline void beginPreventBrightLedFlash() {
+  clearDisplayImmediately();
+}
+
+inline void endPreventBrightLedFlash() {
+  if (ledDisplayEnabled) {
+    enableLedDisplay();
+  } 
+  else {
+    disableLedDisplay();
+  }
+}
