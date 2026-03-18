@@ -6,46 +6,6 @@
 // shut up warning: comparison is always false due to limited range of data type [-Wtype-limits]
 #pragma GCC diagnostic ignored "-Wtype-limits"
 
-#include <limits>
-
-#if 0
-
-#undef constrain  // from the arduino library; use a C++ inline template function instead:
-
-#if defined(__cpp_if_constexpr)
-
-template <typename T>
-static inline T constrain(T amt, const T low, const T high) {
-	if constexpr (std::numeric_limits<T>::min() < low) {
-		if (amt < low) {
-			return low;
-		} 
-	}
-	if constexpr (std::numeric_limits<T>::max() > high) {
-		if (amt > high) {
-			return high;
-		}
-	}
-	return amt;
-}
-
-#else
-
-template <typename T>
-static inline T constrain(T amt, const T low, const T high) {
-	if (amt < low) {
-		return low;
-	} 
-	if (amt > high) {
-		return high;
-	}
-	return amt;
-}
-
-#endif
-
-#endif
-
 /*
 C:\Users\Ger\Downloads\linnstrument-firmware\ls_extstorage.ino: In function 'void copyCalibrationV1(CalibrationX (*)[27][4], CalibrationX (*)[27][4], CalibrationY (*)[9][8], CalibrationYV1 (*)[9][8])':
 C:\Users\Ger\Downloads\linnstrument-firmware\ls_extstorage.ino:1213:75: error: 'max' was not declared in this scope
