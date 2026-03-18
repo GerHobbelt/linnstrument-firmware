@@ -723,6 +723,29 @@ This is handy, as 41 notes per octave would not otherwise fit on a single row. B
 - Sets the Custom Row Offset to 13 steps (kite tuning)
 - Sets `PLAYED` note lighting to `SAME` mode, so you can see which other pads represent the same note as you learn the kite layout (optional)
 
+# Developer Notes
+
+To rebuild the LinnStrument / MicroLinn firmware binary, set up your development environment as follows: 
+
+- download and install the Arduino IDE v2.x (tested with v2.3.8)
+- download and install the Arduino CLI (tested with v1.4.1)
+- start the Arduino IDE
+- wait a little bit for the board package specs to download (particularly when you have added additional boards' package JSON URLs to the Arduino IDE preferences)
+- click on the Board Manager icon: a sidebar with a list of available board packages shows up
+- search for `due`: find `Arduino SAM boards (32 bits ARM Cortex M3`
+- install this board package (currently at v1.6.12)
+- open the `linnstrument-firmware`/`MicroLINN` repo base directory
+- pick any of the `*.ino` sketch files to open in the Arduino IDE: it should subsequently open *all of them*. (I prefer to use `ls_main.ino` for this pick & open action.)
+- hit the build/*Verify* button in the IDE to compile the whole kaboodle...
+- *profit!*
+
+## Pro Tip
+
+In the Arduino IDE preferences, turn on "*All*" Warnings for the compiler: compiler warnings may seem useless and verbose sometimes, but they *are* important!
+
+This repo fork has a special `ls_compiler_tweaks.h` header file which deals with the obnoxious warnings, while letting through all the (useful) others...
+
+
 #  Support 
 For support with the official firmware, email Roger at support@rogerlinndesign.com.
 For support for this fork, inquire at the LinnStrument KVR forum, or inquire at the unofficial LinnStrument discord at https://discord.com/channels/1094879990367133706/1094890657170063400 and ping TallKite.
