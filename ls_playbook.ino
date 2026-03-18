@@ -148,7 +148,7 @@ const char* CHRISTMAS_FRAMES_128[CHRISTMAS_FRAME_COUNT] = {
     " WWWWWWWYWWWWWWWW         "
   };
 
-void playChristmasAnimation() {
+inline void playChristmasAnimation() {
   if (LINNMODEL == 200) {
     playPlayBook(CHRISTMAS_FRAME_COUNT, CHRISTMAS_FRAMES_200);
   }

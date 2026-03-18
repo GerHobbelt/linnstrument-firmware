@@ -799,7 +799,7 @@ void paintPerSplitDisplay(byte side) {
   paintShowSplitSelection(side);
 }
 
-byte getMpeColor(byte side) {
+inline byte getMpeColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].mpe) {
     color = Split[side].colorAccent;
@@ -807,7 +807,7 @@ byte getMpeColor(byte side) {
   return color;
 }
 
-byte getChannelPerRowColor(byte side) {
+inline byte getChannelPerRowColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].midiChanPerRowReversed) {
     color = Split[side].colorAccent;
@@ -815,7 +815,7 @@ byte getChannelPerRowColor(byte side) {
   return color;
 }
 
-byte getBendRangeColor(byte side) {
+inline byte getBendRangeColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].customBendRange != 24) {
     color = Split[side].colorAccent;
@@ -823,7 +823,7 @@ byte getBendRangeColor(byte side) {
   return color;
 }
 
-byte getLimitsForYColor(byte side) {
+inline byte getLimitsForYColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].minForY != 0 || Split[side].maxForY != 127) {
     color = Split[side].colorAccent;
@@ -831,7 +831,7 @@ byte getLimitsForYColor(byte side) {
   return color;
 }
 
-byte getCCForYColor(byte side) {
+inline byte getCCForYColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].customCCForY != 74) {
     color = Split[side].colorAccent;
@@ -839,7 +839,7 @@ byte getCCForYColor(byte side) {
   return color;
 }
 
-byte getRelativeYColor(byte side) {
+inline byte getRelativeYColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].initialRelativeY != 64) {
     color = Split[side].colorAccent;
@@ -847,7 +847,7 @@ byte getRelativeYColor(byte side) {
   return color;
 }
 
-byte getLimitsForZColor(byte side) {
+inline byte getLimitsForZColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].minForZ != 0 || Split[side].maxForZ != 127 || Split[side].ccForZ14Bit) {
     color = Split[side].colorAccent;
@@ -855,7 +855,7 @@ byte getLimitsForZColor(byte side) {
   return color;
 }
 
-byte getCCForZColor(byte side) {
+inline byte getCCForZColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].customCCForZ != 11) {
     color = Split[side].colorAccent;
@@ -863,7 +863,7 @@ byte getCCForZColor(byte side) {
   return color;
 }
 
-byte getLowRowBendColor(byte side) {
+inline byte getLowRowBendColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].lowRowBendBehavior != lowRowBendBend) {
     color = Split[side].colorAccent;
@@ -871,7 +871,7 @@ byte getLowRowBendColor(byte side) {
   return color;
 }
 
-byte getLowRowCCXColor(byte side) {
+inline byte getLowRowCCXColor(byte side) {
   byte color = Split[side].colorMain;
   if (Split[side].ccForLowRow != 1) {
     color = Split[side].colorAccent;
@@ -893,7 +893,7 @@ byte getLowRowCCXYZColor(byte side) {
   return color;
 }
 
-byte getCCFadersColor(byte side) {
+inline byte getCCFadersColor(byte side) {
   byte color = Split[side].colorMain;
   for (byte f = 0; f < 8; ++f) {
     if (Split[side].ccForFader[f] != f+1) {
@@ -904,14 +904,14 @@ byte getCCFadersColor(byte side) {
   return color;
 }
 
-byte getCalibrationColor() {
+inline byte getCalibrationColor() {
   if (Device.calibrated) {
     return COLOR_GREEN;
   }
   return COLOR_RED;
 }
 
-byte getSplitHandednessColor() {
+inline byte getSplitHandednessColor() {
   if (Device.splitHandedness == reversedBoth) {
     return globalColor;
   }
@@ -935,7 +935,7 @@ byte getGuitarTuningColor() {
 
 // paint one of the two leds that indicate which split is being controlled
 // (e.g. when you're changing per-split settings, or changing the preset or volume)
-void paintShowSplitSelection(byte side) {
+inline void paintShowSplitSelection(byte side) {
   if (side == LEFT || doublePerSplit) {
     setLed(15, 7, Split[LEFT].colorMain, cellOn);
   }
@@ -959,7 +959,7 @@ void paintOSVersionBuildDisplay() {
 }
 
 // paint the current preset number for a particular side, in large block characters
-byte getPresetDisplayColumn() {
+inline byte getPresetDisplayColumn() {
   return LINNMODEL == 200 ? NUMCOLS-2 : NUMCOLS-1;
 }
 
@@ -1649,7 +1649,7 @@ inline void paintGlobalSettingsFlashTempo(unsigned long now) {
     paintGlobalSettingsFlashTempo(now, 14, 3);
 }
 
-inline void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
+void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
   if (!animationActive && !userFirmwareActive) {
     bool flash_on = false;
     if (isVisibleSequencer())
@@ -1880,35 +1880,35 @@ void paintCustomLedsEditor() {
   // nothing to do, everything is handled in the regular LED rendering routine
 }
 
-byte getRowOffsetColor() {
+inline byte getRowOffsetColor() {
   if (Global.customRowOffset != 12) {
     return globalAltColor;
   }
   return globalColor;
 }
 
-byte getSwitchCC65Color() {
+inline byte getSwitchCC65Color() {
   if (Global.ccForSwitchCC65[switchSelect] != 65) {
     return globalAltColor;
   }
   return globalColor;
 }
 
-byte getSwitchSustainColor() {
+inline byte getSwitchSustainColor() {
   if (Global.ccForSwitchSustain[switchSelect] != 64) {
     return globalAltColor;
   }
   return globalColor;
 }
 
-byte getSwitchTapTempoColor() {
+inline byte getSwitchTapTempoColor() {
   if (Global.customSwitchAssignment[switchSelect] != ASSIGNED_TAP_TEMPO) {
     return globalAltColor;
   }
   return globalColor;
 }
 
-byte getVelocityColor() {
+inline byte getVelocityColor() {
   if (Global.minForVelocity != DEFAULT_MIN_VELOCITY ||
       Global.maxForVelocity != DEFAULT_MAX_VELOCITY) {
     return globalAltColor;
@@ -1916,32 +1916,32 @@ byte getVelocityColor() {
   return globalColor;
 }
 
-byte getFixedVelocityColor() {
+inline byte getFixedVelocityColor() {
   if (Global.valueForFixedVelocity != DEFAULT_FIXED_VELOCITY) {
     return globalAltColor;
   }
   return globalColor;
 }
 
-byte getPressureColor() {
+inline byte getPressureColor() {
   return globalColor;
 }
 
-byte getMIDIUSBColor() {
+inline byte getMIDIUSBColor() {
   if (Device.minUSBMIDIInterval != DEFAULT_MIN_USB_MIDI_INTERVAL) {
     return globalAltColor;
   }
   return globalColor;
 }
 
-byte getMIDIThroughColor() {
+inline byte getMIDIThroughColor() {
   if (Device.midiThrough) {
     return globalAltColor;
   }
   return globalColor;
 }
 
-byte getSleepColor() {
+inline byte getSleepColor() {
   return globalColor;
 }
 

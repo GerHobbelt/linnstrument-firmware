@@ -29,7 +29,7 @@ void resetAllTouches() {
   noteTouchMapping[RIGHT].initialize(RIGHT);
 }
 
-boolean validNoteNumAndChannel(signed char noteNum, signed char noteChannel) {
+inline boolean validNoteNumAndChannel(signed char noteNum, signed char noteChannel) {
   if (noteNum < 0 || noteNum > 127 || noteChannel < 1 || noteChannel > 16) {
     return false;
   }

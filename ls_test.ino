@@ -19,25 +19,25 @@ Assorted debug functions.
 #include "ls_compiler_tweaks.h"
 
 
-void debugPrint(int level, const char* msg) {
+inline void debugPrint(int level, const char* msg) {
   if (Device.serialMode && (debugLevel >= level)) {
     Serial.print(msg);
   }
 }
 
-void debugPrintln(int level, const char* msg) {
+inline void debugPrintln(int level, const char* msg) {
   if (Device.serialMode && (debugLevel >= level)) {
     Serial.println(msg);
   }
 }
 
-void debugPrint(int level, int val) {
+inline void debugPrint(int level, int val) {
   if (Device.serialMode && (debugLevel >= level)) {
     Serial.print(val);
   }
 }
 
-void debugPrintln(int level, int val) {
+inline void debugPrintln(int level, int val) {
   if (Device.serialMode && (debugLevel >= level)) {
     Serial.println(val);
   }
