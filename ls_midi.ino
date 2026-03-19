@@ -57,12 +57,16 @@ byte initialMidiClockMessageCount = 0;                     // the first MIDI clo
 bool receivedSongPositionPointer = false;                  // tracks whether a song position pointer message was received before the MIDI clock start
 bool standaloneMidiClockRunning = false;                   // indicates whether the MIDI Clock is sending data in a standalone fashion, without sequencer
 
-byte lastRpnMsb = 127;
-byte lastRpnLsb = 127;
-byte lastNrpnMsb = 127;
-byte lastNrpnLsb = 127;
-byte lastDataMsb = 0;
-byte lastDataLsb = 0;
+byte lastRpnMsb;
+byte lastRpnLsb;
+byte lastNrpnMsb;
+byte lastNrpnLsb;
+byte lastDataMsb;
+byte lastDataLsb;
+// flags to ensure robust RPN/NRPN parsing
+boolean isValidRpn = false;        // not true until both bytes of the parameter number are received
+boolean isValidNrpn = false;       // ditto
+signed char lastCC = -1;
 
 inline boolean isMidiUsingDIN() {
   return Global.midiIO == 0;
@@ -371,11 +375,26 @@ void handleMidiInput(unsigned long nowMicros) {
 
       case MIDIControlChange:
       {
+        // CC6: if an NRPN or RPN parameter was selected, start constituting the data
+        if (midiData1 == 6 && (isValidRpn || isValidNrpn)) {
+          lastDataMsb = midiData2;
+        }
+        // CC38: RPN/NRPN usage takes priority over fader usage
+        else if (midiData1 == 38 && (isValidRpn || isValidNrpn) && lastCC == 6) {
+          lastDataLsb = midiData2;
+          if (isValidRpn) {
+            receivedRpn(midiChannel, (lastRpnMsb<<7)+lastRpnLsb, (lastDataMsb<<7)+lastDataLsb);
+          } else {
+            receivedNrpn((lastNrpnMsb<<7)+lastNrpnLsb, (lastDataMsb<<7)+lastDataLsb, midiChannel);
+          }
+        }
         // try to match incoming CC message to the faders that generate CCs
         // if faders are set up to handle a particular incoming CC,
         // these CCs will update the faders and not control any of the
         // LinnStrument features
-        if (ccSplit != -1) {
+        else if (!userFirmwareActive && ccSplit != -1) {
+        // possible further restriction: replace the previous line with the following line
+        // else if (!userFirmwareActive && ccSplit != -1 && Split[ccSplit].ccFaders) {
           bool handled = false;
 
           for (byte f = 0; f < 8; ++f) {
@@ -392,6 +411,8 @@ void handleMidiInput(unsigned long nowMicros) {
             if ((displayMode == displayNormal && Split[ccSplit].ccFaders) || displayMode == displayVolume) {
               updateDisplay();
             }
+            // if a fader intercepts a CC, don't apply that CC to RPN/NRPN construction
+            lastCC = -1;
             break;
           }
         }
@@ -399,14 +420,6 @@ void handleMidiInput(unsigned long nowMicros) {
         // handle the CC message by trying to match it to any of the
         // supported incoming MIDI CC messages
         switch (midiData1) {
-          case 6:
-            // if an NRPN or RPN parameter was selected, start constituting the data
-            // otherwise control the fader of MIDI CC 6
-            if ((lastRpnMsb != 127 || lastRpnLsb != 127) ||
-                (lastNrpnMsb != 127 || lastNrpnLsb != 127)) {
-              lastDataMsb = midiData2;
-              break;
-            }
           case 9:
             if (userFirmwareActive && midiChannel < NUMROWS && (midiData2 == 0 || midiData2 == 1)) {
               userFirmwareSlideMode[midiChannel] = midiData2;
@@ -474,34 +487,32 @@ void handleMidiInput(unsigned long nowMicros) {
               storeSettings();
             }
             break;
-          case 38:
-            if (lastRpnMsb != 127 || lastRpnLsb != 127) {
-              lastDataLsb = midiData2;
-              receivedRpn(midiChannel, (lastRpnMsb<<7)+lastRpnLsb, (lastDataMsb<<7)+lastDataLsb);
-            }
-            else if (lastNrpnMsb != 127 || lastNrpnLsb != 127) {
-              lastDataLsb = midiData2;
-              receivedNrpn((lastNrpnMsb<<7)+lastNrpnLsb, (lastDataMsb<<7)+lastDataLsb, midiChannel);
-            }
-            break;
+          // RPN/NRPN handling guards against the DAW resetting CC values to zero and accidentally creating RPN 0 or NRPN 0
+          // CC98 must be the very next CC message after CC99, likewise for CC38 and CC6, and for CC100 and CC101
+          // RPN input and NRPN input are mutually exclusive, so 99/98 disables RPN input and 101/100 disables NRPN input
           case 98:
             lastNrpnLsb = midiData2;
+            isValidRpn = false;
+            isValidNrpn = lastCC == 99;
             break;
           case 99:
             lastNrpnMsb = midiData2;
+            isValidRpn = false;
+            isValidNrpn = false;
             break;
           case 100:
             lastRpnLsb = midiData2;
-            // resetting RPN numbers also resets NRPN numbers
-            if (lastRpnLsb == 127 && lastRpnMsb == 127) {
-              lastNrpnLsb = 127;
-              lastNrpnMsb = 127;
-            }
+            isValidRpn = lastCC == 101 && (lastRpnMsb != 127 || lastRpnLsb != 127);
+            isValidNrpn = false;
             break;
           case 101:
             lastRpnMsb = midiData2;
+            isValidRpn = false;
+            isValidNrpn = false;
             break;
         }
+        lastCC = midiData1;
+        break;        
       }
       default:
         // don't handle other MIDI messages
