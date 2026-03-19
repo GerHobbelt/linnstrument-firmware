@@ -19,27 +19,79 @@ Assorted debug functions.
 #include "ls_compiler_tweaks.h"
 
 
+static void debugPrint1(const char* msg) {
+  unsigned int msgLen = strlen(msg);
+  boolean shouldBlank = (debugContentWritten > 10);
+  debugContentWritten += msgLen;
+  if (shouldBlank)
+    beginPreventBrightLedFlash();
+
+  Serial.print(msg);
+
+  if (shouldBlank)
+    endPreventBrightLedFlash();
+}
+
+static void debugPrintln1(const char* msg) {
+  unsigned int msgLen = strlen(msg);
+  boolean shouldBlank = (debugContentWritten > 10);
+  debugContentWritten += msgLen;
+  if (shouldBlank)
+    beginPreventBrightLedFlash();
+
+  Serial.println(msg);
+
+  if (shouldBlank)
+    endPreventBrightLedFlash();
+}
+
+static void debugPrint1(int val) {
+  const unsigned int msgLen = 2;
+  boolean shouldBlank = (debugContentWritten > 10);
+  debugContentWritten += msgLen;
+  if (shouldBlank)
+    beginPreventBrightLedFlash();
+
+  Serial.print(val);
+
+  if (shouldBlank)
+    endPreventBrightLedFlash();
+}
+
+static void debugPrintln1(int val) {
+  const unsigned int msgLen = 2;
+  boolean shouldBlank = (debugContentWritten > 10);
+  debugContentWritten += msgLen;
+  if (shouldBlank)
+    beginPreventBrightLedFlash();
+
+  Serial.println(val);
+
+  if (shouldBlank)
+    endPreventBrightLedFlash();
+}
+
 inline void debugPrint(int level, const char* msg) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.print(msg);
+    debugPrint1(msg);
   }
 }
 
 inline void debugPrintln(int level, const char* msg) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.println(msg);
+    debugPrintln1(msg);
   }
 }
 
 inline void debugPrint(int level, int val) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.print(val);
+    debugPrint1(val);
   }
 }
 
 inline void debugPrintln(int level, int val) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.println(val);
+    debugPrintln1(val);
   }
 }
 
@@ -51,20 +103,57 @@ void displayDigitalPins() {
 
     lastFrame = now;
 
-    Serial.println();
-    for (byte p = 0; p < 54; ++p) {
-      Serial.print(p);
-      Serial.print("\t");
-    }
-    Serial.println();
-    for (byte p = 0; p < 54; ++p) {
-      Serial.print(digitalRead(p));
-      Serial.print("\t");
-    }
-    Serial.println();
+    displayDigitalPins(0, 27);
+    displayDigitalPins(27, 54);
 
     endPreventBrightLedFlash();
   }
+}
+
+void displayDigitalPins(byte start, byte end) {
+  Serial.println();
+  for (byte p = start; p < end; ++p) {
+    Serial.print(p);
+    Serial.print("\t");
+  }
+  Serial.println();
+  for (byte p = start; p < end; ++p) {
+    // ripped from the Arduino RTL:
+  	if (g_APinDescription[p].ulPinType == PIO_NOT_A_PIN) {
+      Serial.print("---");
+    }
+    else {
+      byte mode = g_pinStatus[p] & 0xF;
+      switch (mode) {
+      default:
+        Serial.print("?_");
+        Serial.print(mode);
+        break;
+      case PIN_STATUS_ANALOG:
+        Serial.print("ANA");
+        break;
+      case PIN_STATUS_DIGITAL_OUTPUT:
+        Serial.print("OUT");
+        break;
+      case PIN_STATUS_DIGITAL_INPUT:
+        Serial.print("IN");
+        break;
+      case PIN_STATUS_DIGITAL_INPUT_PULLUP:
+        Serial.print("IN+P");
+        break;
+      case PIN_STATUS_PWM:
+        Serial.print("PWM");
+        break;
+      }
+    }
+    Serial.print("\t");
+  }
+  Serial.println();
+  for (byte p = start; p < end; ++p) {
+    Serial.print(digitalRead(p));
+    Serial.print("\t");
+  }
+  Serial.println();
 }
 
 // displayXFrame:
@@ -191,6 +280,8 @@ void displayCellTouchedFrame() {
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
     beginPreventBrightLedFlash();
 
+    lastFrame = now;
+
     Serial.println();
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
@@ -199,7 +290,21 @@ void displayCellTouchedFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        Serial.print(cell(x, y-1).touched);
+        switch (cell(x, y-1).touched) {
+        case untouchedCell:
+          Serial.print("-");
+          break;
+        case ignoredCell:
+          Serial.print("ignor");
+          break;
+        case transferCell:
+          Serial.print("TRANS");
+          break;
+        case touchedCell:
+          Serial.print("TOUCH");
+          break;
+        }
+        //Serial.print(cell(x, y-1).touched);
         Serial.print("\t");
       }
       Serial.println();
