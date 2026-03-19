@@ -872,14 +872,14 @@ struct Configuration config;
 /**************************************** SECRET SWITCHES ****************************************/
 
 #define SECRET_SWITCHES 6
-#define SWITCH_DEBUGMIDI secretSwitch[0]
-#define SWITCH_XFRAME secretSwitch[1]
-#define SWITCH_YFRAME secretSwitch[2]
-#define SWITCH_ZFRAME secretSwitch[3]
+#define SWITCH_DEBUGMIDI   secretSwitch[0]
+#define SWITCH_XFRAME      secretSwitch[1]
+#define SWITCH_YFRAME      secretSwitch[2]
+#define SWITCH_ZFRAME      secretSwitch[3]
 #define SWITCH_SURFACESCAN secretSwitch[4]
-#define SWITCH_FREERAM secretSwitch[5]
+#define SWITCH_FREERAM     secretSwitch[5]
 
-boolean secretSwitch[SECRET_SWITCHES];  // The secretSwitch* values are controlled by cells in column 18
+boolean secretSwitch[SECRET_SWITCHES] = {0};  // The secretSwitch* values are controlled by cells in column 18
 
 
 /***************************************** OPERATING MODE ****************************************/
@@ -894,7 +894,7 @@ OperatingMode operatingMode = modePerformance;
 
 /************************************** FLASH STORAGE LAYOUT *************************************/
 
-static int alignToByteBoundary(int value) {
+static inline int alignToByteBoundary(int value) {
   if (value % 4 == 0) {
     return value;
   }
@@ -1079,12 +1079,14 @@ short guitarTuningPreviewChannel = -1;              // active channel that is pr
 
 byte customLedColor = COLOR_GREEN;                  // color is used for drawing in the custom LED editor
 
+unsigned int debugContentWritten = 0;
+
 /************************* FUNCTION DECLARATIONS TO WORK AROUND COMPILER *************************/
 
 inline void selectSensorCell(byte col, byte row, byte switchCode);
 
-void setLed(byte col, byte row, byte color, CellDisplay disp);
-void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer);
+inline void setLed(byte col, byte row, byte color, CellDisplay disp);
+inline void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer);
 void initializeNoteLights(GlobalSettings& g);
 
 boolean ensureCellBeforeHoldWait(byte resetColor, CellDisplay resetDisplay);
@@ -1094,7 +1096,7 @@ void exitDisplayMode(DisplayMode mode);
 
 void applyBendRange(SplitSettings& target, byte bendRange);
 
-void cellTouched(TouchState state);
+inline void cellTouched(TouchState state);
 void cellTouched(byte col, byte row, TouchState state);
 
 VelocityState calcVelocity(unsigned short z);
