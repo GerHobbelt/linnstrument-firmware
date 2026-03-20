@@ -1020,7 +1020,7 @@ boolean switchState[5][NUMSPLITS];                    // the current state of ea
 boolean switchTargetEnabled[NUMSPLITS][MAX_ASSIGNED]; // we keep track of switch targets individually for each split and whether they're active
 boolean switchCCEnabled[NUMSPLITS][128];              // we keep track of the switch targets that send out CC numbers for each split to determine whether they're active
 boolean footSwitchState[5];                           // holds the last read footswitch state, so that we only react on state changes of the input signal
-boolean footSwitchOffState[5];                        // holds the OFF state of foot switch, read at startup, thereby permit normally-closed or normally-open switches
+boolean footSwitchOffState[2];                        // holds the OFF state of both foot switches, as read at startup, thereby permitting normally-closed or normally-open switches
 unsigned long prevFootSwitchTimerCount;               // time interval (in microseconds) between foot switch reads
 boolean switchFootBothReleased = false;               // keep track of whether the last release was for both switches, in order to prevent individual releases to happen
 
