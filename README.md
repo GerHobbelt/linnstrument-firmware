@@ -31,6 +31,11 @@ In the Arduino IDE preferences, turn on "*All*" Warnings for the compiler: compi
 
 This repo fork has a special `ls_compiler_tweaks.h` header file which deals with the obnoxious warnings, while letting through all the (useful) others...
 
+Further info:
+
+- https://docs.arduino.cc/arduino-cli/sketch-build-process/
+- https://docs.arduino.cc/arduino-cli/sketch-specification/
+- 
 
 ## Support
 
