@@ -19,7 +19,7 @@ This cycles through a series of images to creation an animated playbook.
 #include "ls_compiler_tweaks.h"
 
 const int CHRISTMAS_FRAME_COUNT = 7;
-const char* CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
+LS_CONST char* const CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
     " W    W       W    W  W   "
     "  W W  G    W  W    W    W"
     "      GGRW    W      G    "
@@ -83,7 +83,7 @@ const char* CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
     " W  GGRGGGG   WGRGGGGGGRG "
     " WWWWWWYWWWWWWWWWYWWWYWWWW"
   };
-const char* CHRISTMAS_FRAMES_128[CHRISTMAS_FRAME_COUNT] = {
+LS_CONST char* const CHRISTMAS_FRAMES_128[CHRISTMAS_FRAME_COUNT] = {
     "  W    W       W          "
     " W W W  G    W  W         "
     "       GGRW    W          "
@@ -157,7 +157,7 @@ inline void playChristmasAnimation() {
   }
 }
 
-void playPlayBook(int totalFrames, const char** playbook) {
+void playPlayBook(int totalFrames, const char* const * playbook) {
   Device.sleepAnimationActive = true;
   storeSettings();
 
