@@ -53,11 +53,11 @@ const char* OSVersionBuild = ".074";
 // Uncomment to immediately start X, Y, or Z frame debugging when the LinnStrument launches
 // This is useful when having to inspect the sensor data without being able to
 // use the switches to change the active settings
-// #define DISPLAY_XFRAME_AT_LAUNCH
-// #define DISPLAY_YFRAME_AT_LAUNCH
-// #define DISPLAY_ZFRAME_AT_LAUNCH
-// #define DISPLAY_SURFACESCAN_AT_LAUNCH
-// #define DISPLAY_FREERAM_AT_LAUNCH
+#define DISPLAY_XFRAME_AT_LAUNCH
+#define DISPLAY_YFRAME_AT_LAUNCH
+#define DISPLAY_ZFRAME_AT_LAUNCH
+#define DISPLAY_SURFACESCAN_AT_LAUNCH
+#define DISPLAY_FREERAM_AT_LAUNCH
 // #define TESTING_SENSOR_DISABLE
 
 // Touch surface constants
