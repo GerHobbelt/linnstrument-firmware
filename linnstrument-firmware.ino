@@ -82,7 +82,25 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define READ_Y  1
 #define READ_Z  2
 
-// Supported colors
+// Supported colors:
+//
+// RGB led ==>
+// - Red
+// - Green
+// - Blue
+// plus all its permutations:
+// - Yellow         : Red + Green
+// - Purple/Magenta : Red + Blue
+// - Cyan           : Green + Blue
+// - White          : Red + Green + Blue
+// - Black          : all OFF
+// Then there's also the 50% duty cycle remixes: half the time color A, the other half its color B:
+// a.k.a. 'composite colors':
+// - Orange         : Yellow + Red
+// - Pink           : Purple/Magenta + Yellow
+// - Lime           : Yellow + Green
+// - (Cold) White   : White + Cyan
+//
 #define COLOR_OFF      0
 #define COLOR_RED      1
 #define COLOR_YELLOW   2
