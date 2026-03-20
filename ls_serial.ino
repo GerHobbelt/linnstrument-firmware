@@ -28,7 +28,7 @@ const byte linnStrumentControlLength = 3;
 
 boolean waitingForCommands = false;
 
-enum linnCommands {
+enum linnCommands : char {
   ACK = 'a',
   CRCCheck = 'c',
   CRCWrong = 'w',

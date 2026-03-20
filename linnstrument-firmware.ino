@@ -297,7 +297,7 @@ struct __attribute__ ((packed)) FocusCell {
 };
 FocusCell focusCell[NUMSPLITS][16];             // 2 splits and 16 MIDI channels for each split
 
-enum VelocityState {
+enum VelocityState : byte {
   velocityCalculating = 0,
   velocityCalculated = 1,
   velocityNew = 2
@@ -450,7 +450,7 @@ NoteTouchMapping noteTouchMapping[NUMSPLITS];
 
 /**************************************** DISPLAY STATE ******************************************/
 
-enum CellDisplay {
+enum CellDisplay : byte {
   cellOff = 0,
   cellOn = 1,
   cellFastPulse = 2,
@@ -458,7 +458,7 @@ enum CellDisplay {
   cellFocusPulse = 4
 };
 
-enum DisplayMode {
+enum DisplayMode : byte {
   displayNormal,
   displayPerSplit,
   displayPreset,
@@ -511,7 +511,7 @@ DisplayMode displayMode = displayNormal;
 
 /***************************************** CALIBRATION *******************************************/
 
-enum CalibrationPhase {
+enum CalibrationPhase : byte {
   calibrationInactive,
   calibrationRows,
   calibrationCols
@@ -541,7 +541,7 @@ struct __attribute__ ((packed)) CalibrationY {
 
 /***************************************** PANEL SETTINGS ****************************************/
 
-enum PlayedTouchMode {
+enum PlayedTouchMode : byte {
   playedCell,
   playedSame,
   playedCrosses,
@@ -560,7 +560,7 @@ enum PlayedTouchMode {
   playedOrbits
 };
 
-enum LowRowMode {
+enum LowRowMode : byte {
   lowRowNormal,
   lowRowSustain,
   lowRowRestrike,
@@ -571,56 +571,56 @@ enum LowRowMode {
   lowRowCCXYZ
 };
 
-enum LowRowBendBehavior {
+enum LowRowBendBehavior : byte {
   lowRowBendBend = 0,
   lowRowBendTranspose = 1
 };
 
-enum LowRowCCBehavior {
+enum LowRowCCBehavior : byte {
   lowRowCCHold = 0,
   lowRowCCFader = 1
 };
 
-enum MidiMode {
+enum MidiMode : byte {
   oneChannel,
   channelPerNote,
   channelPerRow
 };
 
-enum BendRangeOption {
+enum BendRangeOption : byte {
   bendRange2,
   bendRange3,
   bendRange12,
   bendRange24
 };
 
-enum PitchCorrectHoldSpeed {
+enum PitchCorrectHoldSpeed : byte {
   pitchCorrectHoldOff = 0,
   pitchCorrectHoldMedium = 1,
   pitchCorrectHoldFast = 2,
   pitchCorrectHoldSlow = 3
 };
 
-enum TimbreExpression {
+enum TimbreExpression : byte {
   timbrePolyPressure,
   timbreChannelPressure,
   timbreCC1,
   timbreCC74,
 };
 
-enum LoudnessExpression {
+enum LoudnessExpression : byte {
   loudnessPolyPressure,
   loudnessChannelPressure,
   loudnessCC11
 };
 
-enum SequencerView {
+enum SequencerView : byte {
   sequencerNotes,
   sequencerScales,
   sequencerDrums
 };
 
-enum SequencerDirection {
+enum SequencerDirection : byte {
   sequencerForward,
   sequencerBackward,
   sequencerPingPong
@@ -683,13 +683,13 @@ struct SplitSettings {
 
 #define Split config.settings.split
 
-enum SleepAnimationType {
+enum SleepAnimationType : byte {
   animationNone,
   animationStore,
   animationChristmas
 };
 
-enum SplitHandednessType {
+enum SplitHandednessType : byte {
   reversedBoth,
   reversedLeft,
   reversedRight
@@ -725,7 +725,7 @@ struct DeviceSettings {
 #define Device config.device
 
 // The values here MUST match the row #'s for the leds that get lit up in GlobalSettings
-enum VelocitySensitivity {
+enum VelocitySensitivity : byte {
   velocityLow,
   velocityMedium,
   velocityHigh,
@@ -733,13 +733,13 @@ enum VelocitySensitivity {
 };
 
 // The values here MUST match the row #'s for the leds that get lit up in GlobalSettings
-enum PressureSensitivity {
+enum PressureSensitivity : byte {
   pressureLow,
   pressureMedium,
   pressureHigh
 };
 
-enum ArpeggiatorStepTempo {
+enum ArpeggiatorStepTempo : byte {
   ArpFourth = 0,
   ArpEighth = 1,
   ArpEighthTriplet = 2,
@@ -751,7 +751,7 @@ enum ArpeggiatorStepTempo {
   ArpSixtyfourthTriplet = 8,
 };
 
-enum ArpeggiatorDirection {
+enum ArpeggiatorDirection : byte {
   ArpUp,
   ArpDown,
   ArpUpDown,
@@ -759,7 +759,7 @@ enum ArpeggiatorDirection {
   ArpReplayAll
 };
 
-enum SustainBehavior {
+enum SustainBehavior : byte {
   sustainHold,
   sustainLatch
 };
@@ -800,7 +800,7 @@ struct PresetSettings {
   SplitSettings split[NUMSPLITS];
 };
 
-enum SequencerStepSize {
+enum SequencerStepSize : byte {
   StepSixteenthTriplet = 4,
   StepSixteenth = 6,
   StepEighthTriplet = 8,
@@ -904,7 +904,7 @@ boolean secretSwitch[SECRET_SWITCHES] = {0};  // The secretSwitch* values are co
 
 /***************************************** OPERATING MODE ****************************************/
 
-enum OperatingMode {
+enum OperatingMode : byte {
   modePerformance,
   modeManufacturingTest,
   modeFirmware
