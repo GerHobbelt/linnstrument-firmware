@@ -43,7 +43,7 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 /******************************************** CONSTANTS ******************************************/
 
 const char* OSVersion = "234.";
-const char* OSVersionBuild = ".072";
+const char* OSVersionBuild = ".073";
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -53,11 +53,11 @@ const char* OSVersionBuild = ".072";
 // Uncomment to immediately start X, Y, or Z frame debugging when the LinnStrument launches
 // This is useful when having to inspect the sensor data without being able to
 // use the switches to change the active settings
-// #define DISPLAY_XFRAME_AT_LAUNCH
-// #define DISPLAY_YFRAME_AT_LAUNCH
-// #define DISPLAY_ZFRAME_AT_LAUNCH
-// #define DISPLAY_SURFACESCAN_AT_LAUNCH
-// #define DISPLAY_FREERAM_AT_LAUNCH
+#define DISPLAY_XFRAME_AT_LAUNCH
+#define DISPLAY_YFRAME_AT_LAUNCH
+#define DISPLAY_ZFRAME_AT_LAUNCH
+#define DISPLAY_SURFACESCAN_AT_LAUNCH
+#define DISPLAY_FREERAM_AT_LAUNCH
 // #define TESTING_SENSOR_DISABLE
 
 // Touch surface constants
