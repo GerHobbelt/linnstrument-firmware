@@ -21,7 +21,7 @@ surface.
 
 #include "ls_compiler_tweaks.h"
 
-struct Character {
+struct __attribute__ ((packed)) Character {
   byte width;
   const char* data;
 };
@@ -2170,18 +2170,18 @@ static const Character cond_b = { 3,
   "00 "
   "   " };
 
-struct Font {
+struct __attribute__ ((packed)) Font {
   byte height;
-  const char* chars;
-  const Character** data;
+  const char* const chars;
+  const Character* const * const data;
 };
 
-const Character* tinyChars[] = {
+static const Character* const tinyChars[] = {
   &tiny_blank, &tiny_0, &tiny_1, &tiny_2, &tiny_3, &tiny_4, &tiny_5, &tiny_6, &tiny_7, &tiny_8, &tiny_9
 };
-const struct Font tinyFont = { 4, " 0123456789", tinyChars };
+static const struct Font tinyFont = { 4, " 0123456789", tinyChars };
 
-const Character* smallChars[] = {
+static const Character* const smallChars[] = {
   &small_blank, &small_excl, &small_quot, &small_hash, &small_dollar, &small_perc, &small_amp, &small_squot, &small_lparen, &small_rparen, &small_mult, &small_plus, &small_comma, &small_minus, &small_dot, &small_div,
   &small_0, &small_1, &small_2, &small_3, &small_4, &small_5, &small_6, &small_7, &small_8, &small_9,
   &small_colon, &small_semi, &small_lt, &small_eq, &small_gt, &small_quest, &small_at,
@@ -2190,9 +2190,9 @@ const Character* smallChars[] = {
   &small_lsqbrack, &small_backslash, &small_rsqbrack, &small_pow, &small_under, &small_backtick,
   &small_lbrace, &small_pipe, &small_rbrace, &small_tilde
 };
-const struct Font smallFont = { 8, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZt[\\]^_`{|}~", smallChars };
+static const struct Font smallFont = { 8, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZt[\\]^_`{|}~", smallChars };
 
-const Character* bigChars[] = {
+static const Character* const bigChars[] = {
   &big_blank, &big_excl, &big_quot, &big_hash, &big_dollar, &big_perc, &big_amp, &big_squot, &big_lparen, &big_rparen, &big_mult, &big_plus, &big_comma, &big_minus, &big_dot, &big_div,
   &big_0, &big_1, &big_2, &big_3, &big_4, &big_5, &big_6, &big_7, &big_8, &big_9,
   &big_colon, &big_semi, &big_lt, &big_eq, &big_gt, &big_quest, &big_at,
@@ -2201,17 +2201,17 @@ const Character* bigChars[] = {
   &big_a, &big_b, &big_c, &big_d, &big_e, &big_f, &big_g, &big_h, &big_i, &big_j, &big_k, &big_l, &big_m, &big_n, &big_o, &big_p, &big_q, &big_r, &big_s, &big_t, &big_u, &big_v, &big_w, &big_x, &big_y, &big_z,
   &big_lbrace, &big_pipe, &big_rbrace, &big_tilde
 };
-const struct Font bigFont = { 8, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", bigChars };
+static const struct Font bigFont = { 8, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", bigChars };
 
-const Character* condChars[] = {
+static const Character* const condChars[] = {
   &cond_blank, &cond_plus, &cond_minus, &cond_dot, &cond_div, &cond_0, &cond_1, &cond_2, &cond_3, &cond_4, &cond_5, &cond_6, &cond_7, &cond_8, &cond_9,
   &cond_A, &cond_B, &cond_C, &cond_D, &cond_E, &cond_F, &cond_G, &cond_H, &cond_I, &cond_J, &cond_K, &cond_L, &cond_M, &cond_N, &cond_O, &cond_P, &cond_Q, &cond_R, &cond_S, &cond_T, &cond_U, &cond_V, &cond_W, &cond_X, &cond_Y, &cond_Z,
   &cond_b
 };
-const struct Font condFont = { 8, " +-./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZb", condChars };
+static const struct Font condFont = { 8, " +-./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZb", condChars };
 
 
-unsigned font_width_string(const char* str, const struct Font* font) {
+unsigned font_width_string(const char* str, const struct Font* const font) {
   unsigned width = 0;
   char c;
   while ((c=*str++) != 0) {
@@ -2225,7 +2225,7 @@ unsigned font_width_string(const char* str, const struct Font* font) {
 }
 
 // Draw a string of characters starting at a specific column/row
-void font_draw_string(int col, int row, const char* str, byte color, const struct Font* font, boolean erase, boolean reversed, byte seperationColor) {
+void font_draw_string(int col, int row, const char* str, byte color, const struct Font* const font, boolean erase, boolean reversed, byte seperationColor) {
   int i;
   if (reversed) { i = strlen(str) - 1; }
   else          { i = 0; }
@@ -2374,7 +2374,7 @@ inline void big_scroll_text_flipped(const char* str, byte color) {
   font_scroll_text_flipped(&bigFont, str, color);
 }
 
-void font_scroll_text_flipped(const struct Font* font, const char* str, byte color) {
+void font_scroll_text_flipped(const struct Font* const font, const char* str, byte color) {
   unsigned long origInterval = ledRefreshInterval;
   ledRefreshInterval = 200;
 
@@ -2412,7 +2412,7 @@ inline void big_scroll_text(const char* str, byte color) {
   font_scroll_text(&bigFont, str, color);
 }
 
-void font_scroll_text(const struct Font* font, const char* str, byte color) {
+void font_scroll_text(const struct Font* const font, const char* str, byte color) {
   unsigned long origInterval = ledRefreshInterval;
   ledRefreshInterval = 200;
 
