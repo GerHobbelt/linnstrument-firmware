@@ -53,4 +53,7 @@ static inline T max(T a, T b) {
 
 #endif
 
+// Return the number of elements in the given array
+#define countof(a)          ( sizeof(a) / sizeof((a)[0]) )
+
 #endif // LS_COMPILER_TWEAKS_H

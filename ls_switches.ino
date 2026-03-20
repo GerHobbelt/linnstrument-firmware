@@ -208,7 +208,7 @@ void doSwitchReleasedForSplit(byte whichSwitch, byte assignment, byte split) {
 
 void changeSwitchState(byte whichSwitch, byte assignment, byte split, boolean enabled) {
   // all switches are mutually exclusive, so we always reset the state of other switches with the same target assignment
-  for (byte sw = 0; sw < 4; ++sw) {
+  for (byte sw = 0; sw < countof(lastSwitchPress); ++sw) {
     if (sw != whichSwitch && Global.switchAssignment[sw] == assignment) {
       switchState[sw][split] = false;
       lastSwitchPress[sw] = 0;
