@@ -23,7 +23,7 @@ operations for those when needed.
 
 #include "ls_compiler_tweaks.h"
 
-enum ColumnState {
+enum ColumnState : byte {
   inactive,
   pressed,
   continuous

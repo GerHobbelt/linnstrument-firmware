@@ -43,7 +43,7 @@ const int32_t MIDI_CLOCK_MIN_DELTA = 6756;  // maximum 370 BPM (taking a little 
 const byte MIDI_CLOCK_SAMPLES = 6;
 const int32_t FXD4_MIDI_CLOCK_SAMPLES = FXD4_FROM_INT(MIDI_CLOCK_SAMPLES);
 
-enum MidiClock {
+enum MidiClock : byte {
   midiClockOff,
   midiClockStart,
   midiClockOn

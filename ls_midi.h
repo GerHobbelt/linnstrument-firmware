@@ -19,7 +19,7 @@ The definitions of the MIDI status codes that are used by the LinnStrument MIDI 
 #ifndef MIDI_H_
 #define MIDI_H_
 
-enum MIDIStatus {
+enum MIDIStatus : byte {
   // Channel Voice Messages
   MIDINoteOff               = B10000000,     // Note Off
   MIDINoteOn                = B10010000,     // Note On
