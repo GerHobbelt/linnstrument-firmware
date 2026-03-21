@@ -723,7 +723,11 @@ This is handy, as 41 notes per octave would not otherwise fit on a single row. B
 - Sets the Custom Row Offset to 13 steps (kite tuning)
 - Sets `PLAYED` note lighting to `SAME` mode, so you can see which other pads represent the same note as you learn the kite layout (optional)
 
-# Developer Notes
+
+
+## Developer Notes
+
+> This repo fork however has been used to rebuild the firmware using a fresh Arduino IDE + CLI version (see below) and nothing extremely nasty jumped at us yet. Fingers crosssed...
 
 To rebuild the LinnStrument / MicroLinn firmware binary, set up your development environment as follows: 
 
@@ -739,11 +743,13 @@ To rebuild the LinnStrument / MicroLinn firmware binary, set up your development
 - hit the build/*Verify* button in the IDE to compile the whole kaboodle...
 - *profit!*
 
-## Pro Tip
+### Pro Tip
 
 In the Arduino IDE preferences, turn on "*All*" Warnings for the compiler: compiler warnings may seem useless and verbose sometimes, but they *are* important!
 
 This repo fork has a special `ls_compiler_tweaks.h` header file which deals with the obnoxious warnings, while letting through all the (useful) others...
+
+
 
 
 #  Support 
