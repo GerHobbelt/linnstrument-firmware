@@ -39,8 +39,8 @@ int32_t FXD_CALX_DEFAULT_RIGHT_EDGE;
 // the leftmost and rightmost cells don't reach as far on the edges as other cells, this compensates for that
 int32_t FXD_CALX_BORDER_OFFSET;
 
-const short CALY_DEFAULT_MIN[MAXROWS] = {243, 781, 1299, 1810, 2281, 2718, 3187, 3599};
-const short CALY_DEFAULT_MAX[MAXROWS] = {473, 991, 1486, 1965, 2449, 2925, 3401, 3851};
+LS_CONST short CALY_DEFAULT_MIN[MAXROWS] = {243, 781, 1299, 1810, 2281, 2718, 3187, 3599};
+LS_CONST short CALY_DEFAULT_MAX[MAXROWS] = {473, 991, 1486, 1965, 2449, 2925, 3401, 3851};
 
 // only use a portion of the Y distance, since the fingers can't comfortably reach until the real edges
 const byte CALY_MARGIN_FRACTION = 4;
@@ -255,7 +255,7 @@ uint32_t calculateCalibrationCRC() {
   return crc;
 }
 
-boolean isValidCalibrationRatioX(byte col, byte row) {
+inline boolean isValidCalibrationRatioX(byte col, byte row) {
   int ratio = FXD_TO_INT(FXD_MUL(Device.calRows[col][row].fxdRatio, FXD_CONST_100));
   return ratio >= 0 && ratio <= 200;
 }
@@ -270,7 +270,7 @@ boolean isValidCalibrationMeasuredX(byte col, byte row) {
          FXD_TO_INT(Device.calRows[col][row].fxdMeasuredX) < FXD_TO_INT(default_measured_x + FXD_MUL(FXD_CALX_DEFAULT_CELL_WIDTH, FXD_CONST_2));
 }
 
-boolean isValidCalibrationRatioY(byte col, byte row) {
+inline boolean isValidCalibrationRatioY(byte col, byte row) {
   int ratio = FXD_TO_INT(FXD_MUL(Device.calCols[col][row].fxdRatio, FXD_CONST_100));
   return ratio >= 0 && ratio <= 200;
 }

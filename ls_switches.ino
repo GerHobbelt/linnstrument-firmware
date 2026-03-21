@@ -197,7 +197,7 @@ void doSwitchReleasedForSplit(byte whichSwitch, byte assignment, byte split) {
       }
     }
   }
-  // this is a toggle action, however only some assignment have toggle behavior
+  // this is a toggle action, however only some of the assignments have toggle behavior
   // only proceed when the switch is on
   else if (switchState[whichSwitch][split] || assignment == ASSIGNED_ALTSPLIT) {
     // non-stateful assignments don't have visible toggle behaviours, they're more

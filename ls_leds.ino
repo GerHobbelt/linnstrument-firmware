@@ -46,15 +46,15 @@ These functions handle the low-level communication with LinnStrument's 208 RGB L
 */
 
 byte COL_INDEX[MAXCOLS];
-const byte COL_INDEX_200[MAXCOLS] = {0, 1, 6, 11, 16, 21, 2, 7, 12, 17, 22, 3, 8, 13, 18, 23, 4, 9, 14, 19, 24, 5, 10, 15, 20, 25};
-const byte COL_INDEX_128[MAXCOLS] = {0, 1, 6, 11, 16, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+LS_CONST byte COL_INDEX_200[MAXCOLS] = {0, 1, 6, 11, 16, 21, 2, 7, 12, 17, 22, 3, 8, 13, 18, 23, 4, 9, 14, 19, 24, 5, 10, 15, 20, 25};
+LS_CONST byte COL_INDEX_128[MAXCOLS] = {0, 1, 6, 11, 16, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // array holding contents of display
 byte leds[2][LED_ARRAY_SIZE];
 byte visibleLeds = 0;
 byte bufferedLeds = 0;
 #define ledBuffered(layer, col, row)  leds[bufferedLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
-#define ledVisible(layer, col, row)  leds[visibleLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
+#define ledVisible(layer, col, row)   leds[visibleLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
 
 bool ledDisplayEnabled = true;
 
@@ -276,7 +276,7 @@ void refreshLedColumn(unsigned long now) {
   debugContentWritten = 0;
 
   // disabling the power output from the LED driver pins early prevents power leaking into unwanted cells.
-  digitalWrite(37, HIGH);                                         // disable the outputs of the LED driver chips
+  clearDisplayImmediately();                                         // disable the outputs of the LED driver chips
 
   // keep a steady pulsating going for those leds that need it
   static unsigned long lastPulse = 0;

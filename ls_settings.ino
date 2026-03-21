@@ -20,7 +20,7 @@ These functions handle the changing of any of LinnStrument's panel settings.
 
 // These messages correspond to the scrolling texts that will be displayed by default when pressing
 // the top-most row in global settings. Only the first 30 characters will be used.
-const char* defaultAudienceMessages[16] = {
+LS_CONST char* const defaultAudienceMessages[16] = {
   "LINNSTRUMENT",
   "APPLAUSE",
   "HA HA HA",
@@ -40,7 +40,7 @@ const char* defaultAudienceMessages[16] = {
 };
 
 // These arrays use the setLed encoding scheme where the color is bitshifted << 3 and ORed with the CellDisplay value
-const byte CUSTOM_LEDS_PATTERN1[LED_LAYER_SIZE] = {
+LS_CONST byte CUSTOM_LEDS_PATTERN1[LED_LAYER_SIZE] = {
    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
    0, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 25,
@@ -51,7 +51,7 @@ const byte CUSTOM_LEDS_PATTERN1[LED_LAYER_SIZE] = {
    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 };
 
-const byte CUSTOM_LEDS_PATTERN2[LED_LAYER_SIZE] = {
+LS_CONST byte CUSTOM_LEDS_PATTERN2[LED_LAYER_SIZE] = {
    0,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0,
    0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17,
    0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73,
@@ -77,6 +77,7 @@ void GlobalSettings::setSwitchAssignment(byte whichSwitch, byte assignment, bool
 }
 
 void switchSerialMode(boolean flag) {
+  DEBUGPRINT((3,"switchSerialMode:SOF\n"));
   if (controlModeActive) {
     controlModeActive = false;
     clearDisplay();
@@ -84,6 +85,7 @@ void switchSerialMode(boolean flag) {
   }
 
   if (Device.operatingLowPower == 1 && flag) {
+    DEBUGPRINT((-1,"Turn LOW POWER mode OFF when switching to SerialMode.\n"));
     Device.operatingLowPower = 0;
     applyLedInterval();
     applyMidiInterval();
@@ -91,6 +93,7 @@ void switchSerialMode(boolean flag) {
   
   Device.serialMode = flag;
   applySerialMode();
+  DEBUGPRINT((3,"switchSerialMode:EOF\n"));
 }
 
 void applySerialMode() {
@@ -225,7 +228,7 @@ void writeSettingsToFlash() {
   // write to flash, taking low power mode into account
   writeAdaptivelyToFlash(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset, (byte*)&config, sizeof(Configuration));
 
-  // write the marker after the configuration data so that this version becomes to latest coherent one
+  // write the marker after the configuration data so that this version becomes the latest coherent one
   dueFlashStorage.write(SETTINGS_OFFSET, marker);
 
   clearFullDisplay();
@@ -844,8 +847,8 @@ void handleControlButtonNewTouch() {
   // and makes sure that startup control button combination is reset
   if (globalReset) {
     globalReset = false;
-    cellTouched(0, 0, untouchedCell);
-    cellTouched(0, 2, untouchedCell);
+    cellTouched(0, GLOBAL_SETTINGS_ROW, untouchedCell);
+    cellTouched(0, SWITCH_2_ROW, untouchedCell);
   }
 
   // allow the sequencer to short-circuit the control button new touch
@@ -856,6 +859,7 @@ void handleControlButtonNewTouch() {
 
   // only allow one control button to be pressed at the same time
   // this prevents phantom presses to occur for the control buttons
+  //
   // this is not detectable with the regular phantom press algorithm
   if ((rowsInColsTouched[0] & ~(1 << sensorRow)) != 0) {
     return;
@@ -889,7 +893,7 @@ void handleControlButtonNewTouch() {
   switch (sensorRow) {                                 // which control button is it?
     case GLOBAL_SETTINGS_ROW:                          // global settings button presssed
       resetAllTouches();
-      lightLed(0, 0);                                  // light the button
+      lightLed(0, GLOBAL_SETTINGS_ROW);                // light the button
       setDisplayMode(displayGlobal);                   // change to global settings display mode
       resetNumericDataChange();
       updateDisplay();
@@ -1012,7 +1016,6 @@ void handleControlButtonRelease() {
     case OCTAVE_ROW:                                         // octave button released
     case VOLUME_ROW:                                         // volume button released
     case PRESET_ROW:                                         // preset button released
-
       clearLed(0, sensorRow);
       calcMicroLinnTuning();
       setDisplayMode(displayNormal);
@@ -1242,6 +1245,10 @@ inline boolean isCellPastEditHoldWait() {
 
 inline boolean isCellPastConfirmHoldWait() {
   return sensorCell->lastTouch != 0 && calcTimeDelta(millis(), sensorCell->lastTouch) > CONFIRM_HOLD_DELAY;
+}
+
+inline unsigned long getCellSensorHoldWait() {
+  return sensorCell->lastTouch != 0 ? calcTimeDelta(millis(), sensorCell->lastTouch) : 0;
 }
 
 inline void applyTimbreCC74(byte split) {
@@ -1585,6 +1592,14 @@ void handlePerSplitSettingNewTouch() {
 }
 
 void handlePerSplitSettingHold() {
+  DEBUGPRINT((3,"handlePerSplitSettingHold: col="));
+  DEBUGPRINT((3,sensorCol));
+  DEBUGPRINT((3,",row="));
+  DEBUGPRINT((3,sensorRow));
+  DEBUGPRINT((3,",holdTime="));
+  DEBUGPRINT((3,getCellSensorHoldWait()));
+  DEBUGPRINT((3,"\n"));
+
   if (isCellPastEditHoldWait()) {
     sensorCell->lastTouch = 0;
 
@@ -2662,7 +2677,12 @@ void handleGlobalSettingNewTouch() {
           // handled at release
           break;
         case 3:
-          if (!Device.serialMode) {
+          if (!Device.serialMode || debugLevel >= 3) {
+            DEBUGPRINT((3,"Set LOW POWER mode. (serialMode="));
+            DEBUGPRINT((3,(int)Device.serialMode));
+            DEBUGPRINT((3,",debugLevel="));
+            DEBUGPRINT((3,debugLevel));
+            DEBUGPRINT((3,"\n"));
             Device.operatingLowPower = (Device.operatingLowPower + 1) % 3;          // cycle 0 1 2 0
           } else {
             Device.operatingLowPower = (Device.operatingLowPower + 2) % 4;          // cycle 0 2 0
@@ -3131,7 +3151,6 @@ inline void changeMidiIO(byte where) {
 }
 
 void handleGlobalSettingHold() {
-
   if (isCellPastEditHoldWait()) {
     sensorCell->lastTouch = 0;
 
@@ -3315,7 +3334,7 @@ void handleGlobalSettingRelease() {
         clearDisplay();
         big_scroll_text_flipped(Device.audienceMessages[sensorCol - 1], Split[LEFT].colorMain);        
       }
-      else if (sensorCol == 25) {
+      else if (sensorCol == 25 /* NOT NUMCOLS-1 as Linn128 model has that pad used for message[16] display! */ ) {
         Device.sleepActive = true;
         Device.sleepDelay = 2;
         Device.sleepAnimationType = animationStore;
@@ -3382,7 +3401,6 @@ void handleGlobalSettingRelease() {
   }
 
   if (!userFirmwareActive) {
-
     if (sensorRow >= 4 && sensorRow != 7) {
       handleNumericDataReleaseCol(false);
     }

@@ -22,7 +22,7 @@ These functions handle the sensing of touches on the LinnStrument's touch surfac
 // CAREFUL, contrary to all the other arrays these are rows first and columns second since it makes it much easier to visualize and edit the
 // actual values in a spreadsheet
 short Z_BIAS[MAXROWS][MAXCOLS];
-const short Z_BIAS_200_SEPTEMBER2014[MAXROWS][MAXCOLS] =  {
+LS_CONST short Z_BIAS_200_SEPTEMBER2014[MAXROWS][MAXCOLS] =  {
     {350, 1506, 1497, 1417, 1357, 1297, 1241, 1205, 1177, 1153, 1129, 1109, 1093, 1087, 1087, 1089, 1095, 1093, 1109, 1121, 1157, 1209, 1277, 1361, 1441, 1256},
     {350, 1506, 1418, 1350, 1282, 1222, 1178, 1150, 1126, 1101, 1086, 1070, 1062, 1054, 1050, 1050, 1054, 1062, 1074, 1086, 1114, 1150, 1214, 1290, 1386, 1256},
     {350, 1443, 1359, 1295, 1227, 1175, 1143, 1119, 1095, 1067, 1051, 1039, 1031, 1019, 1016, 1018, 1023, 1029, 1039, 1051, 1079, 1111, 1171, 1243, 1331, 1193},
@@ -32,7 +32,7 @@ const short Z_BIAS_200_SEPTEMBER2014[MAXROWS][MAXCOLS] =  {
     {350, 1506, 1418, 1350, 1282, 1222, 1178, 1150, 1126, 1101, 1086, 1070, 1062, 1054, 1050, 1050, 1054, 1062, 1074, 1086, 1114, 1150, 1214, 1290, 1386, 1256},
     {350, 1506, 1497, 1417, 1357, 1297, 1241, 1205, 1177, 1153, 1129, 1109, 1093, 1087, 1087, 1089, 1095, 1093, 1109, 1121, 1157, 1209, 1277, 1361, 1441, 1256}
   };
-const short Z_BIAS_128_SEPTEMBER2016[MAXROWS][MAXCOLS] =  {
+LS_CONST short Z_BIAS_128_SEPTEMBER2016[MAXROWS][MAXCOLS] =  {
     {500, 2560, 2320, 2150, 2020, 1920, 1840, 1780, 1720, 1700, 1730, 1790, 1860, 1940, 2020, 2100, 2160, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {500, 2220, 2040, 1900, 1780, 1680, 1600, 1560, 1520, 1500, 1530, 1570, 1640, 1720, 1800, 1900, 2000, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {500, 2200, 1980, 1860, 1720, 1600, 1510, 1470, 1440, 1440, 1460, 1470, 1500, 1580, 1680, 1780, 1900, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -44,7 +44,7 @@ const short Z_BIAS_128_SEPTEMBER2016[MAXROWS][MAXCOLS] =  {
   };
 // Make LS128 feel more like LS200, here is the LS200 bias array but with the center 9 columns removed: 
 //                                      delete from here ^                                             to here ^
-const short Z_BIAS_128_SEPTEMBER2019[MAXROWS][MAXCOLS] =  {   
+LS_CONST short Z_BIAS_128_SEPTEMBER2019[MAXROWS][MAXCOLS] =  {   
     {350, 1506, 1497, 1417, 1357, 1297, 1241, 1205, 1177, 1109, 1121, 1157, 1209, 1277, 1361, 1441, 1256, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {350, 1506, 1418, 1350, 1282, 1222, 1178, 1150, 1126, 1074, 1086, 1114, 1150, 1214, 1290, 1386, 1256, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {350, 1443, 1359, 1295, 1227, 1175, 1143, 1119, 1095, 1039, 1051, 1079, 1111, 1171, 1243, 1331, 1193, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -88,7 +88,7 @@ void initializeSensors() {
   Device.sensorRangeZ = DEFAULT_SENSOR_RANGE_Z;
 }
 
-inline short readX(byte zPct) {                       // returns the raw X value at the addressed cell
+short readX(byte zPct) {                       // returns the raw X value at the addressed cell
 #ifdef TESTING_SENSOR_DISABLE
     if (sensorCell->disabled) {
       return 0;
@@ -152,7 +152,17 @@ const short READZ_SETTLING_PRESSURE_THRESHOLD = 80;
 
 inline short applyRawZBias(short rawZ) {
   // apply the bias for each column, we also raise the baseline values to make the highest points just as sensitive and the lowest ones more sensitive
-  return (rawZ * Z_BIAS_MULTIPLIER) / Z_BIAS[sensorRow][sensorCol];
+  return (int(rawZ) * Z_BIAS_MULTIPLIER) / Z_BIAS[sensorRow][sensorCol];
+  // ^ the int cast is superfluous, but explicit to note once & forever that this looked like a spot of overflow risk during code review.
+  // However, https://en.cppreference.com/w/cpp/language/implicit_conversion.html#Integral_promotion states:
+  // 
+  // > In particular, arithmetic operators do not accept types smaller than int as arguments, and integral promotions are automatically applied after lvalue-to-rvalue conversion, if applicable. 
+  //
+  // ergo the '*' multiply operator implicitly promotes the 'short int' values involved to 'int' before executing!
+  //
+  // Things MAY get a tad hairy though if RawZ nears 4095, as the Z_BIAS_MULTIPLIER @ 1400 will then produce a 32-bit int overflow in the multiply.
+  //
+  // RawZ is obtained from an ADS7883 12-bit ADC chip, i.e. will carry values in the range 0..4095, so 32-bit integer overflow near the top end of that range is still a risk!
 }
 
 inline unsigned short readZ() {                       // returns the raw Z value
@@ -161,10 +171,6 @@ inline unsigned short readZ() {                       // returns the raw Z value
       return 0;
     }
 #endif
-
-  DEBUGPRINT((6,"readZ "));
-  DEBUGPRINT((6,sizeof(short)));
-  DEBUGPRINT((6," rawZ:"));
 
   selectSensorCell(sensorCol, sensorRow, READ_Z);     // set analog switches to current cell in touch sensor and read Z
 
@@ -199,16 +205,26 @@ inline unsigned short readZ() {                       // returns the raw Z value
   // store the last value that was read straight off of the sensor without any compensation
   lastReadSensorRawZ = rawZ;
 
-  DEBUGPRINT((6,rawZ));
+#ifdef DEBUG_ENABLED
+  boolean dbg = (rawZ > 0);
+  if (dbg) {
+    DEBUGPRINT((6,"readZ: rawZ:"));
+    DEBUGPRINT((6,rawZ));
+  }
+#endif  
 
   // scale the sensor based on the sensitivity setting
   rawZ = rawZ * Device.sensorSensitivityZ / 100;
 
   rawZ = applyRawZBias(rawZ);
 
-  DEBUGPRINT((6," biasedZ:"));
-  DEBUGPRINT((6,rawZ));
-  DEBUGPRINT((6,"\n"));
+#ifdef DEBUG_ENABLED
+  if (dbg) {
+    DEBUGPRINT((6," biasedZ:"));
+    DEBUGPRINT((6,rawZ));
+    DEBUGPRINT((6,"\n"));
+  }
+#endif
 
   return rawZ;
 }
@@ -222,7 +238,16 @@ inline short spiAnalogRead() {
   // assemble the 2 transfered bytes into an int
   short raw = short(msb) << 8;
   raw |= lsb;
-  // shift the 14-bit value from bits 16-2 to bits 14-0
+  // shift the 14-bit value from bits 16-2 to bits 14-0:
+  //
+  // as the ADS7883 datasheet says:
+  // > The data word contains two leading zeros, followed by 12-bit data in MSB first format
+  // > and padded by two lagging zeros.
+  // >
+  // > The falling edge of CS clocks out the first zero, and a second zero is clocked out on the first falling edge of the
+  // > clock. Data is in MSB first format with the MSB being clocked out on the 2nd falling edge. Data is padded with
+  // > two lagging zeros as shown in Figure 21.
+  //
   return (raw >> 2) & 0xFFF;
 }
 
