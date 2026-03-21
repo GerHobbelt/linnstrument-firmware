@@ -1260,6 +1260,9 @@ void paintCustomSwitchAssignmentConfigDisplay() {
     case ASSIGNED_TRANSPOSE_UP:
       adaptfont_draw_string(0, 0, "TRN+", globalColor, true);
       break;
+    case ASSIGNED_WHOLETONE_OFFSET:
+      adaptfont_draw_string(0, 0, "WTOF", globalColor, true);
+      break;
   }
 }
 
@@ -1603,6 +1606,7 @@ void paintSwitchAssignment(byte mode) {
     case ASSIGNED_SEQUENCER_MUTE:
     case ASSIGNED_TRANSPOSE_DOWN:
     case ASSIGNED_TRANSPOSE_UP:
+    case ASSIGNED_WHOLETONE_OFFSET:
       setLed(9, 3, getSwitchTapTempoColor(), cellOn);
       break;
     case ASSIGNED_AUTO_OCTAVE:
@@ -1763,6 +1767,12 @@ void paintGlobalSettingsDisplay() {
         break;
       case ROWOFFSET_GUITAR:            // guitar tuning
         setLed(6, 3, getGuitarTuningColor(), cellOn);
+        break;
+      case ROWOFFSET_WHOLETONE:             // wholetone tuning
+        setLed(6, 1, globalAltColor, cellOn);
+        break;
+      case ROWOFFSET_WHOLETONE_ALT:             // wholetone tuning
+        setLed(6, 1, globalLowRowColor, cellOn);
         break;
       case ROWOFFSET_ZERO:
         // no nothing

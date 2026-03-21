@@ -329,6 +329,11 @@ void performSwitchAssignmentOn(byte whichSwitch, byte assignment, byte split) {
     case ASSIGNED_TRANSPOSE_UP:
       switchTransposePitch(split, 1);
       break;
+
+    case ASSIGNED_WHOLETONE_OFFSET:
+      wholetone_offset = ((wholetone_offset == 1) ? -1 : 1);
+      updateDisplay();
+      break;
   }
 }
 

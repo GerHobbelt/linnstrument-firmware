@@ -103,6 +103,8 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define ROWOFFSET_NOOVERLAP        0x00
 #define ROWOFFSET_OCTAVECUSTOM     0x0c
 #define ROWOFFSET_GUITAR           0x0d
+#define ROWOFFSET_WHOLETONE        0x0e
+#define ROWOFFSET_WHOLETONE_ALT    0x0f
 #define ROWOFFSET_ZERO             0x7f
 
 #define LED_FLASH_DELAY  50000        // the time before a led is turned off when flashing or pulsing, in microseconds
@@ -199,7 +201,8 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define ASSIGNED_SEQUENCER_MUTE         17
 #define ASSIGNED_TRANSPOSE_DOWN         18
 #define ASSIGNED_TRANSPOSE_UP           19
-#define MAX_ASSIGNED                    ASSIGNED_TRANSPOSE_UP
+#define ASSIGNED_WHOLETONE_OFFSET       20
+#define MAX_ASSIGNED                    ASSIGNED_WHOLETONE_OFFSET
 #define ASSIGNED_DISABLED               255
 
 #define GLOBAL_SETTINGS_ROW  0
@@ -1079,6 +1082,10 @@ short restrictedRow = -1;                           // temporarily restrict touc
 byte guitarTuningRowNum = 0;                        // active row number for configuring the guitar tuning
 short guitarTuningPreviewNote = -1;                 // active note that is previewing the guitar tuning pitch
 short guitarTuningPreviewChannel = -1;              // active channel that is previewing the guitar tuning pitch
+
+// used for upper row offset in the ROWOFFSET_WHOLETONE mode
+// can be switched from -1 to 1 by an assigned switch (ASSIGNED_WHOLETONE_OFFSET)
+byte wholetone_offset = 1;
 
 byte customLedColor = COLOR_GREEN;                  // color is used for drawing in the custom LED editor
 

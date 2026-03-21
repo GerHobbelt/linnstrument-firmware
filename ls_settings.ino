@@ -2675,7 +2675,10 @@ void handleGlobalSettingNewTouch() {
             break;
           case 1:
             if (Global.rowOffset == 6) {
-              Global.rowOffset = ROWOFFSET_ZERO;
+              Global.rowOffset = ROWOFFSET_WHOLETONE;
+            }
+            else if (Global.rowOffset == ROWOFFSET_WHOLETONE) {
+              Global.rowOffset = ROWOFFSET_WHOLETONE_ALT;
             }
             else {
               Global.rowOffset = 6;
