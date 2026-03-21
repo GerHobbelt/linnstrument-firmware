@@ -1887,17 +1887,17 @@ LS_CONST byte SCANNED_CELLS_128[MAX_CELLCOUNT][2] = {
   {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}
 };
 
-auto &SCANNED_CELLS = SCANNED_CELLS_200;    // a *reference* to the actual CellScanStepGrid to use for our model (these are stored in ROM)
+const auto *SCANNED_CELLS = &SCANNED_CELLS_200[0];    // a *reference* to the actual CellScanStepGrid to use for our model (these are stored in ROM)
 
 void initializeTouchHandling() {
   if (LINNMODEL == 200) {
     CELLCOUNT = 201;
-    SCANNED_CELLS = SCANNED_CELLS_200;
+    SCANNED_CELLS = &SCANNED_CELLS_200[0];
   }
   else if (LINNMODEL == 128) {
     CELLCOUNT = 129;
     // https://isocpp.org/wiki/faq/references#reseating-refs
-    SCANNED_CELLS = SCANNED_CELLS_128;
+    SCANNED_CELLS = &SCANNED_CELLS_128[0];
   }
 }
 
