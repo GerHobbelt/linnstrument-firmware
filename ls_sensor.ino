@@ -172,8 +172,6 @@ inline unsigned short readZ() {                       // returns the raw Z value
     }
 #endif
 
-  DEBUGPRINT((6,"readZ: rawZ:"));
-
   selectSensorCell(sensorCol, sensorRow, READ_Z);     // set analog switches to current cell in touch sensor and read Z
 
   short rawZ;
@@ -207,16 +205,26 @@ inline unsigned short readZ() {                       // returns the raw Z value
   // store the last value that was read straight off of the sensor without any compensation
   lastReadSensorRawZ = rawZ;
 
-  DEBUGPRINT((6,rawZ));
+#ifdef DEBUG_ENABLED
+  boolean dbg = (rawZ > 0);
+  if (dbg) {
+    DEBUGPRINT((6,"readZ: rawZ:"));
+    DEBUGPRINT((6,rawZ));
+  }
+#endif  
 
   // scale the sensor based on the sensitivity setting
   rawZ = rawZ * Device.sensorSensitivityZ / 100;
 
   rawZ = applyRawZBias(rawZ);
 
-  DEBUGPRINT((6," biasedZ:"));
-  DEBUGPRINT((6,rawZ));
-  DEBUGPRINT((6,"\n"));
+#ifdef DEBUG_ENABLED
+  if (dbg) {
+    DEBUGPRINT((6," biasedZ:"));
+    DEBUGPRINT((6,rawZ));
+    DEBUGPRINT((6,"\n"));
+  }
+#endif
 
   return rawZ;
 }
