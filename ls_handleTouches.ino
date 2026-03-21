@@ -1855,9 +1855,9 @@ inline void handleOpenStringsRelease() {
 // nextSensorCell:
 // Moves on to the next cell witin the total surface scan of all surface cells.
 
-#define MAX_CELLCOUNT 201
+#define MAX_CELLCOUNT 201       // 25*8 grid + 1 entry for the switches column = 200 + 1
 byte CELLCOUNT = MAX_CELLCOUNT;
-byte SCANNED_CELLS[MAX_CELLCOUNT][2];
+//byte SCANNED_CELLS[MAX_CELLCOUNT][2];
 
 // Columns and rows are scanned in non-sequential order to minimize sensor crosstalk
 LS_CONST byte SCANNED_CELLS_200[MAX_CELLCOUNT][2] = {
@@ -1887,20 +1887,17 @@ LS_CONST byte SCANNED_CELLS_128[MAX_CELLCOUNT][2] = {
   {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}
 };
 
+auto &SCANNED_CELLS = SCANNED_CELLS_200;    // a *reference* to the actual CellScanStepGrid to use for our model (these are stored in ROM)
+
 void initializeTouchHandling() {
   if (LINNMODEL == 200) {
     CELLCOUNT = 201;
-    for (byte i = 0; i < MAX_CELLCOUNT; ++i) {
-      SCANNED_CELLS[i][0] = SCANNED_CELLS_200[i][0];
-      SCANNED_CELLS[i][1] = SCANNED_CELLS_200[i][1];
-    }
+    SCANNED_CELLS = SCANNED_CELLS_200;
   }
   else if (LINNMODEL == 128) {
     CELLCOUNT = 129;
-    for (byte i = 0; i < MAX_CELLCOUNT; ++i) {
-      SCANNED_CELLS[i][0] = SCANNED_CELLS_128[i][0];
-      SCANNED_CELLS[i][1] = SCANNED_CELLS_128[i][1];
-    }
+    // https://isocpp.org/wiki/faq/references#reseating-refs
+    SCANNED_CELLS = SCANNED_CELLS_128;
   }
 }
 
