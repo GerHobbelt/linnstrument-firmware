@@ -120,7 +120,7 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define ROWOFFSET_GUITAR           0x0d
 #define ROWOFFSET_ZERO             0x7f
 
-#define LED_FLASH_DELAY  50000        // the time before a led is turned off when flashing or pulsing, in microseconds
+#define LED_FLASH_DELAY  500000        // the time before a led is turned off when flashing or pulsing, in microseconds
 
 #define DEFAULT_MAINLOOP_DIVIDER      2
 #define DEFAULT_LED_REFRESH           333
@@ -1037,8 +1037,8 @@ unsigned long lastSwitchPress[5];                     // the last moment a parti
 boolean switchState[5][NUMSPLITS];                    // the current state of each switch for each split
 boolean switchTargetEnabled[NUMSPLITS][MAX_ASSIGNED]; // we keep track of switch targets individually for each split and whether they're active
 boolean switchCCEnabled[NUMSPLITS][128];              // we keep track of the switch targets that send out CC numbers for each split to determine whether they're active
-boolean footSwitchState[5];                           // holds the last read footswitch state, so that we only react on state changes of the input signal
-boolean footSwitchOffState[2];                        // holds the OFF state of both foot switches, as read at startup, thereby permitting normally-closed or normally-open switches
+boolean footSwitchState[5];                           // holds the last read footswitch state, so that we only react on state changes of the input signal (L/R/B -- SW1/SW2 slots are unused in this array)
+boolean footSwitchOffState[2];                        // holds the OFF state of both foot switches, as read at startup, thereby permitting normally-closed or normally-open switches (L/R)
 unsigned long prevFootSwitchTimerCount;               // time interval (in microseconds) between foot switch reads
 boolean switchFootBothReleased = false;               // keep track of whether the last release was for both switches, in order to prevent individual releases to happen
 
