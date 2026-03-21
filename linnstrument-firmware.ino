@@ -43,7 +43,7 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 /******************************************** CONSTANTS ******************************************/
 
 const char* OSVersion = "234.";
-const char* OSVersionBuild = ".073";
+const char* OSVersionBuild = ".074";
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -53,12 +53,13 @@ const char* OSVersionBuild = ".073";
 // Uncomment to immediately start X, Y, or Z frame debugging when the LinnStrument launches
 // This is useful when having to inspect the sensor data without being able to
 // use the switches to change the active settings
-#define DISPLAY_XFRAME_AT_LAUNCH
-#define DISPLAY_YFRAME_AT_LAUNCH
+//
+//#define DISPLAY_XFRAME_AT_LAUNCH
+//#define DISPLAY_YFRAME_AT_LAUNCH
 #define DISPLAY_ZFRAME_AT_LAUNCH
-#define DISPLAY_SURFACESCAN_AT_LAUNCH
+//#define DISPLAY_SURFACESCAN_AT_LAUNCH
 #define DISPLAY_FREERAM_AT_LAUNCH
-// #define TESTING_SENSOR_DISABLE
+//#define TESTING_SENSOR_DISABLE
 
 // Touch surface constants
 byte LINNMODEL = 200;
@@ -67,7 +68,7 @@ byte LINNMODEL = 200;
 #define MAXROWS 8
 
 byte NUMCOLS = 26;                   // number of touch sensor columns currently used for device
-byte NUMROWS = 8;                    // number of touch sensor rows
+constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 #define NUMSPLITS  2                 // number of splits supported
 #define LEFT       0
@@ -1238,12 +1239,12 @@ void setup() {
   /*!!*/  if (digitalRead(38) == HIGH) {
   /*!!*/    LINNMODEL = 200;
   /*!!*/    NUMCOLS = 26;
-  /*!!*/    NUMROWS = 8;
+  /*!!*/    //NUMROWS = 8;
   /*!!*/  }
   /*!!*/  else {
   /*!!*/    LINNMODEL = 128;
   /*!!*/    NUMCOLS = 17;
-  /*!!*/    NUMROWS = 8;
+  /*!!*/    //NUMROWS = 8;
   /*!!*/  }
   /*!!*/
   /*!!*/  initializeSensors();
@@ -1274,7 +1275,7 @@ void setup() {
   /*!!*/  SPI.begin(SPI_SENSOR);
   /*!!*/  SPI.setDataMode(SPI_SENSOR, SPI_MODE0);
   /*!!*/  SPI.setClockDivider(SPI_SENSOR, 4);                 // set clock speed to 84/4 = 21 mHz. Max clock is 25mHz @ 4.5v
-  /*!!*/  selectSensorCell(0, 0, READ_Z);                     // set it analog switches to read column 0, row 0 and to read pressure
+  /*!!*/  selectSensorCell(0, 0, READ_Z);                     // set its analog switches to read column 0, row 0 and to read pressure
   /*!!*/
   /*!!*/  // initialize the SPI input port for reading the TI ADS7883 ADC
   /*!!*/  SPI.begin(SPI_ADC);
