@@ -149,9 +149,10 @@ const char* OSVersionBuild = ".074";
 //
 //#define DISPLAY_XFRAME_AT_LAUNCH
 //#define DISPLAY_YFRAME_AT_LAUNCH
-#define DISPLAY_ZFRAME_AT_LAUNCH
+//#define DISPLAY_ZFRAME_AT_LAUNCH
 //#define DISPLAY_SURFACESCAN_AT_LAUNCH
 #define DISPLAY_FREERAM_AT_LAUNCH
+#define DISPLAY_DEBUGMIDI_AT_LAUNCH
 //#define TESTING_SENSOR_DISABLE
 
 // Touch surface constants
@@ -1008,21 +1009,25 @@ OperatingMode operatingMode = modePerformance;
 
 /************************************** FLASH STORAGE LAYOUT *************************************/
 
-static inline int alignToByteBoundary(int value) {
+static constexpr inline int alignToWord32Boundary(int value) {
+#if 0
   if (value % 4 == 0) {
     return value;
   }
 
   return ((value / 4) + 1) * 4;
+#else
+  return int((value + 3) / 4) * 4;
+#endif
 }
 
-const int PROJECTS_OFFSET = 4;
-const int PROJECT_VERSION_MARKER_SIZE = 4;
-const int PROJECT_INDEXES_COUNT = 20;
-const int PROJECTS_MARKERS_SIZE = alignToByteBoundary(PROJECT_VERSION_MARKER_SIZE + 2 * PROJECT_INDEXES_COUNT);    // one version marker, two series on indexes for project references
-const int SINGLE_PROJECT_SIZE = alignToByteBoundary(sizeof(SequencerProject));
-const int ALL_PROJECTS_SIZE = PROJECTS_MARKERS_SIZE + (MAX_PROJECTS + 1)*SINGLE_PROJECT_SIZE;
-const int SETTINGS_OFFSET = PROJECTS_OFFSET + alignToByteBoundary(ALL_PROJECTS_SIZE);
+constexpr const int PROJECTS_OFFSET = 4;
+constexpr const int PROJECT_VERSION_MARKER_SIZE = 4;
+constexpr const int PROJECT_INDEXES_COUNT = 20;
+constexpr const int PROJECTS_MARKERS_SIZE = alignToWord32Boundary(PROJECT_VERSION_MARKER_SIZE + 2 * PROJECT_INDEXES_COUNT);    // one version marker, two series on indexes for project references
+constexpr const int SINGLE_PROJECT_SIZE = alignToWord32Boundary(sizeof(SequencerProject));
+constexpr const int ALL_PROJECTS_SIZE = PROJECTS_MARKERS_SIZE + (MAX_PROJECTS + 1)*SINGLE_PROJECT_SIZE;
+constexpr const int SETTINGS_OFFSET = PROJECTS_OFFSET + alignToWord32Boundary(ALL_PROJECTS_SIZE);
 
 #define PROJECT_INDEX_OFFSET(marker, index)   (PROJECTS_OFFSET + PROJECT_VERSION_MARKER_SIZE + marker * PROJECT_INDEXES_COUNT + index)
 
@@ -1270,7 +1275,7 @@ boolean switchPressAtStartup(byte switchRow) {
 
 void activateSleepMode() {
   clearSwitches();
-  clearDisplayImmediately();
+  disableLedDisplay(); // clearDisplayImmediately();
   setDisplayMode(displaySleep);
 }
 
@@ -1511,6 +1516,13 @@ void setup() {
   #define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_FREERAM = true;
+#endif
+
+#ifdef DISPLAY_DEBUGMIDI_AT_LAUNCH
+  #define DEBUG_ENABLED
+  Device.serialMode = true;
+  SWITCH_DEBUGMIDI = true;
+  debugLevel = 5;
 #endif
 
   setupDone = true;
