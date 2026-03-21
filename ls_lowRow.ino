@@ -229,7 +229,7 @@ void handleLowRowState(boolean newVelocity, short pitchBend, short timbre, byte 
 void paintLowRowCCX(byte split) {
   byte faderLeft, faderLength;
   determineFaderBoundaries(split, faderLeft, faderLength);
-  paintCCFaderDisplayRow(split, 0, Split[split].colorLowRow, Split[split].ccForLowRow, faderLeft, faderLength);
+  paintCCFaderDisplayRow(split, 0, Split[split].colorLowRow, Split[split].ccForLowRow, faderLeft, faderLength, LED_LAYER_LOWROW);
 }
 
 void sendLowRowCCX(unsigned short x) {
@@ -255,7 +255,7 @@ void sendLowRowCCXYZ(unsigned short x, short y, short z) {
 
     byte faderLeft, faderLength;
     determineFaderBoundaries(sensorSplit, faderLeft, faderLength);
-    paintCCFaderDisplayRow(sensorSplit, sensorRow, Split[sensorSplit].colorLowRow, Split[sensorSplit].ccForLowRowX, faderLeft, faderLength);
+    paintCCFaderDisplayRow(sensorSplit, sensorRow, Split[sensorSplit].colorLowRow, Split[sensorSplit].ccForLowRowX, faderLeft, faderLength, LED_LAYER_LOWROW);
   }
 
   // send out the MIDI CCs

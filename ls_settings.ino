@@ -27,6 +27,29 @@ const char* defaultAudienceMessages[16] = {
   "HELLO BARCELONA"
 };
 
+// These arrays use the setLed encoding scheme where the color is bitshifted << 3 and ORed with the CellDisplay value
+const byte CUSTOM_LEDS_PATTERN1[LED_LAYER_SIZE] = {
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+   0, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 25,
+   0, 25,  0,  0, 25,  0, 25,  0, 25,  0, 25,  0,  0, 25,  0,  0, 25,  0, 25,  0, 25,  0, 25,  0,  0, 25,
+   0, 25,  0,  0, 25,  0, 25,  0, 25,  0, 25,  0,  0, 25,  0,  0, 25,  0, 25,  0, 25,  0, 25,  0,  0, 25,
+   0, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 25,
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
+   0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
+};
+
+const byte CUSTOM_LEDS_PATTERN2[LED_LAYER_SIZE] = {
+   0,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0,
+   0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17,
+   0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73,
+   0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,
+   0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,
+   0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,
+   0, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,
+   0, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25
+};
+
 unsigned long tempoChangeTime = 0;           // time of last touch for tempo change
 
 void GlobalSettings::setSwitchAssignment(byte whichSwitch, byte assignment, boolean disableSame) {
@@ -171,9 +194,7 @@ void writeSettingsToFlash() {
   DEBUGPRINT((2," bytes"));
   DEBUGPRINT((2,"\n"));
 
-  clearDisplayImmediately();
-  clearFullDisplay();
-  completelyRefreshLeds();
+  disableLedDisplay();
 
   // read the marker to know which configuration version was last written successfully
   byte marker = dueFlashStorage.read(SETTINGS_OFFSET);
@@ -195,8 +216,11 @@ void writeSettingsToFlash() {
   // write the marker after the configuration data so that this version becomes to latest coherent one
   dueFlashStorage.write(SETTINGS_OFFSET, marker);
 
+  clearFullDisplay();
+  completelyRefreshLeds();
   updateDisplay();
-}
+  enableLedDisplay();
+ }
 
 void loadSettings() {
   // read the marker to know which configuration version was last written successfully
@@ -295,6 +319,7 @@ void applyPresetSettings() {
 void applyConfiguration() {
   applyPresetSettings();
   applySequencerSettings();
+  loadCustomLedLayer(getActiveCustomLedPattern());
 }
 
 void applySystemState() {
@@ -337,7 +362,10 @@ void initializeDeviceSettings() {
   Global.splitActive = false;
 
   initializeAudienceMessages();
-  clearStoredCustomLedLayer();
+
+  memcpy(&Device.customLeds[0][0], &CUSTOM_LEDS_PATTERN1[0], LED_LAYER_SIZE);
+  memcpy(&Device.customLeds[1][0], &CUSTOM_LEDS_PATTERN2[0], LED_LAYER_SIZE);
+  memset(&Device.customLeds[2][0], 0, LED_LAYER_SIZE);
 }
 
 void initializeAudienceMessages() {
@@ -647,6 +675,8 @@ void initializePresetSettings() {
   config.preset[1].split[RIGHT].midiMode = channelPerNote;
   config.preset[1].split[LEFT].bendRangeOption = bendRange24;
   config.preset[1].split[RIGHT].bendRangeOption = bendRange24;
+  config.preset[1].split[LEFT].customBendRange = 48;
+  config.preset[1].split[RIGHT].customBendRange = 48;
   config.preset[1].split[LEFT].expressionForZ = loudnessChannelPressure;
   config.preset[1].split[RIGHT].expressionForZ = loudnessChannelPressure;
   config.preset[1].split[LEFT].midiChanMain = 1;
@@ -841,6 +871,10 @@ void handleControlButtonNewTouch() {
         updateDisplay();
         updateSwitchLeds();
       }
+      else if (displayMode == displayCustomLedsEditor) {
+        customLedColor = colorCycle(customLedColor, false);
+        updateDisplay();
+      }
       else {
         doSwitchPressed(SWITCH_SWITCH_1);
         updateSwitchLeds();
@@ -931,9 +965,8 @@ void handleControlButtonRelease() {
       clearLed(0, sensorRow);
 
       setDisplayMode(displayNormal);
-      updateDisplay();
-
       storeSettings();
+      updateDisplay();
       break;
 
     case SPLIT_ROW:                                          // SPLIT button released
@@ -2323,14 +2356,6 @@ void toggleNoteLights(int& notelights) {
   notelights ^= 1 << light;
 }
 
-void setActiveNoteLights() {
-  if (sensorCol < 2 || sensorCol > 4 || sensorRow > 3) {
-    return;
-  }
-
-  Global.activeNotes = sensorCol-2 + (sensorRow*3);
-}
-
 boolean isArpeggiatorTempoTriplet() {
   return Global.arpTempo == ArpEighthTriplet || Global.arpTempo == ArpSixteenthTriplet || Global.arpTempo == ArpThirtysecondTriplet;
 }
@@ -2538,9 +2563,11 @@ void handleGlobalSettingNewTouch() {
         switch (sensorRow) {
           case LIGHTS_MAIN:
           case LIGHTS_ACCENT:
-            lightSettings = sensorRow;
+          case LIGHTS_ACTIVE:
+            if (!customLedPatternActive) {
+              lightSettings = sensorRow;
+            }
             break;
-          case 2:
           case 3:
             // handled at release
             break;
@@ -2554,13 +2581,19 @@ void handleGlobalSettingNewTouch() {
           // select individual scale notes or accent notes
           switch (lightSettings) {
             case LIGHTS_MAIN:
-              toggleNoteLights(Global.mainNotes[Global.activeNotes]);
+              if (!customLedPatternActive) {
+                toggleNoteLights(Global.mainNotes[Global.activeNotes]);
+              }
               break;
             case LIGHTS_ACCENT:
-              toggleNoteLights(Global.accentNotes[Global.activeNotes]);
+              if (!customLedPatternActive) {
+                toggleNoteLights(Global.accentNotes[Global.activeNotes]);
+              }
               break;
             case LIGHTS_ACTIVE:
-              setActiveNoteLights();
+              Global.activeNotes = sensorCol-2 + (sensorRow*3);
+              loadCustomLedLayer(getActiveCustomLedPattern());
+              break;
           }
         }
         break;
@@ -2822,14 +2855,19 @@ void handleGlobalSettingNewTouch() {
   switch (sensorCol) {
     case 1:
       switch (sensorRow) {
-        case 2:
-          setLed(sensorCol, sensorRow, getCustomLedsStoredColor(), cellSlowPulse);
-          break;
         case 3:
           setLed(sensorCol, sensorRow, getSplitHandednessColor(), cellSlowPulse);
           break;
       }
       break;
+
+      case 2:
+      case 3:
+      case 4:
+        if (lightSettings == LIGHTS_ACTIVE && sensorRow == 3) {
+          setLed(sensorCol, sensorRow, globalColor, cellSlowPulse);
+        }
+        break;
 
     case 6:
       switch (sensorRow) {
@@ -2925,16 +2963,22 @@ void handleGlobalSettingHold() {
     switch (sensorCol) {
       case 1:
         switch (sensorRow) {
-          case 2:
-            cellTouched(ignoredCell);
-            setDisplayMode(displayCustomLedsEditor);
-            updateDisplay();
-            break;
           case 3:
             resetNumericDataChange();
             setDisplayMode(displaySplitHandedness);
             updateDisplay();
             break;
+        }
+        break;
+
+      case 2:
+      case 3:
+      case 4:
+        if (lightSettings == LIGHTS_ACTIVE && sensorRow == 3) {
+            cellTouched(ignoredCell);
+            loadCustomLedLayer(getActiveCustomLedPattern());
+            setDisplayMode(displayCustomLedsEditor);
+            updateDisplay();
         }
         break;
 
@@ -3060,11 +3104,7 @@ void handleGlobalSettingHold() {
 }
 
 void handleGlobalSettingRelease() {
-  if (sensorCol == 1 && sensorRow == 2 &&
-      ensureCellBeforeHoldWait(getCustomLedsStoredColor(), lightSettings == LIGHTS_ACTIVE ? cellOn : cellOff)) {
-    lightSettings = LIGHTS_ACTIVE;
-  }
-  else if (sensorCol == 1 && sensorRow == 3 &&
+  if (sensorCol == 1 && sensorRow == 3 &&
       ensureCellBeforeHoldWait(getSplitHandednessColor(), Device.otherHanded ? cellOn : cellOff)) {
     Device.otherHanded = !Device.otherHanded;
   }
@@ -3238,7 +3278,7 @@ void handleCustomLedsEditorNewTouch() {
 
       if (findOtherCustomLedsEditorTouch(other_col, other_row)) {
         TouchInfo& other_cell = (cell(other_col, other_row));
-        if (other_cell.lastTouch != 0 && calcTimeDelta(millis(), other_cell.lastTouch) > SENSOR_HOLD_DELAY) {
+        if (other_cell.lastTouch != 0 && abs(sensorCol - other_col) > 0 && abs(sensorRow - other_row) > 0) {
           cleared_area = true;
           cellTouched(other_col, other_row, ignoredCell);
 
@@ -3264,21 +3304,14 @@ void handleCustomLedsEditorNewTouch() {
 void handleCustomLedsEditorHold() {
   if (sensorCol > 0 && isCellPastSensorHoldWait()) {
     setLed(sensorCol, sensorRow, COLOR_OFF, cellOff, LED_LAYER_CUSTOM1);
+    cellTouched(ignoredCell);
   }
 }
 
 void handleCustomLedsEditorRelease() {
   if (sensorCol > 0) {
     if (!isCellPastSensorHoldWait()) {
-      byte color = getLedColor(sensorCol, sensorRow, LED_LAYER_CUSTOM1);
-      if (color == COLOR_OFF && lastCustomLedColor != COLOR_OFF) {
-        color = lastCustomLedColor;
-      }
-      else {
-        color = colorCycle(color, true);
-        lastCustomLedColor = color;
-      }
-      setLed(sensorCol, sensorRow, color, cellOn, LED_LAYER_CUSTOM1);
+      setLed(sensorCol, sensorRow, customLedColor, cellOn, LED_LAYER_CUSTOM1);
     }
     sensorCell->lastTouch = 0;
   }

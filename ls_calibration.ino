@@ -409,35 +409,92 @@ boolean handleCalibrationRelease() {
   // Handle calibration passes, at least two before indicating green
   if (displayMode == displayCalibration) {
     int cellPass = -1;
+    byte cellColor = COLOR_OFF;
 
     if (calibrationPhase == calibrationRows && (sensorRow == 0 || sensorRow == 2 || sensorRow == 5 || sensorRow == 7)) {
       byte i1 = sensorCol;
       byte i2 = (sensorRow / 2);
 
-      if (i2 < 4 && calSampleRows[i1][i2].maxValue - calSampleRows[i1][i2].minValue > 80) {    // only proceed when at least a delta of 80 in X values is measured
-        cellPass = calSampleRows[i1][i2].pass;
-        calSampleRows[i1][i2].pass += 1;
+#ifdef DEBUG_ENABLED
+      DEBUGPRINT((0,"calRows"));
+      DEBUGPRINT((0," col="));DEBUGPRINT((0,(int)sensorCol));
+      DEBUGPRINT((0," row="));DEBUGPRINT((0,(int)sensorRow));
+      DEBUGPRINT((0," sampleMin="));DEBUGPRINT((0,(int)calSampleRows[i1][i2].minValue));
+      DEBUGPRINT((0," sampleMax="));DEBUGPRINT((0,(int)calSampleRows[i1][i2].maxValue));
+      DEBUGPRINT((0," diff="));DEBUGPRINT((0,(int)calSampleRows[i1][i2].maxValue - calSampleRows[i1][i2].minValue));
+      DEBUGPRINT((0,"\n"));
+#endif
+
+      // Only proceed when at least a delta of 20 in X values is measured
+      if (i2 < 4) {
+        int delta = calSampleRows[i1][i2].maxValue - calSampleRows[i1][i2].minValue;
+        if (delta >= 20) {
+          cellPass = calSampleRows[i1][i2].pass;
+
+          // Adapt the color if the the delta is below expected values
+          if (delta <= 40) {
+            cellColor = COLOR_RED;
+          }
+          else {
+            // Only advance the pass when at least a delta of 40 in X values is measured
+            calSampleRows[i1][i2].pass += 1;
+
+            if (delta <= 65) {
+              cellColor = COLOR_YELLOW;
+            }
+            // This is the first pass for a sensor, switch the led to cyan
+            else if (cellPass == 0) {
+              cellColor = COLOR_CYAN;
+            }
+            // This is the second pass for a sensor, switch the led to green
+            else if (cellPass > 0) {
+              cellColor = COLOR_GREEN;
+            }
+          }
+        }
       }
     }
     else if (calibrationPhase == calibrationCols && sensorCol > 0 && (sensorCol % 3 == 1)) {
       byte i1 = (sensorCol - 1) / 3;
       byte i2 = sensorRow;
 
-      if (i1 < 9 && calSampleCols[i1][i2].maxValue - calSampleCols[i1][i2].minValue > 180) {    // only proceed when at least a delta of 180 in Y values is measured
-        cellPass = calSampleCols[i1][i2].pass;
-        calSampleCols[i1][i2].pass += 1;
+      // Only proceed when at least a delta of 60 in Y values is measured
+      if (i1 < 9) {
+        int delta = calSampleCols[i1][i2].maxValue - calSampleCols[i1][i2].minValue;
+        if (delta >= 60) {
+          cellPass = calSampleCols[i1][i2].pass;
+
+          // Adapt the color if the the delta is below expected values
+          if (delta <= 110) {
+            cellColor = COLOR_RED;
+          }
+          else {
+            // Only advance the pass when at least a delta of 110 in Y values is measured
+            calSampleCols[i1][i2].pass += 1;
+
+            if (delta <= 180) {
+              cellColor = COLOR_YELLOW;
+            }
+            // This is the first pass for a sensor, switch the led to cyan
+            else if (cellPass == 0) {
+              cellColor = COLOR_CYAN;
+            }
+            // This is the second pass for a sensor, switch the led to green
+            else if (cellPass > 0) {
+              cellColor = COLOR_GREEN;
+            }
+          }
+        }
       }
     }
 
-    // This is the first pass for a sensor, switch the led to cyan
-    if (cellPass == 0) {
-      setLed(sensorCol, sensorRow, COLOR_CYAN, cellOn);
+    // Only update the cell calibration LED when a change occurred
+    if (cellColor != COLOR_OFF) {
+      setLed(sensorCol, sensorRow, cellColor, cellOn);
     }
-    // This is the second or more pass for a sensor, switch the led to green
-    // We need at least two passes to consider the calibration viable
-    else if (cellPass > 0) {
-      setLed(sensorCol, sensorRow, COLOR_GREEN, cellOn);
 
+    // We need at least two passes to consider the calibration viable
+    if (cellPass > 0) {
       // Scan all the calibration samples to see if at least two passes were made
       // for each cell of the rows
       if (calibrationPhase == calibrationRows) {

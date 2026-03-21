@@ -266,7 +266,7 @@ void exitDisplayMode(DisplayMode mode) {
       storeSettings();
       break;
     case displayCustomLedsEditor:
-      storeCustomLedLayer();
+      storeCustomLedLayer(getActiveCustomLedPattern());
       storeSettings();
       break;
     default:
@@ -348,6 +348,9 @@ void updateSwitchLeds() {
     case displayPerSplit:
       lightLed(0, PER_SPLIT_ROW);
       break;
+    case displayCustomLedsEditor:
+      setLed(0, SWITCH_SWITCH_1, customLedColor, cellSlowPulse);
+      break;
     default:
       break;
   }
@@ -419,10 +422,10 @@ void paintNormalDisplaySplit(byte split, byte leftEdge, byte rightEdge) {
 
       if (!userFirmwareActive && row == 0 && Split[split].lowRowMode != lowRowNormal) {
         if (Split[split].lowRowMode == lowRowCCX && Split[split].lowRowCCXBehavior == lowRowCCFader) {
-          paintCCFaderDisplayRow(split, 0, Split[split].colorLowRow, Split[split].ccForLowRow, faderLeft, faderLength);
+          paintCCFaderDisplayRow(split, 0, Split[split].colorLowRow, Split[split].ccForLowRow, faderLeft, faderLength, LED_LAYER_LOWROW);
         }
         if (Split[split].lowRowMode == lowRowCCXYZ && Split[split].lowRowCCXYZBehavior == lowRowCCFader) {
-          paintCCFaderDisplayRow(split, 0, Split[split].colorLowRow, Split[split].ccForLowRowX, faderLeft, faderLength);
+          paintCCFaderDisplayRow(split, 0, Split[split].colorLowRow, Split[split].ccForLowRowX, faderLeft, faderLength, LED_LAYER_LOWROW);
         }
       }
     }
@@ -436,15 +439,19 @@ void paintCCFaderDisplayRow(byte split, byte row, byte faderLeft, byte faderLeng
 }
 
 void paintCCFaderDisplayRow(byte split, byte row, byte color, unsigned short ccForFader, byte faderLeft, byte faderLength) {
+  paintCCFaderDisplayRow(split, row, color, ccForFader, faderLeft, faderLength, LED_LAYER_MAIN);
+}
+
+void paintCCFaderDisplayRow(byte split, byte row, byte color, unsigned short ccForFader, byte faderLeft, byte faderLength, byte layer) {
   if (userFirmwareActive || ccForFader > 128) return;
 
   // when the fader only spans one cell, it acts as a toggle
   if (faderLength == 0) {
       if (ccFaderValues[split][ccForFader] > 0) {
-        setLed(faderLeft, row, color, cellOn);
+        setLed(faderLeft, row, color, cellOn, layer);
       }
       else {
-        clearLed(faderLeft, row);
+        clearLed(faderLeft, row, layer);
       }
   }
   // otherwise calculate the fader position based on its value and light the appropriate leds
@@ -453,10 +460,10 @@ void paintCCFaderDisplayRow(byte split, byte row, byte color, unsigned short ccF
 
     for (byte col = faderLength + faderLeft; col >= faderLeft; --col ) {
       if (Device.calRows[col][0].fxdReferenceX - FXD_CALX_HALF_UNIT > fxdFaderPosition) {
-        clearLed(col, row);
+        setLed(col, row, COLOR_BLACK, cellOn, layer);
       }
       else {
-        setLed(col, row, color, cellOn);
+        setLed(col, row, color, cellOn, layer);
       }
     }
   }
@@ -497,7 +504,7 @@ void paintNormalDisplayCell(byte split, byte col, byte row) {
     colour = COLOR_OFF;
     cellDisplay = cellOff;
   }
-  else {
+  else if (!customLedPatternActive) {
     byte octaveNote = abs(displayedNote % 12);
 
     // first paint all cells in split to its background color
@@ -530,10 +537,16 @@ void paintNormalDisplayCell(byte split, byte col, byte row) {
       colour = Split[split].colorLowRow;
       cellDisplay = cellOn;
     }
+    // actually set the cell's color
+    setLed(col, row, colour, cellDisplay, LED_LAYER_LOWROW);
   }
-
-  // actually set the cell's color
-  setLed(col, row, colour, cellDisplay);
+  else {
+    // actually set the cell's color
+    if (row == 0) {
+      clearLed(col, row, LED_LAYER_LOWROW);
+    }
+    setLed(col, row, colour, cellDisplay, LED_LAYER_MAIN);
+  }
 }
 
 // paintPerSplitDisplay:
@@ -841,15 +854,6 @@ byte getCalibrationColor() {
     return COLOR_GREEN;
   }
   return COLOR_RED;
-}
-
-byte getCustomLedsStoredColor() {
-  for (int i = 0; i < LED_LAYER_SIZE; ++i) {
-    if (Device.customLeds[i] != 0) {
-      return globalAltColor;
-    }
-  }
-  return globalColor;
 }
 
 byte getSplitHandednessColor() {
@@ -1299,7 +1303,6 @@ void paintSensorSensitivityZDisplay() {
   for (byte row = 1; row < NUMROWS; ++row) {
     clearRow(row);
   }
-  setLed(NUMCOLS-1, NUMROWS-1,  globalAltColor, cellOn);
   paintNumericDataDisplay(globalColor, Device.sensorSensitivityZ, 0, false);
 }
 
@@ -1514,7 +1517,7 @@ void displayActiveNotes() {
     for (byte col = 0; col < 3; ++col) {
       byte light = col + (row * 3);
       if (light == Global.activeNotes) {
-        lightLed(2+col, row);
+        setLed(2 + col, row, globalColor, cellOn);
       }
     }
   }
@@ -1650,23 +1653,23 @@ void paintGlobalSettingsDisplay() {
       setLed(1, 3, getSplitHandednessColor(), cellOn);
     }
 
-    byte custom_leds_stored_color = getCustomLedsStoredColor();
     switch (lightSettings) {
       case LIGHTS_MAIN:
-        lightLed(1, 0);
-        displayNoteLights(Global.mainNotes[Global.activeNotes]);
+        if (!customLedPatternActive) {
+          lightLed(1, 0);
+          displayNoteLights(Global.mainNotes[Global.activeNotes]);
+        }
         break;
       case LIGHTS_ACCENT:
-        lightLed(1, 1);
-        displayNoteLights(Global.accentNotes[Global.activeNotes]);
+        if (!customLedPatternActive) {
+          lightLed(1, 1);
+          displayNoteLights(Global.accentNotes[Global.activeNotes]);
+        }
         break;
       case LIGHTS_ACTIVE:
-        setLed(1, 2, custom_leds_stored_color, cellOn);
+        lightLed(1, 2);
         displayActiveNotes();
         break;
-    }
-    if (custom_leds_stored_color != globalColor) {
-      setLed(1, 2, custom_leds_stored_color, cellOn);
     }
 
     switch (Global.rowOffset) {
