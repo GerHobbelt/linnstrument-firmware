@@ -346,7 +346,7 @@ void storeSettingsToPreset(byte p) {
 // The first time after new code is loaded into the Linnstrument, this sets the initial defaults of all settings.
 // On subsequent startups, these values are overwritten by loading the settings stored in flash.
 void initializeDeviceSettings() {
-  Device.version = 16;
+  Device.version = 17;
   Device.serialMode = false;
   Device.sleepAnimationActive = false;
   Device.sleepActive = false;
@@ -635,6 +635,7 @@ void initializePresetSettings() {
         p.split[s].colorSequencerEvent = COLOR_ORANGE;
         p.split[s].colorSequencerDisabled = COLOR_LIME;
         p.split[s].playedTouchMode = playedCell;
+        p.split[s].lowRowBendBehavior = lowRowBendBend;
         p.split[s].lowRowCCXBehavior = lowRowCCHold;
         p.split[s].ccForLowRow = 1;
         p.split[s].lowRowCCXYZBehavior = lowRowCCHold;
@@ -1428,7 +1429,7 @@ void handlePerSplitSettingNewTouch() {
           Split[Global.currentPerSplit].lowRowMode = lowRowSustain;
           break;
         case 6:
-          Split[Global.currentPerSplit].lowRowMode = lowRowBend;
+          // handled in release
           break;
         case 5:
           // handled in release
@@ -1537,6 +1538,9 @@ void handlePerSplitSettingNewTouch() {
 
     case 13:
       switch (sensorRow) {
+        case 6:
+          setLed(sensorCol, sensorRow, getLowRowBendColor(sensorSplit), cellSlowPulse);
+          break;
         case 5:
           setLed(sensorCol, sensorRow, getLowRowCCXColor(sensorSplit), cellSlowPulse);
           break;
@@ -1638,6 +1642,11 @@ void handlePerSplitSettingHold() {
 
       case 13:
         switch (sensorRow) {
+          case 6:
+            resetNumericDataChange();
+            setDisplayMode(displayLowRowBendConfig);
+            updateDisplay();
+            break;
           case 5:
             lowRowCCXConfigState = 1;
             resetNumericDataChange();
@@ -1749,6 +1758,12 @@ void handlePerSplitSettingRelease() {
 
     case 13:
       switch (sensorRow) {
+        case 6:
+          if (ensureCellBeforeHoldWait(getLowRowBendColor(Global.currentPerSplit),
+                                       Split[Global.currentPerSplit].lowRowMode == lowRowBend ? cellOn : cellOff)) {
+            Split[Global.currentPerSplit].lowRowMode = lowRowBend;
+          }
+          break;
         case 5:
           if (ensureCellBeforeHoldWait(getLowRowCCXColor(Global.currentPerSplit),
                                        Split[Global.currentPerSplit].lowRowMode == lowRowCCX ? cellOn : cellOff)) {
@@ -2023,6 +2038,14 @@ void handleCCForFaderRelease() {
   if (sensorCol < NUMCOLS-1) {
     handleNumericDataReleaseCol(true);
   }
+}
+
+void handleLowRowBendConfigNewTouch() {
+  handleNumericDataNewTouchCol(Split[Global.currentPerSplit].lowRowBendBehavior, 0, 1, false);
+}
+
+void handleLowRowBendConfigRelease() {
+  handleNumericDataReleaseCol(true);
 }
 
 void handleLowRowCCXConfigNewTouch() {
@@ -2351,12 +2374,12 @@ void handleOctaveTransposeNewTouchSplit(byte side) {
 
   }
   else if (sensorRow == SWITCH_1_ROW) {
-    if (sensorCol > 0 && sensorCol < 16) {
+    if (sensorCol > 0) {
       Split[side].transposePitch = sensorCol - 8;
     }
   }
   else if (sensorRow == SWITCH_2_ROW) {
-    if (sensorCol > 0 && sensorCol < 16) {
+    if (sensorCol > 0) {
       Split[side].transposeLights = sensorCol - 8;
     }
   }
