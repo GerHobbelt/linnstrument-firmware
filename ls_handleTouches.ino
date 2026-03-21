@@ -702,6 +702,9 @@ void handleNonPlayingTouch() {
     case displayCCForFader:
       handleCCForFaderNewTouch();
       break;
+    case displayLowRowBendConfig:
+      handleLowRowBendConfigNewTouch();
+      break;
     case displayLowRowCCXConfig:
       handleLowRowCCXConfigNewTouch();
       break;
@@ -1760,6 +1763,9 @@ boolean handleNonPlayingRelease() {
       case displayCCForFader:
         handleCCForFaderRelease();
         break;
+      case displayLowRowBendConfig:
+        handleLowRowBendConfigRelease();
+        break;
       case displayLowRowCCXConfig:
         handleLowRowCCXConfigRelease();
         break;
@@ -2219,7 +2225,8 @@ short determineRowOffsetNote(byte split, byte row) {
 
 void getSplitBoundaries(byte sp, byte& lowCol, byte& highCol) {
   // Set ranges of columns to be scanned (all of one split only)
-  if (Global.splitActive) {                    // if Split mode is on
+  // If split mode is on or the split point is being configured
+  if (Global.splitActive || displayMode == displaySplitPoint) {
     if (sp == LEFT) {                   // and it's the left split
       lowCol = 1;                       // set column range to left split
       highCol = Global.splitPoint;

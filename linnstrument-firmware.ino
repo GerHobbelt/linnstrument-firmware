@@ -197,7 +197,9 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define ASSIGNED_SEQUENCER_NEXT         15
 #define ASSIGNED_STANDALONE_MIDI_CLOCK  16
 #define ASSIGNED_SEQUENCER_MUTE         17
-#define MAX_ASSIGNED                    ASSIGNED_SEQUENCER_MUTE
+#define ASSIGNED_TRANSPOSE_DOWN         18
+#define ASSIGNED_TRANSPOSE_UP           19
+#define MAX_ASSIGNED                    ASSIGNED_TRANSPOSE_UP
 #define ASSIGNED_DISABLED               255
 
 #define GLOBAL_SETTINGS_ROW  0
@@ -488,6 +490,7 @@ enum DisplayMode {
   displayCCForZ,
   displayPlayedTouchModeConfig,
   displayCCForFader,
+  displayLowRowBendConfig,
   displayLowRowCCXConfig,
   displayLowRowCCXYZConfig,
   displayCCForSwitchCC65,
@@ -577,6 +580,11 @@ enum LowRowMode {
   lowRowBend,
   lowRowCCX,
   lowRowCCXYZ
+};
+
+enum LowRowBendBehavior {
+  lowRowBendBend = 0,
+  lowRowBendTranspose = 1
 };
 
 enum LowRowCCBehavior {
@@ -677,6 +685,7 @@ struct SplitSettings {
   byte colorSequencerDisabled;            // color for sequencer low row step that's not being played
   byte playedTouchMode;                   // see PlayedTouchMode values
   byte lowRowMode;                        // see LowRowMode values
+  byte lowRowBendBehavior;                // see LowRowBendBehavior values
   byte lowRowCCXBehavior;                 // see LowRowCCBehavior values
   unsigned short ccForLowRow;             // 0-128 (with 128 being placeholder for ChannelPressure)
   byte lowRowCCXYZBehavior;               // see LowRowCCBehavior values
