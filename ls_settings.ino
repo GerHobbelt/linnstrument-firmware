@@ -77,13 +77,15 @@ void GlobalSettings::setSwitchAssignment(byte whichSwitch, byte assignment, bool
 }
 
 void switchSerialMode(boolean flag) {
+  DEBUGPRINT((3,"switchSerialMode:SOF\n"));
   if (controlModeActive) {
     controlModeActive = false;
     clearDisplay();
     updateDisplay();
   }
 
-  if (Device.operatingLowPower) {
+  if (flag && Device.operatingLowPower) {
+    DEBUGPRINT((-1,"Turn LOW POWER mode OFF when switching to SerialMode.\n"));
     Device.operatingLowPower = false;
     applyLedInterval();
     applyMidiInterval();
@@ -91,6 +93,7 @@ void switchSerialMode(boolean flag) {
   
   Device.serialMode = flag;
   applySerialMode();
+  DEBUGPRINT((3,"switchSerialMode:EOF\n"));
 }
 
 void applySerialMode() {
@@ -225,7 +228,7 @@ void writeSettingsToFlash() {
   // write to flash, taking low power mode into account
   writeAdaptivelyToFlash(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset, (byte*)&config, sizeof(Configuration));
 
-  // write the marker after the configuration data so that this version becomes to latest coherent one
+  // write the marker after the configuration data so that this version becomes the latest coherent one
   dueFlashStorage.write(SETTINGS_OFFSET, marker);
 
   clearFullDisplay();
@@ -1201,6 +1204,10 @@ inline boolean isCellPastConfirmHoldWait() {
   return sensorCell->lastTouch != 0 && calcTimeDelta(millis(), sensorCell->lastTouch) > CONFIRM_HOLD_DELAY;
 }
 
+inline unsigned long getCellSensorHoldWait() {
+  return sensorCell->lastTouch != 0 ? calcTimeDelta(millis(), sensorCell->lastTouch) : 0;
+}
+
 inline void applyTimbreCC74(byte split) {
   if (Split[split].customCCForY == 128) {
     Split[split].expressionForY = timbrePolyPressure;
@@ -1539,6 +1546,14 @@ void handlePerSplitSettingNewTouch() {
 }
 
 void handlePerSplitSettingHold() {
+  DEBUGPRINT((3,"handlePerSplitSettingHold: col="));
+  DEBUGPRINT((3,sensorCol));
+  DEBUGPRINT((3,",row="));
+  DEBUGPRINT((3,sensorRow));
+  DEBUGPRINT((3,",holdTime="));
+  DEBUGPRINT((3,getCellSensorHoldWait()));
+  DEBUGPRINT((3,"\n"));
+
   if (isCellPastEditHoldWait()) {
     sensorCell->lastTouch = 0;
 
@@ -2535,7 +2550,12 @@ void handleGlobalSettingNewTouch() {
           // handled at release
           break;
         case 3:
-          if (!Device.serialMode) {
+          if (!Device.serialMode || debugLevel >= 3) {
+            DEBUGPRINT((3,"Set LOW POWER mode. (serialMode="));
+            DEBUGPRINT((3,(int)Device.serialMode));
+            DEBUGPRINT((3,",debugLevel="));
+            DEBUGPRINT((3,debugLevel));
+            DEBUGPRINT((3,"\n"));
             Device.operatingLowPower = !Device.operatingLowPower;
             applyLedInterval();
             applyMidiInterval();
@@ -2981,7 +3001,6 @@ inline void changeMidiIO(byte where) {
 }
 
 void handleGlobalSettingHold() {
-
   if (isCellPastEditHoldWait()) {
     sensorCell->lastTouch = 0;
 
@@ -3158,7 +3177,7 @@ void handleGlobalSettingRelease() {
         clearDisplay();
         big_scroll_text_flipped(Device.audienceMessages[sensorCol - 1], Split[LEFT].colorMain);        
       }
-      else if (sensorCol == 25) {
+      else if (sensorCol == 25 /* NOT NUMCOLS-1 as Linn128 model has that pad used for message[16] display! */ ) {
         Device.sleepActive = true;
         Device.sleepDelay = 2;
         Device.sleepAnimationType = animationStore;
@@ -3216,7 +3235,6 @@ void handleGlobalSettingRelease() {
   }
 
   if (!userFirmwareActive) {
-
     if (sensorRow >= 4 && sensorRow != 7) {
       handleNumericDataReleaseCol(false);
     }
