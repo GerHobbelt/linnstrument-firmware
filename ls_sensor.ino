@@ -95,7 +95,7 @@ inline short readX(byte zPct) {                       // returns the raw X value
     }
 #endif
 
-  DEBUGPRINT((3,"readX\n"));
+  DEBUGPRINT((5,"readX\n"));
 
   selectSensorCell(sensorCol, sensorRow, READ_X);     // set analog switches to this column and row, and to read X
 
@@ -126,7 +126,7 @@ inline short readY(byte zPct) {                       // returns a value of 0-12
     }
 #endif
 
-  DEBUGPRINT((3,"readY\n"));
+  DEBUGPRINT((5,"readY\n"));
 
   selectSensorCell(sensorCol, sensorRow, READ_Y);     // set analog switches to this cell and to read Y
 
@@ -152,7 +152,7 @@ const short READZ_SETTLING_PRESSURE_THRESHOLD = 80;
 
 inline short applyRawZBias(short rawZ) {
   // apply the bias for each column, we also raise the baseline values to make the highest points just as sensitive and the lowest ones more sensitive
-  return rawZ = (rawZ * Z_BIAS_MULTIPLIER) / Z_BIAS[sensorRow][sensorCol];
+  return (rawZ * Z_BIAS_MULTIPLIER) / Z_BIAS[sensorRow][sensorCol];
 }
 
 inline unsigned short readZ() {                       // returns the raw Z value
@@ -162,7 +162,9 @@ inline unsigned short readZ() {                       // returns the raw Z value
     }
 #endif
 
-  DEBUGPRINT((3,"readZ\n"));
+  DEBUGPRINT((6,"readZ "));
+  DEBUGPRINT((6,sizeof(short)));
+  DEBUGPRINT((6," rawZ:"));
 
   selectSensorCell(sensorCol, sensorRow, READ_Z);     // set analog switches to current cell in touch sensor and read Z
 
@@ -197,10 +199,16 @@ inline unsigned short readZ() {                       // returns the raw Z value
   // store the last value that was read straight off of the sensor without any compensation
   lastReadSensorRawZ = rawZ;
 
+  DEBUGPRINT((6,rawZ));
+
   // scale the sensor based on the sensitivity setting
   rawZ = rawZ * Device.sensorSensitivityZ / 100;
 
   rawZ = applyRawZBias(rawZ);
+
+  DEBUGPRINT((6," biasedZ:"));
+  DEBUGPRINT((6,rawZ));
+  DEBUGPRINT((6,"\n"));
 
   return rawZ;
 }

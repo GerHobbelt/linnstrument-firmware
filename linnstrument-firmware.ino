@@ -54,11 +54,11 @@ const char* microLinnOSVersion = ".901";
 // Uncomment to immediately start X, Y, or Z frame debugging when the LinnStrument launches
 // This is useful when having to inspect the sensor data without being able to
 // use the switches to change the active settings
-// #define DISPLAY_XFRAME_AT_LAUNCH
-// #define DISPLAY_YFRAME_AT_LAUNCH
-// #define DISPLAY_ZFRAME_AT_LAUNCH
-// #define DISPLAY_SURFACESCAN_AT_LAUNCH
-// #define DISPLAY_FREERAM_AT_LAUNCH
+#define DISPLAY_XFRAME_AT_LAUNCH
+#define DISPLAY_YFRAME_AT_LAUNCH
+#define DISPLAY_ZFRAME_AT_LAUNCH
+#define DISPLAY_SURFACESCAN_AT_LAUNCH
+#define DISPLAY_FREERAM_AT_LAUNCH
 // #define TESTING_SENSOR_DISABLE
 
 // Touch surface constants
@@ -83,7 +83,25 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define READ_Y  1
 #define READ_Z  2
 
-// Supported colors
+// Supported colors:
+//
+// RGB led ==>
+// - Red
+// - Green
+// - Blue
+// plus all its permutations:
+// - Yellow         : Red + Green
+// - Purple/Magenta : Red + Blue
+// - Cyan           : Green + Blue
+// - White          : Red + Green + Blue
+// - Black          : all OFF
+// Then there's also the 50% duty cycle remixes: half the time color A, the other half its color B:
+// a.k.a. 'composite colors':
+// - Orange         : Yellow + Red
+// - Pink           : Purple/Magenta + Yellow
+// - Lime           : Yellow + Green
+// - (Cold) White   : White + Cyan
+//
 #define COLOR_OFF      0
 #define COLOR_RED      1
 #define COLOR_YELLOW   2
@@ -1006,15 +1024,17 @@ struct Configuration config;
 
 /**************************************** SECRET SWITCHES ****************************************/
 
-#define SECRET_SWITCHES 6
-#define SWITCH_DEBUGMIDI secretSwitch[0]
-#define SWITCH_XFRAME secretSwitch[1]
-#define SWITCH_YFRAME secretSwitch[2]
-#define SWITCH_ZFRAME secretSwitch[3]
+#define SECRET_SWITCHES 8
+#define SWITCH_DEBUGMIDI   secretSwitch[0]
+#define SWITCH_XFRAME      secretSwitch[1]
+#define SWITCH_YFRAME      secretSwitch[2]
+#define SWITCH_ZFRAME      secretSwitch[3]
 #define SWITCH_SURFACESCAN secretSwitch[4]
-#define SWITCH_FREERAM secretSwitch[5]
+#define SWITCH_FREERAM     secretSwitch[5]
+#define SWITCH_MCU_PINS    secretSwitch[6]
+#define SWITCH_TOUCHFRAME  secretSwitch[7] 
 
-boolean secretSwitch[SECRET_SWITCHES];  // The secretSwitch* values are controlled by cells in column 18
+boolean secretSwitch[SECRET_SWITCHES] = {0};  // The secretSwitch* values are controlled by cells in column 18
 
 
 /***************************************** OPERATING MODE ****************************************/
@@ -1029,7 +1049,7 @@ OperatingMode operatingMode = modePerformance;
 
 /************************************** FLASH STORAGE LAYOUT *************************************/
 
-static int alignToByteBoundary(int value) {
+static inline int alignToByteBoundary(int value) {
   if (value % 4 == 0) {
     return value;
   }
@@ -1154,7 +1174,7 @@ boolean switchState[5][NUMSPLITS];                    // the current state of ea
 boolean switchTargetEnabled[NUMSPLITS][MAX_ASSIGNED]; // we keep track of switch targets individually for each split and whether they're active
 boolean switchCCEnabled[NUMSPLITS][128];              // we keep track of the switch targets that send out CC numbers for each split to determine whether they're active
 boolean footSwitchState[5];                           // holds the last read footswitch state, so that we only react on state changes of the input signal
-boolean footSwitchOffState[5];                        // holds the OFF state of foot switch, read at startup, thereby permit normally-closed or normally-open switches
+boolean footSwitchOffState[2];                        // holds the OFF state of both foot switches, as read at startup, thereby permitting normally-closed or normally-open switches
 unsigned long prevFootSwitchTimerCount;               // time interval (in microseconds) between foot switch reads
 boolean switchFootBothReleased = false;               // keep track of whether the last release was for both switches, in order to prevent individual releases to happen
 
@@ -1226,12 +1246,14 @@ short updaterSettingsSize = -2;                     // the incoming settings siz
 short updaterImpliedSettingsSize = -2;              // size of the incoming settings implied by the 2 versions, should match
 short updaterBadBatchNum = -2;                      // the number of the 96-byte batch that flunked crc, -1 means all good
 
+unsigned int debugContentWritten = 0;
+
 /************************* FUNCTION DECLARATIONS TO WORK AROUND COMPILER *************************/
 
 inline void selectSensorCell(byte col, byte row, byte switchCode);
 
-void setLed(byte col, byte row, byte color, CellDisplay disp);
-void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer);
+inline void setLed(byte col, byte row, byte color, CellDisplay disp);
+inline void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer);
 void initializeNoteLights(GlobalSettings& g);
 
 boolean ensureCellBeforeHoldWait(byte resetColor, CellDisplay resetDisplay);
@@ -1241,7 +1263,7 @@ void exitDisplayMode(DisplayMode mode);
 
 void applyBendRange(SplitSettings& target, byte bendRange);
 
-void cellTouched(TouchState state);
+inline void cellTouched(TouchState state);
 void cellTouched(byte col, byte row, TouchState state);
 
 VelocityState calcVelocity(unsigned short z);
@@ -1468,7 +1490,7 @@ void setup() {
   initializeStorage();
   applyConfiguration();
 
-  for (byte ss=0; ss<SECRET_SWITCHES; ++ss) {
+  for (byte ss = 0; ss < SECRET_SWITCHES; ++ss) {
     secretSwitch[ss] = false;
   }
 
@@ -1629,8 +1651,10 @@ inline void modeLoopPerformance() {
   if (SWITCH_XFRAME) displayXFrame();                            // Turn on secret switch to display the X value of all cells in grid at the end of each total surface scan
   if (SWITCH_YFRAME) displayYFrame();                            // Turn on secret switch to display the Y value of all cells in grid at the end of each total surface scan
   if (SWITCH_ZFRAME) displayZFrame();                            // Turn on secret switch to display the pressure value of all cells in grid at the end of each total surface scan
+  if (SWITCH_TOUCHFRAME) displayCellTouchedFrame();              // Turn on secret switch to display the 'touched' state of all cells in grid at the end of each total surface scan
   if (SWITCH_SURFACESCAN) displaySurfaceScanTime();              // Turn on secret switch to display the total time for a total surface scan
   if (SWITCH_FREERAM) debugFreeRam();                            // Turn on secret switch to display the available free RAM
+  if (SWITCH_MCU_PINS) displayDigitalPins();                     // Turn on secret switch to display the SAM3X digital pins' status
 #endif
 
   nextSensorCell();                                              // done-- move on to the next sensor cell

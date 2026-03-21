@@ -1895,7 +1895,7 @@ void handlePresetNewTouch() {
 
   if (sensorCol == getPresetDisplayColumn()) {
     if (sensorRow < NUMPRESETS) {
-      // start tracking the touch duration to be able detect a long press
+      // start tracking the touch duration to be able to detect a long press
       sensorCell->lastTouch = millis();
       // indicate that a hold operation is being waited for
       setLed(sensorCol, sensorRow, globalColor, cellSlowPulse);
@@ -2592,7 +2592,7 @@ void handleGlobalSettingNewTouch() {
 
 #ifdef DEBUG_ENABLED
   // Column 17 is for controlling debug levels
-  if (sensorCol == 17 && sensorRow < 5) {
+  if (sensorCol == 17) {
     debugLevel = sensorRow - 1;
     DEBUGPRINT((-1,"debugLevel = "));
     DEBUGPRINT((-1,debugLevel));
@@ -2710,7 +2710,7 @@ void handleGlobalSettingNewTouch() {
   if (!userFirmwareActive) {
 
     // handle tempo change
-    if (!isCalibrationCellHeld() && sensorRow >= 4 && sensorRow != 7) {
+    if (!isCalibrationCellHeld() && sensorRow >= 4 && sensorRow != 7 && sensorCol < 16) {
       handleTempoNewTouch();
     }
 

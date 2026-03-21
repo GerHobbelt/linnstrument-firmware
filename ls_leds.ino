@@ -273,6 +273,8 @@ inline void enableLedDisplay() {
 void refreshLedColumn(unsigned long now) {
   if (!ledDisplayEnabled) return;
 
+  debugContentWritten = 0;
+
   // disabling the power output from the LED driver pins early prevents power leaking into unwanted cells.
   digitalWrite(37, HIGH);                                         // disable the outputs of the LED driver chips
 
@@ -372,9 +374,11 @@ void refreshLedColumn(unsigned long now) {
         case COLOR_BLACK:
           break;
         case COLOR_RED:
+        case COLOR_ORANGE:
           red = red | (B00000001 << rowCount);
           break;
         case COLOR_YELLOW:
+        case COLOR_LIME:
           red = red | (B00000001 << rowCount);
           green = green | (B00000001 << rowCount);
           break;
@@ -391,6 +395,7 @@ void refreshLedColumn(unsigned long now) {
           break;
         case COLOR_MAGENTA:
         case COLOR_VIOLET:
+        case COLOR_PINK:
           blue = blue | (B00000001 << rowCount);
           red = red | (B00000001 << rowCount);
           break;
@@ -398,17 +403,6 @@ void refreshLedColumn(unsigned long now) {
           blue = blue | (B00000001 << rowCount);
           red = red | (B00000001 << rowCount);
           green = green | (B00000001 << rowCount);
-          break;
-        case COLOR_ORANGE:
-          red = red | (B00000001 << rowCount);
-          break;
-        case COLOR_LIME:
-          red = red | (B00000001 << rowCount);
-          green = green | (B00000001 << rowCount);
-          break;
-        case COLOR_PINK:
-          blue = blue | (B00000001 << rowCount);
-          red = red | (B00000001 << rowCount);
           break;
       }
     }
