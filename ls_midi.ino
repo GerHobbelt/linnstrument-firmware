@@ -347,6 +347,7 @@ void handleMidiInput(unsigned long nowMicros) {
       case MIDIProgramChange:
       {
         if (split != -1) {
+          prevMidiPreset[split] = midiPreset[split];
           midiPreset[split] = midiData1;
           if (displayMode == displayPreset) {
             updateDisplay();
@@ -428,6 +429,7 @@ void handleMidiInput(unsigned long nowMicros) {
         switch (midiData1) {
           case 0:
             if (ccSplit != -1) {
+              prevMidiBank[ccSplit] = midiBank[ccSplit];
               midiBank[split] = midiData2;
               if (displayMode == displayPreset) updateDisplay();
             }
@@ -1236,6 +1238,7 @@ void receivedNrpn(int parameter, int value, int channel) {
     // Active note lights preset
     case 247:
       if (inRange(value, 0, 11)) {
+        microLinnPrevScale = Global.activeNotes;
         Global.activeNotes = value;
         loadCustomLedLayer(getActiveCustomLedPattern());
         updateDisplay();
