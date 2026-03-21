@@ -103,7 +103,10 @@ void displayDigitalPins() {
 
     lastFrame = now;
 
+    Serial.println();
+    Serial.print("MCU/Pins info:\n");
     displayDigitalPins(0, 27);
+    Serial.println();
     displayDigitalPins(27, 54);
 
     endPreventBrightLedFlash();
@@ -111,7 +114,6 @@ void displayDigitalPins() {
 }
 
 void displayDigitalPins(byte start, byte end) {
-  Serial.println();
   for (byte p = start; p < end; ++p) {
     Serial.print(p);
     Serial.print("\t");
@@ -171,6 +173,7 @@ void displayXFrame() {
     lastFrame = now;
 
     Serial.println();
+    Serial.print("XFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
@@ -208,6 +211,7 @@ void displayYFrame() {
     lastFrame = now;
     
     Serial.println();
+    Serial.print("YFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
@@ -241,6 +245,7 @@ void displayZFrame() {
     lastFrame = now;
     
     Serial.println();
+    Serial.print("ZFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
@@ -283,6 +288,7 @@ void displayCellTouchedFrame() {
     lastFrame = now;
 
     Serial.println();
+    Serial.print("CellTouchedFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
