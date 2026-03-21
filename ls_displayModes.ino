@@ -245,10 +245,15 @@ void updateDisplay() {
 
 // handle logic tied to entering specific display mode, like clearing
 void enterDisplayMode(DisplayMode mode) {
+  DEBUGPRINT((0,"enterDisplayMode\n"));
   switch (mode) {
+    case displaySleep:
+      disableLedDisplay();
+#if 0
+      [[fallthrough]];
+#endif
     // ensure that in non settings displays, the control buttons are cleared out
     case displayNormal:
-    case displaySleep:
     case displayAnimation:
       clearLed(0, GLOBAL_SETTINGS_ROW);
       clearLed(0, OCTAVE_ROW);
@@ -273,7 +278,11 @@ void enterDisplayMode(DisplayMode mode) {
 
 // handle logic tied to exiting specific display mode, like post-processing or saving
 void exitDisplayMode(DisplayMode mode) {
+  DEBUGPRINT((0,"exitDisplayMode\n"));
   switch (mode) {
+    case displaySleep:
+      enableLedDisplay();
+      break;
     case displayNormal:
       initializeTouchAnimation();
       break;
@@ -1874,6 +1883,11 @@ void paintGlobalSettingsDisplay() {
     }
   }
 #endif
+
+  // storeSettings 'hidden' button on the Linn200 model:
+  if (LINNMODEL == 200) {
+    setLed(NUMCOLS-1, 7, COLOR_WHITE, cellOn);
+  }
 }
 
 void paintCustomLedsEditor() {
