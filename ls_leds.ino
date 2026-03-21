@@ -276,7 +276,7 @@ void refreshLedColumn(unsigned long now) {
   debugContentWritten = 0;
 
   // disabling the power output from the LED driver pins early prevents power leaking into unwanted cells.
-  digitalWrite(37, HIGH);                                         // disable the outputs of the LED driver chips
+  clearDisplayImmediately();                                         // disable the outputs of the LED driver chips
 
   // keep a steady pulsating going for those leds that need it
   static unsigned long lastPulse = 0;
