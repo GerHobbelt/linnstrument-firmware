@@ -808,8 +808,8 @@ void handleControlButtonNewTouch() {
   // and makes sure that startup control button combination is reset
   if (globalReset) {
     globalReset = false;
-    cellTouched(0, 0, untouchedCell);
-    cellTouched(0, 2, untouchedCell);
+    cellTouched(0, GLOBAL_SETTINGS_ROW, untouchedCell);
+    cellTouched(0, SWITCH_2_ROW, untouchedCell);
   }
 
   // allow the sequencer to short-circuit the control button new touch
@@ -820,6 +820,7 @@ void handleControlButtonNewTouch() {
 
   // only allow one control button to be pressed at the same time
   // this prevents phantom presses to occur for the control buttons
+  //
   // this is not detectable with the regular phantom press algorithm
   if ((rowsInColsTouched[0] & ~(1 << sensorRow)) != 0) {
     return;
@@ -853,7 +854,7 @@ void handleControlButtonNewTouch() {
   switch (sensorRow) {                                 // which control button is it?
     case GLOBAL_SETTINGS_ROW:                          // global settings button presssed
       resetAllTouches();
-      lightLed(0, 0);                                  // light the button
+      lightLed(0, GLOBAL_SETTINGS_ROW);                // light the button
       setDisplayMode(displayGlobal);                   // change to global settings display mode
       resetNumericDataChange();
       updateDisplay();
@@ -975,7 +976,6 @@ void handleControlButtonRelease() {
     case OCTAVE_ROW:                                         // octave button released
     case VOLUME_ROW:                                         // volume button released
     case PRESET_ROW:                                         // preset button released
-
       clearLed(0, sensorRow);
 
       setDisplayMode(displayNormal);
