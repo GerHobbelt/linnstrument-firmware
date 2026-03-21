@@ -138,13 +138,13 @@ void handleMidiInput(unsigned long nowMicros) {
         midiMessageBytes = 1;
         midiMessageIndex = 1;
 
+        sequencersTurnOff(false);
+
         midiClockStatus = midiClockOff;
         midiClockMessageCount = 0;
         lastMidiClockTime = 0;
         initialMidiClockMessageCount = 0;
         resetClockAdvancement(nowMicros);
-
-        sequencersTurnOff(false);
         break;
       case MIDISongPositionPointer:
         midiMessageBytes = 3;
@@ -2986,8 +2986,21 @@ void midiSendMpeState(byte mainChannel, byte polyphony) {
 }
 
 void midiSendMpePitchBendRange(byte split) {
-  if (Split[split].mpe && getBendRange(split) == 48) {
-    midiSendRPN(0, 48 << 7, Split[split].midiChanMain);
+  if (Split[split].mpe) {
+    unsigned short pb_sens = getBendRange(split) << 7;
+    midiSendRPN(0, pb_sens, Split[split].midiChanMain);
+
+    byte polyphony = countMpePolyphony(split);
+    if (Split[split].midiChanMain == 1) {
+      for (byte ch = 1; ch <= polyphony; ++ch) {
+        midiSendRPN(0, pb_sens, Split[split].midiChanMain + ch);
+      }
+    }
+    else if (Split[split].midiChanMain == 16) {
+      for (byte ch = 1; ch <= polyphony; ++ch) {
+        midiSendRPN(0, pb_sens, Split[split].midiChanMain - ch);
+      }
+    }
   }
 }
 

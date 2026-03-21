@@ -1,5 +1,5 @@
 /*=====================================================================================================================
-======================================== LinnStrument Operating System v2.3.0 =========================================
+======================================== LinnStrument Operating System v2.3.1 =========================================
 =======================================================================================================================
 
 Operating System for the LinnStrument (c) music controller by Roger Linn Design (www.rogerlinndesign.com).
@@ -56,8 +56,8 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 
 /******************************************** CONSTANTS ******************************************/
 
-const char* OSVersion = "230";
-const char* OSVersionBuild = ".065";
+const char* OSVersion = "231.";
+const char* OSVersionBuild = ".066";
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -232,7 +232,7 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 
 const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-const unsigned int LED_PATTERNS = 3;
+const int LED_PATTERNS = 3;
 
 // Two buffers of ...
 // A 26 by 8 byte array containing one byte for each LED:
@@ -452,6 +452,11 @@ struct NoteTouchMapping {
   boolean hasTouch(signed char, signed char);                // indicates whether there's a touch active for a particular note and channel
   inline NoteEntry* getNoteEntry(signed char, signed char);  // get the entry for a particular note and channel
   inline byte getMusicalTouchCount(signed char);             // the number of musical touches for a particular MIDI channel
+  inline boolean isAnyNotePressed();                         // true if any note is actively being pressed, accounts for stale notes that are being deferred
+  void clearStaleNote();                                     // clear the stale note, resetting it for next use
+  void setStaleNote(signed char, signed char);               // set the stale note to the designated note/channel
+  inline boolean isNoteStale(signed char, signed char);      // true if the passed in note/channel are the stale note last set
+  inline boolean hasStaleNote();                             // true if there is a valid stale note set
 
   void debugNoteChain();
 
@@ -461,6 +466,13 @@ struct NoteTouchMapping {
   signed char firstChannel;
   signed char lastNote;
   signed char lastChannel;
+
+  // When using the arp, a stale note is a note that gets released while the arp is actively playing the note. For these notes, we want to keep them in the
+  // mapping until the arp has finished playing them. Once the arp sequence turns the stale note off, it is no longer needed. It's phsyically impossible
+  // to ever have more than 1 stale note at a time on a single split.
+  signed char staleNote;
+  signed char staleChannel;
+
   NoteEntry mapping[128][16];
 };
 NoteTouchMapping noteTouchMapping[NUMSPLITS];
