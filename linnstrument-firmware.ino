@@ -141,7 +141,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define DEFAULT_SENSOR_LO_Z           120      // lowest acceptable raw Z value to start a touch
 #define DEFAULT_SENSOR_FEATHER_Z      80       // lowest acceptable raw Z value to continue a touch
 #define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
-#define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure                          
+#define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure
 
 #define MAX_TOUCHES_IN_COLUMN  3
 
@@ -1286,9 +1286,9 @@ void setup() {
   /*!!*/  pinMode(37, OUTPUT);
   /*!!*/  digitalWrite(37, HIGH);
   /*!!*/
-  /*!!*/  if (switchPressAtStartup(0)) {
+  /*!!*/  if (switchPressAtStartup(GLOBAL_SETTINGS_ROW)) {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
-  /*!!*/    if (switchPressAtStartup(2)) {
+  /*!!*/    if (switchPressAtStartup(SWITCH_2_ROW)) {
   /*!!*/      globalReset = true;
   /*!!*/      dueFlashStorage.write(0, 254);
   /*!!*/    }
@@ -1330,8 +1330,8 @@ void setup() {
 
   // ensure that the switches that are pressed down for the global reset at boot are not taken into account any further
   if (globalReset) {
-    cellTouched(0, 0, touchedCell);
-    cellTouched(0, 2, touchedCell);
+    cellTouched(0, GLOBAL_SETTINGS_ROW, touchedCell);
+    cellTouched(0, SWITCH_2_ROW, touchedCell);
   }
 
   // setup system timers for interval between LED column refreshes and foot switch reads
@@ -1347,7 +1347,7 @@ void setup() {
   }
 
   // detect if test mode is active by holding down the per-split button at startup
-  if (switchPressAtStartup(7)) {
+  if (switchPressAtStartup(PER_SPLIT_ROW)) {
     operatingMode = modeManufacturingTest;
 
     Global.velocitySensitivity = velocityLow;
@@ -1374,11 +1374,11 @@ void setup() {
     operatingMode = modePerformance;
 
     // detect if low power mode is toggled by holding down the octave/transpose button at startup
-    if (switchPressAtStartup(4)) {
+    if (switchPressAtStartup(OCTAVE_ROW)) {
       Device.operatingLowPower = true;
       Device.serialMode = false;
       storeSettings();
-      cellTouched(0, 4, touchedCell);
+      cellTouched(0, OCTAVE_ROW, touchedCell);
     }
 
     applyLedInterval();
