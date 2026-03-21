@@ -1327,7 +1327,6 @@ void prepareNewNote(signed char notenum) {
   if (!userFirmwareActive) {
     if (Split[sensorSplit].sendX && isXExpressiveCell() && !isLowRowBendActive(sensorSplit)) {
       resetLastMidiPitchBend(sensorCell->channel);
-      preSendPitchBend(sensorSplit, 0, sensorCell->channel);
     }
     if (Split[sensorSplit].sendZ && isZExpressiveCell()) {
       preResetLastLoudness(sensorSplit, sensorCell->note, sensorCell->channel);
