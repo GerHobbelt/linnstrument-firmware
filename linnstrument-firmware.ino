@@ -28,6 +28,99 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 =======================================================================================================================
 =====================================================================================================================*/
 
+
+/*
+ * DUE Board pin   |  PORT  | Label
+ * ----------------+--------+-------
+ *   0             |  PA8   | "RX0"
+ *   1             |  PA9   | "TX0"
+ *   2       TIOA0 |  PB25  |
+ *   3       TIOA7 |  PC28  |
+ *   4       NPCS1 |  PA29  | SPI_SENSOR : touch sensor control over SPI
+ *           TIOB6 |  PC26  |
+ *   5       TIOA6 |  PC25  |
+ *   6       PWML7 |  PC24  |
+ *   7       PWML6 |  PC23  |
+ *   8       PWML5 |  PC22  |
+ *   9       PWML4 |  PC21  |
+ *  10       NPCS0 |  PA28  | SPI_LEDS : LED control over SPI
+ *           TIOB7 |  PC29  |
+ *  11       TIOA8 |  PD7   |
+ *  12       TIOB8 |  PD8   |
+ *  13       TIOB0 |  PB27  | ~~LED AMBER "L"~~
+ *  14       TXD3  |  PD4   | "TX3"
+ *  15       RXD3  |  PD5   | "RX3"
+ *  16       TXD1  |  PA13  | "TX2"
+ *  17       RXD1  |  PA12  | "RX2"
+ *  18       TXD0  |  PA11  | "TX1"
+ *  19       RXD0  |  PA10  | "RX1"
+ *  20             |  PB12  | "SDA"
+ *  21             |  PB13  | "SCL"
+ *  22             |  PB26  |
+ *  23             |  PA14  |
+ *  24             |  PA15  |
+ *  25             |  PD0   |
+ *  26             |  PD1   |
+ *  27             |  PD2   |
+ *  28             |  PD3   |
+ *  29             |  PD6   |
+ *  30             |  PD9   |
+ *  31             |  PA7   |
+ *  32             |  PD10  |
+ *  33             |  PC1   | FOOT_SW_LEFT
+ *  34             |  PC2   | FOOT_SW_RIGHT
+ *  35             |  PC3   | MIDI or SERIAL operation (output) : set it HIGH for serial operation i.e. debug output & firmware uploads
+ *  36             |  PC4   | DIN or USB connector (output) : set it HIGH for USB operation
+ *  37             |  PC5   | the output enable line for the 2 LED display chips (output) : set HIGH to enable the LEDs.
+ *  38             |  PC6   | LINNMODEL (input) : high = Model 200, low = Model 128
+ *  39             |  PC7   |
+ *  40             |  PC8   |
+ *  41             |  PC9   |
+ *  42             |  PA19  |
+ *  43             |  PA20  |
+ *  44             |  PC19  |
+ *  45             |  PC18  |
+ *  46             |  PC17  |
+ *  47             |  PC16  |
+ *  48             |  PC15  |
+ *  49             |  PC14  |
+ *  50             |  PC13  |
+ *  51             |  PC12  |
+ *  52       NPCS2 |  PB21  | SPI_ADC : input from TI ADS7883 12-bit A/D converter
+ *  53             |  PB14  |
+ *  54             |  PA16  | "A0"
+ *  55             |  PA24  | "A1"
+ *  56             |  PA23  | "A2"
+ *  57             |  PA22  | "A3"
+ *  58       TIOB2 |  PA6   | "A4"
+ *  69             |  PA4   | "A5"
+ *  60       TIOB1 |  PA3   | "A6"
+ *  61       TIOA1 |  PA2   | "A7"
+ *  62             |  PB17  | "A8"
+ *  63             |  PB18  | "A9"
+ *  64             |  PB19  | "A10"
+ *  65             |  PB20  | "A11"
+ *  66             |  PB15  | "DAC0"
+ *  67             |  PB16  | "DAC1"
+ *  68             |  PA1   | "CANRX"
+ *  69             |  PA0   | "CANTX"
+ *  70             |  PA17  | "SDA1"
+ *  71             |  PA18  | "SCL1"
+ *  72             |  PC30  | ~~LED AMBER "RX"~~
+ *  73             |  PA21  | ~~LED AMBER "TX"~~
+ *  74       MISO  |  PA25  |
+ *  75       MOSI  |  PA26  |
+ *  76       SCLK  |  PA27  |
+ *  77       NPCS0 |  PA28  |
+ *  78       NPCS3 |  PB23  | ~~unconnected!~~
+ *
+ * USB pin         |  PORT
+ * ----------------+--------
+ *  ID             |  PB11
+ *  VBOF           |  PB10
+ *
+ */
+
 #include "ls_compiler_tweaks.h"
 
 /*************************************** INCLUDED LIBRARIES **************************************/
@@ -283,7 +376,7 @@ const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS+1) * LED_LAYER_SIZE;
 /****************************************** TOUCH TRACKING ***************************************/
 
 // Current cell in the scan routine
-byte cellCount = 0;                         // the number of the cell that's currently being processed
+byte cellCount = 0;                         // the index of the cell that's currently being processed
 byte sensorCol = 0;                         // currently read column in touch sensor
 byte sensorRow = 0;                         // currently read row in touch sensor
 byte sensorSplit = 0;                       // the split of the currently read touch sensor
