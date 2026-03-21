@@ -13,8 +13,8 @@ iteration to constitute the arpeggiated sequence.
 void resetAllTouches() {
   midiSendNoteOffForAllTouches(LEFT);
   midiSendNoteOffForAllTouches(RIGHT);
-  noteTouchMapping[LEFT].initialize();
-  noteTouchMapping[RIGHT].initialize();
+  noteTouchMapping[LEFT].initialize(LEFT);
+  noteTouchMapping[RIGHT].initialize(RIGHT);
 }
 
 boolean validNoteNumAndChannel(signed char noteNum, signed char noteChannel) {
@@ -45,6 +45,10 @@ inline byte NoteEntry::getRow() {
   return (colRow & B11100000) >> 5;
 }
 
+inline boolean NoteEntry::hasTouch() {
+  return colRow != 0;
+}
+
 inline byte NoteEntry::getNextNote() {
   return nextNote;
 }
@@ -69,14 +73,13 @@ inline byte NoteEntry::getPreviousChannel() {
   return (nextPreviousChannel & B00001111) + 1;
 }
 
-void NoteTouchMapping::initialize() {
+void NoteTouchMapping::initialize(byte mappedSplit) {
+  split = mappedSplit;
   noteCount = 0;
   firstNote = -1;
   firstChannel = -1;
   lastNote = -1;
   lastChannel = -1;
-  clearStaleNote();
-
   for (byte c = 0; c < 16; ++c) {
     for (byte n = 0; n < 128; ++n) {
       mapping[n][c].colRow = 0;
@@ -92,7 +95,10 @@ void NoteTouchMapping::initialize() {
   performContinuousTasks();
 }
 
-void NoteTouchMapping::releaseLatched(byte split) {
+void NoteTouchMapping::releaseLatched() {
+  DEBUGPRINT((1,"releaseLatched"));
+  DEBUGPRINT((1,"\n"));
+
   signed char entryNote = firstNote;
   signed char entryChannel = firstChannel;
   while (entryNote != -1) {
@@ -101,9 +107,9 @@ void NoteTouchMapping::releaseLatched(byte split) {
     signed char nextChannel = entry.getNextChannel();
 
     TouchInfo* entry_cell = &cell(entry.getCol(), entry.getRow());
-    if (entry_cell->touched != touchedCell) {
+    if (entry_cell->touched != touchedCell || entry_cell->note != entryNote || entry_cell->channel != entryChannel) {
       if (isArpeggiatorEnabled(split)) {
-        handleArpeggiatorNoteOff(split, entryNote, entryChannel, false);
+        handleArpeggiatorNoteOff(split, entryNote, entryChannel);
       }
       else {
         midiSendNoteOffWithVelocity(split, entryNote, entry_cell->velocity, entryChannel);
@@ -150,7 +156,7 @@ void NoteTouchMapping::noteOn(signed char noteNum, signed char noteChannel, byte
 
   musicalTouchCount[channel] += 1;
 
-  if (mapping[noteNum][channel].colRow == 0) {
+  if (!mapping[noteNum][channel].hasTouch()) {
     noteCount++;
 
     // no notes are in the chain yet, add this one as the first note
@@ -204,7 +210,7 @@ void NoteTouchMapping::noteOn(signed char noteNum, signed char noteChannel, byte
           lastNote = noteNum;
           lastChannel = noteChannel;
           mapping[noteNum][channel].nextNote = -1;
-          mapping[noteNum][channel].setNextChannel(1);
+          mapping[noteNum][channel].setNextChannel(0);
           mapping[noteNum][channel].previousNote = entryNote;
           mapping[noteNum][channel].setPreviousChannel(entryChannel);
           entry.nextNote = noteNum;
@@ -218,13 +224,20 @@ void NoteTouchMapping::noteOn(signed char noteNum, signed char noteChannel, byte
     }
   }
 
-  // this could be a stale note where the note was released and then pressed again
-  // before the next arp advance, clear the state if so.
-  if (isNoteStale(noteNum, noteChannel)) {
-    clearStaleNote();
+  mapping[noteNum][channel].setColRow(col, row);
+
+  // this note on is the same as the currently playing note, restore the arp step to this note
+  if (!isSwitchLegatoPressed(split) && !isSwitchLatchPressed(split)) {
+    if (playingArpNote[split] == noteNum && playingArpChannel[split] == noteChannel) {
+      stepArpNote[split] = noteNum;
+      stepArpChannel[split] = noteChannel;
+    }
   }
 
-  mapping[noteNum][channel].setColRow(col, row);
+  DEBUGPRINT((1,"noteOn"));
+  DEBUGPRINT((1," noteNum="));DEBUGPRINT((1,(int)noteNum));
+  DEBUGPRINT((1," noteChannel="));DEBUGPRINT((1,(int)noteChannel));
+  DEBUGPRINT((1,"\n"));
 
   debugNoteChain();
 }
@@ -254,7 +267,7 @@ void NoteTouchMapping::noteOff(signed char noteNum, signed char noteChannel) {
       }
       else {
         mapping[firstNote][firstChannel - 1].previousNote = -1;
-        mapping[firstNote][firstChannel - 1].setPreviousChannel(1);
+        mapping[firstNote][firstChannel - 1].setPreviousChannel(0);
       }
     }
     // simply remove this note entry from the chain by pointing the previous and
@@ -264,6 +277,27 @@ void NoteTouchMapping::noteOff(signed char noteNum, signed char noteChannel) {
       signed char prevChannel = mapping[noteNum][channel].getPreviousChannel();
       signed char nxtNote = mapping[noteNum][channel].nextNote;
       signed char nxtChannel = mapping[noteNum][channel].getNextChannel();
+      
+      // verify if the removed note entry is the current active arp step, if that's
+      // the case, update the step so that linked chain of notes is not interrupted
+      if (!isSwitchLegatoPressed(split) && !isSwitchLatchPressed(split)) {
+        if (stepArpNote[split] == noteNum && stepArpChannel[split] == noteChannel) {
+          // when the arp is going up, update the step with the previous note entry,
+          // however when it's in up/down mode, don't do this when the last note is reached
+          // otherwise the arp will skip a note
+          if (Global.arpDirection == ArpUp || (Global.arpDirection == ArpUpDown && arpUpDownState[split] == ArpUp && (noteNum != lastNote || noteChannel != lastChannel))) {
+            stepArpNote[split] = prevNote;
+            stepArpChannel[split] = prevChannel;
+          }
+          // when the arp is going down, update the step with the next note entry
+          else if (Global.arpDirection == ArpDown || (Global.arpDirection == ArpUpDown && arpUpDownState[split] == ArpDown)) {
+            stepArpNote[split] = nxtNote;
+            stepArpChannel[split] = nxtChannel;
+          }
+        }
+      }
+
+      // update the next and previous entries
       mapping[prevNote][prevChannel - 1].nextNote = nxtNote;
       mapping[prevNote][prevChannel - 1].setNextChannel(nxtChannel);
       if (nxtNote == -1) {
@@ -281,11 +315,12 @@ void NoteTouchMapping::noteOff(signed char noteNum, signed char noteChannel) {
     mapping[noteNum][channel].nextNote = -1;
     mapping[noteNum][channel].previousNote = -1;
     mapping[noteNum][channel].nextPreviousChannel = 0;
-
-    if (isNoteStale(noteNum, noteChannel)) {
-      clearStaleNote();
-    }
   }
+
+  DEBUGPRINT((1,"noteOff"));
+  DEBUGPRINT((1," noteNum="));DEBUGPRINT((1,(int)noteNum));
+  DEBUGPRINT((1," noteChannel="));DEBUGPRINT((1,(int)noteChannel));
+  DEBUGPRINT((1,"\n"));
 
   debugNoteChain();
 }
@@ -298,38 +333,9 @@ void NoteTouchMapping::changeCell(signed char noteNum, signed char noteChannel, 
   // offset the channel for a 0-based arrays
   signed char channel = noteChannel - 1;
 
-  if (mapping[noteNum][channel].colRow != 0) {
+  if (mapping[noteNum][channel].hasTouch()) {
     mapping[noteNum][channel].setColRow(col, row);
   }
-}
-
-boolean NoteTouchMapping::isAnyNotePressed() {
-  // if there's a stale note, compensate the noteCount check by ignoring that stale note
-  if (hasStaleNote()) {
-    return noteCount > 1;
-  }
-
-  return noteCount > 0;
-}
-
-void NoteTouchMapping::clearStaleNote() {
-  staleNote = -1;
-  staleChannel = 0;
-}
-
-void NoteTouchMapping::setStaleNote(signed char noteNum, signed char noteChannel) {
-  staleNote = noteNum;
-  staleChannel = noteChannel;
-}
-
-boolean NoteTouchMapping::isNoteStale(signed char noteNum, signed char noteChannel) {
-  return validNoteNumAndChannel(noteNum, noteChannel) && (staleNote == noteNum) && (staleChannel == noteChannel);
-}
-
-boolean NoteTouchMapping::hasStaleNote() {
-  // when we clear the stale note vars, we set them to an invalid note/channel. 
-  // checking for there's a stale note is simply checking for validity.
-  return validNoteNumAndChannel(staleNote, staleChannel);
 }
 
 void NoteTouchMapping::debugNoteChain() {
@@ -344,15 +350,19 @@ void NoteTouchMapping::debugNoteChain() {
     signed char entryNote = firstNote;
     signed char entryChannel = firstChannel;
     while (entryNote != -1) {
-      NoteEntry& entry = mapping[entryNote][entryChannel];
+      NoteEntry& entry = mapping[entryNote][entryChannel-1];
 
       DEBUGPRINT((1," note="));DEBUGPRINT((1,entryNote));
       DEBUGPRINT((1," channel="));DEBUGPRINT((1,entryChannel));
       DEBUGPRINT((1," col="));DEBUGPRINT((1,entry.getCol()));
       DEBUGPRINT((1," row="));DEBUGPRINT((1,entry.getRow()));
-      DEBUGPRINT((1," previous="));DEBUGPRINT((1,entry.previousNote));DEBUGPRINT((1,","));DEBUGPRINT((1,entry.getPreviousChannel()));
-      DEBUGPRINT((1," next="));DEBUGPRINT((1,entry.nextNote));DEBUGPRINT((1,","));DEBUGPRINT((1,entry.getNextChannel()));
+      DEBUGPRINT((1," previous="));DEBUGPRINT((1,(int)entry.previousNote));DEBUGPRINT((1,","));DEBUGPRINT((1,entry.getPreviousChannel()));
+      DEBUGPRINT((1," next="));DEBUGPRINT((1,(int)entry.nextNote));DEBUGPRINT((1,","));DEBUGPRINT((1,entry.getNextChannel()));
       DEBUGPRINT((1,"\n"));
+      if (entry.nextNote == entryNote && entry.getNextChannel() == entryChannel) {
+        DEBUGPRINT((1," INFINITE LOOP\n"));
+        break;
+      }
       entryNote = entry.nextNote;
       entryChannel = entry.getNextChannel();
     }  

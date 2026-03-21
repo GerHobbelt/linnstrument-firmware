@@ -1145,7 +1145,7 @@ boolean handleXYZupdate() {
         // when the legato switch is pressed and this is the only new touch in the split,
         // release all the latched notes after the new note on message
         if (isSwitchLegatoPressed(sensorSplit) && !hasOtherTouchInSplit(sensorSplit)) {
-          noteTouchMapping[sensorSplit].releaseLatched(sensorSplit);
+          noteTouchMapping[sensorSplit].releaseLatched();
         }
       }
       else
@@ -1939,16 +1939,14 @@ void handleTouchRelease() {
     }
 
     // unregister the note <> cell mapping
-    // the arpeggiator unregistration logic is more involved due to stale note handling
-    // inside the arpeggiator code itself
-    if (!isSwitchLegatoPressed(sensorSplit) && !isArpeggiatorEnabled(sensorSplit)) {
+    if (!isSwitchLegatoPressed(sensorSplit) && (!isArpeggiatorEnabled(sensorSplit) || !isSwitchLatchPressed(sensorSplit))) {
       noteTouchMapping[sensorSplit].noteOff(sensorCell->note, sensorCell->channel);
     }
 
     // send the Note Off
     if (isArpeggiatorEnabled(sensorSplit)) {
       if (!isSwitchLatchPressed(sensorSplit)) {
-        handleArpeggiatorNoteOff(sensorSplit, sensorCell->note, sensorCell->channel, true);
+        handleArpeggiatorNoteOff(sensorSplit, sensorCell->note, sensorCell->channel);
       }
     }
     else {
