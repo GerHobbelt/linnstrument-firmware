@@ -146,8 +146,8 @@ inline byte getCombinedLedData(byte col, byte row) {
     if (!isVisibleSequencer()) {
       if (layer == LED_LAYER_SEQUENCER) continue;
     }
-    // in normal display mode, show all layers and only show the main in other display modes
-    if (displayMode == displayNormal || layer == LED_LAYER_MAIN) {
+    // in normal and split point display mode, show all layers and only show the main in other display modes
+    if (displayMode == displayNormal || displayMode == displaySplitPoint || layer == LED_LAYER_MAIN) {
       data = ledBuffered(layer, col, row);
     }    
   }

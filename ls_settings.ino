@@ -503,6 +503,47 @@ void initializeGuitarTuning(GlobalSettings& g) {
     g.guitarTuning[7] = 64;
 }
 
+void initializeMidiSettings(byte split, PresetSettings& p) {
+  for (byte chan = 0; chan < 16; ++chan) {
+    focusCell[split][chan].col = 0;
+    focusCell[split][chan].row = 0;
+  }
+  p.split[split].midiMode = oneChannel;
+  p.split[split].midiChanPerRowReversed = false;
+  p.split[split].expressionForY = timbreCC74;
+  p.split[split].customCCForY = 74;
+  p.split[split].expressionForZ = loudnessPolyPressure;
+  p.split[split].bendRangeOption = bendRange2;
+  p.split[split].customBendRange = 24;
+  p.split[split].mpe = false;
+
+  // initialize values that differ between the keyboard splits
+  if (split == LEFT) {
+    p.split[LEFT].midiChanMain = 1;
+    p.split[LEFT].midiChanMainEnabled = true;
+    p.split[LEFT].midiChanSet[0] = false;
+    for (byte chan = 1; chan < 8; ++chan) {
+      p.split[LEFT].midiChanSet[chan] = true;
+    }
+    for (byte chan = 8; chan < 16; ++chan) {
+      p.split[LEFT].midiChanSet[chan] = false;
+    }
+    p.split[LEFT].midiChanPerRow = 1;
+  }
+  else if (split == RIGHT) {
+    p.split[RIGHT].midiChanMain = 16;
+    p.split[RIGHT].midiChanMainEnabled = true;
+    for (byte chan = 0; chan < 8; ++chan) {
+      p.split[RIGHT].midiChanSet[chan] = false;
+    }
+    for (byte chan = 8; chan < 15; ++chan) {
+      p.split[RIGHT].midiChanSet[chan] = true;
+    }
+    p.split[RIGHT].midiChanSet[15] = false;
+    p.split[RIGHT].midiChanPerRow = 9;
+  }
+}
+
 void initializePresetSettings() {
   Global.splitActive = false;
 
@@ -574,28 +615,17 @@ void initializePresetSettings() {
 
     // initialize all identical values in the keyboard split data
     for (byte s = 0; s < NUMSPLITS; ++s) {
-        for (byte chan = 0; chan < 16; ++chan) {
-          focusCell[s][chan].col = 0;
-          focusCell[s][chan].row = 0;
-        }
-        p.split[s].midiMode = oneChannel;
-        p.split[s].midiChanPerRowReversed = false;
-        p.split[s].bendRangeOption = bendRange2;
-        p.split[s].customBendRange = 24;
         p.split[s].sendX = true;
         p.split[s].sendY = true;
         p.split[s].sendZ = true;
         p.split[s].pitchCorrectQuantize = true;
         p.split[s].pitchCorrectHold = true;
         p.split[s].pitchResetOnRelease = false;
-        p.split[s].expressionForY = timbreCC74;
         p.split[s].minForY = 0;
         p.split[s].maxForY = 127;
-        p.split[s].customCCForY = 74;
         p.split[s].relativeY = false;
         p.split[s].ctrForY = 64;
         p.split[s].curveForY = cubicCurve;
-        p.split[s].expressionForZ = loudnessPolyPressure;
         p.split[s].minForZ = 0;
         p.split[s].ctrForZ = 64;
         p.split[s].maxForZ = 127;
@@ -622,37 +652,18 @@ void initializePresetSettings() {
         p.split[s].arpeggiator = false;
         p.split[s].ccFaders = false;
         p.split[s].strum = false;
-        p.split[s].mpe = false;
 
         p.split[s].sequencer = false;
     }
 
     // initialize values that differ between the keyboard splits
-    p.split[LEFT].midiChanMain = 1;
-    p.split[LEFT].midiChanMainEnabled = true;
-    p.split[LEFT].midiChanSet[0] = false;
-    for (byte chan = 1; chan < 8; ++chan) {
-      p.split[LEFT].midiChanSet[chan] = true;
-    }
-    for (byte chan = 8; chan < 16; ++chan) {
-      p.split[LEFT].midiChanSet[chan] = false;
-    }
-    p.split[LEFT].midiChanPerRow = 1;
+    initializeMidiSettings(LEFT, p);
     p.split[LEFT].colorMain = COLOR_GREEN;
     p.split[LEFT].colorPlayed = COLOR_RED;
     p.split[LEFT].lowRowMode = lowRowNormal;
     p.split[LEFT].sequencerView = sequencerScales;
 
-    p.split[RIGHT].midiChanMain = 16;
-    p.split[RIGHT].midiChanMainEnabled = true;
-    for (byte chan = 0; chan < 8; ++chan) {
-      p.split[RIGHT].midiChanSet[chan] = false;
-    }
-    for (byte chan = 8; chan < 15; ++chan) {
-      p.split[RIGHT].midiChanSet[chan] = true;
-    }
-    p.split[RIGHT].midiChanSet[15] = false;
-    p.split[RIGHT].midiChanPerRow = 9;
+    initializeMidiSettings(RIGHT, p);
     p.split[RIGHT].colorMain = COLOR_BLUE;
     p.split[RIGHT].colorPlayed = COLOR_MAGENTA;
     p.split[RIGHT].lowRowMode = lowRowNormal;
@@ -1466,6 +1477,9 @@ void handlePerSplitSettingNewTouch() {
   switch (sensorCol) {
     case 1:
       switch (sensorRow) {
+        case 7:
+          setLed(sensorCol, sensorRow, Split[sensorSplit].colorMain, cellSlowPulse);
+          break;
         case 6:
           setLed(sensorCol, sensorRow, getMpeColor(sensorSplit), cellSlowPulse);
           break;
@@ -1544,6 +1558,13 @@ void handlePerSplitSettingHold() {
     switch (sensorCol) {
       case 1:
         switch (sensorRow) {
+          case 7:
+            preResetMidiExpression(Global.currentPerSplit);
+            initializeMidiSettings(Global.currentPerSplit, config.settings);
+            updateSplitMidiChannels(Global.currentPerSplit);
+
+            updateDisplay();
+            break;
           case 6:
             setSplitMpeMode(Global.currentPerSplit, true);
             updateDisplay();
