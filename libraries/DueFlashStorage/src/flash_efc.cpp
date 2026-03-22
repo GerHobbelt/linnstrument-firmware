@@ -680,7 +680,7 @@ uint32_t flash_is_locked(uint32_t ul_start, uint32_t ul_end)
 	uc_end_region = us_end_page / us_num_pages_in_region;
 
 	/* Retrieve lock status */
-	efc_perform_command(p_efc, EFC_FCMD_GLB, 0);
+	(void)efc_perform_command(p_efc, EFC_FCMD_GLB, 0);
 
 	/* Skip unrequested regions (if necessary) */
 	ul_status = efc_get_result(p_efc);

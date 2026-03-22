@@ -34,10 +34,8 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 /*************************************** INCLUDED LIBRARIES **************************************/
 #include <SPI.h>
 #include <limits.h>
-#include <DueFlashStorage.h>
-#include <efc.h>
-#include <flash_efc.h>
 
+#include "ls_FlashStorage.h"
 #include "ls_debug.h"
 #include "ls_channelbucket.h"
 #include "ls_midi.h"
@@ -127,7 +125,7 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define DEFAULT_SENSOR_LO_Z           120      // lowest acceptable raw Z value to start a touch
 #define DEFAULT_SENSOR_FEATHER_Z      80       // lowest acceptable raw Z value to continue a touch
 #define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
-#define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure                          
+#define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure
 
 #define MAX_TOUCHES_IN_COLUMN  3
 
@@ -230,7 +228,7 @@ const int LED_PATTERNS = 3;
 
 // Two buffers of ...
 // A 26 by 8 byte array containing one byte for each LED:
-// bits 4-6: 3 bits to select the color: 0:off, 1:red, 2:yellow, 3:green, 4:cyan, 5:blue, 6:magenta
+// bits 3-6: 4 bits to select the color: 0:off, 1:red, 2:yellow, 3:green, 4:cyan, 5:blue, 6:magenta, etc.
 // bits 0-2: 0:off, 1: on, 2: pulse
 const unsigned long LED_LAYER_SIZE = MAXCOLS * MAXROWS;
 const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS+1) * LED_LAYER_SIZE;
