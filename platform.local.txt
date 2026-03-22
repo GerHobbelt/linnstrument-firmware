@@ -1,0 +1,11 @@
+
+# https://forum.arduino.cc/t/how-to-add-compile-options-to-arduino-ide-1-8-13/692640/2
+
+# These can be overridden in platform.local.txt
+compiler.c.extra_flags=-D _GERGERGERGER_=2
+compiler.c.elf.extra_flags=
+compiler.S.extra_flags=
+compiler.cpp.extra_flags=
+compiler.ar.extra_flags=
+compiler.objcopy.eep.extra_flags=
+compiler.elf2hex.extra_flags=

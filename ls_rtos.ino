@@ -19,6 +19,7 @@ switches at specific time interals, all in the background. This should be used i
 Arduino's delayMicroseconds() function.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
 
 // delayUsec:
 // use to insert a brief time delay.
@@ -178,7 +179,8 @@ inline void performContinuousTasks(unsigned long nowMicros) {
 }
 
 // checks to see if it's time to refresh the next LED column, and if so, does it
-// the return value indicate whether the LEDs were updated, so that we can use it
+//
+// the return value indicates whether the LEDs were updated, so that we can use it
 // as a coarse trigger to piggy-back other continuous tasks off of
 inline boolean checkRefreshLedColumn(unsigned long now) {
   if (calcTimeDelta(now, prevLedTimerCount) > ledRefreshInterval) {        // is it time to refresh the next LED column?
@@ -214,6 +216,9 @@ inline void checkRefreshGlobalSettingsDisplay(unsigned long now) {
 }
 
 void playSleepAnimation() {
+  DEBUGPRINT((3,"playSleepAnimation: type="));
+  DEBUGPRINT((3,Device.sleepAnimationType));
+  DEBUGPRINT((3,"\n"));
   switch (Device.sleepAnimationType) {
     case animationNone:
       activateSleepMode();

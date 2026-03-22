@@ -16,13 +16,15 @@ limitations under the License.
 
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 // Handshake codes for settings transfer
 const char* countDownCode = "5, 4, 3, 2, 1 ...\n";
-const byte countDownLength = 18;
+constexpr const byte countDownLength = 18;
 const char* linnGoCode = "LinnStruments are go!\n"; 
 const char* ackCode = "ACK\n";
 const char* linnStrumentControlCode = "LC\n";
-const byte linnStrumentControlLength = 3;
+constexpr const byte linnStrumentControlLength = 3;
 
 boolean waitingForCommands = false;
 
@@ -42,7 +44,7 @@ enum linnCommands {
 byte codePos = 0;
 uint32_t lastSerialMoment = 0;
 
-static PROGMEM prog_uint32_t crc_table[16] = {
+LS_CONST prog_uint32_t crc_table[16] = {
     0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
     0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
     0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
@@ -149,7 +151,7 @@ void handleSerialIO() {
   }
 }
 
-boolean waitForSerialAck() {
+inline boolean waitForSerialAck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
   lastSerialMoment = millis();
@@ -157,7 +159,7 @@ boolean waitForSerialAck() {
   return true;
 }
 
-boolean waitForSerialCheck() {
+inline boolean waitForSerialCheck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
   lastSerialMoment = millis();
@@ -165,7 +167,7 @@ boolean waitForSerialCheck() {
   return true;
 }
 
-char waitForSerialCRC() {
+inline char waitForSerialCRC() {
   if (!serialWaitForMaximumTwoSeconds()) return 0;
   char ack = Serial.read();
   lastSerialMoment = millis();
@@ -342,7 +344,7 @@ void serialLightLed() {
   updateDisplay();
 }
 
-int32_t serialSendProjectSize() {
+inline int32_t serialSendProjectSize() {
   // send the size of a project
   int32_t projectSize = sizeof(SequencerProject);
   Serial.write((byte*)&projectSize, sizeof(int32_t));
