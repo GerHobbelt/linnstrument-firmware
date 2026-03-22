@@ -1650,7 +1650,7 @@ void paintTranspose(byte color, byte row, short transpose) {
     int col_from = (transpose < 0) ? (midcol + transpose) : (midcol + 1);
     int col_to = (transpose > 0) ? (midcol + transpose) : (midcol - 1);
     for (int c = col_from; c <= col_to; ++c) {
-      if (c > 0 {
+      if (c > 0) {
         setLed(c, row, color, cellOn);
       }
     }
