@@ -135,8 +135,13 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 
 /******************************************** CONSTANTS ******************************************/
 
-const char* OSVersion = "234.";
-const char* OSVersionBuild = ".074";
+LS_CONST struct OSinfo {
+  const char* OSVersion;
+  const char* OSVersionBuild;
+} OSinfo = {
+  .OSVersion = "234.",
+  .OSVersionBuild = ".074",
+};
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -243,7 +248,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
 #define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure
 
-#define MAX_TOUCHES_IN_COLUMN  3
+#define MAX_TOUCHES_IN_COLUMN  MAXROWS
 
 // Sequencer constants
 #define MAX_PROJECTS              16
@@ -337,9 +342,9 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 #define TEMPO_ARP_SIXTEENTH_SWING 0xff
 
-const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+LS_CONST unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-const int LED_PATTERNS = 3;
+constexpr const int LED_PATTERNS = 3;
 
 // Two buffers of ...
 // A 26 by 8 byte array containing one byte for each LED:
@@ -481,6 +486,7 @@ int :3;
   byte velocity:7;                           // velocity from 0 to 127
   boolean shouldRefreshZ:1;                  // indicate whether it's necessary to refresh Z
   byte velocityZ:7;                          // the Z value with velocity sensitivity
+  unsigned short peakRawZ:12;                // peak raw Z seen during this touch, for ghost note release detection
 };
 TouchInfo touchInfo[MAXCOLS][MAXROWS];       // store as much touch information instances as there are cells
 
