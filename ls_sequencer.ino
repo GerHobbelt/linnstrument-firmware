@@ -371,7 +371,8 @@ inline void sequencerTurnOff(byte split, boolean save) {
 }
 
 inline void sequencerTogglePlay(byte split) {
-  if (!Split[split].sequencer) split = otherSplit(split);        // control the sequencer while playing in the other split
+  if (!Split[split].sequencer) 
+    split = otherSplit(split);        // control the sequencer while playing in the other split
   if (Split[split].sequencer) {
     if (!seqState[split].running) {
       seqState[split].turnOn();
@@ -383,7 +384,8 @@ inline void sequencerTogglePlay(byte split) {
 }
 
 inline void sequencerToggleMute(byte split) {
-  if (!Split[split].sequencer) split = otherSplit(split);        // control the sequencer while playing in the other split
+  if (!Split[split].sequencer) 
+    split = otherSplit(split);        // control the sequencer while playing in the other split
   seqState[split].muted = !seqState[split].muted;
   if (seqState[split].muted && seqState[split].running) {
     seqState[split].turnOffEvents();
@@ -398,14 +400,16 @@ inline void sequencerToggleMute(byte split) {
 }
 
 inline void sequencerPreviousPattern(byte split) {
-  if (!Split[split].sequencer) split = otherSplit(split);        // control the sequencer while playing in the other split
+  if (!Split[split].sequencer) 
+    split = otherSplit(split);        // control the sequencer while playing in the other split
   if (Split[split].sequencer) {
     seqState[split].selectPreviousPattern();
   }
 }
 
 inline void sequencerNextPattern(byte split) {
-  if (!Split[split].sequencer) split = otherSplit(split);        // control the sequencer while playing in the other split
+  if (!Split[split].sequencer) 
+    split = otherSplit(split);        // control the sequencer while playing in the other split
   if (Split[split].sequencer) {
     seqState[split].selectNextPattern();
   }
@@ -2562,7 +2566,7 @@ int StepSequencerState::getRowNoteNum(byte noteRow) {
   switch (Split[split].sequencerView) {
     case sequencerNotes:
       return -1;
-    case sequencerScales: {                                // bug: wnat if microLinn is on?
+    case sequencerScales: {                                // bug: what if microLinn is on?
       int row = -1;
       for (byte i = 0; i < 128; ++i) {
         if (((Global.mainNotes[Global.activeNotes] >> (i % 12)) & 1) ||
