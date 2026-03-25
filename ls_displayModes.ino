@@ -1904,7 +1904,7 @@ void paintGlobalSettingsDisplay() {
   }
 
   // set light for shortcut to microLinn menus
-  if (!isLinn200()) setLed(16, 4, COLOR_LIME, cellOn);
+  setLed(16, 4, COLOR_LIME, cellOn);
 
   // clearly indicate the calibration status
   setLed(16, 3, getCalibrationColor(), cellOn);
