@@ -184,10 +184,10 @@ void displayXFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        if (cell(x, y-1).touched == touchedCell) {
-          Serial.print("#_");
-        }
         Serial.print(cell(x, y-1).currentRawX);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
@@ -220,10 +220,10 @@ void displayYFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        if (cell(x, y-1).touched == touchedCell) {
-          Serial.print("#_");
-        }
         Serial.print(cell(x, y-1).currentRawY);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
@@ -252,10 +252,10 @@ void displayZFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        if (cell(x, y-1).touched == touchedCell) {
-          Serial.print("#_");
-        }
         Serial.print(cell(x, y-1).currentRawZ);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
