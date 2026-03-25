@@ -16,15 +16,15 @@ limitations under the License.
 These implement the polyphonic expressive step sequencer, independently for each split.
 **************************************************************************************************/
 
-const byte SEQ_FADER_TOP = 3;
+constexpr const byte SEQ_FADER_TOP = 3;
 byte SEQ_FADER_LENGTH;
 byte SEQ_FADER_RIGHT;
 byte SEQ_FADER_LEFT;
 
 byte SEQ_PATTERN_SELECTOR_LEFT;
 byte SEQ_PATTERN_SELECTOR_RIGHT;
-const byte SEQ_PATTERN_SELECTOR_BOTTOM = 6;
-const byte SEQ_PATTERN_SELECTOR_TOP = 7;
+constexpr const byte SEQ_PATTERN_SELECTOR_BOTTOM = 6;
+constexpr const byte SEQ_PATTERN_SELECTOR_TOP = 7;
 
 byte SEQ_NAVIGATION_LEFT;
 byte SEQ_NAVIGATION_RIGHT;
@@ -32,33 +32,33 @@ byte SEQ_NAVIGATION_BOTTOM;
 byte SEQ_NAVIGATION_TOP;
 
 byte SEQ_MUTER_COLUMN;
-const byte SEQ_MUTER_BOTTOM = 6;
-const byte SEQ_MUTER_TOP = 7;
+constexpr const byte SEQ_MUTER_BOTTOM = 6;
+constexpr const byte SEQ_MUTER_TOP = 7;
 
 byte SEQ_VIEW_COLUMN;
-const byte SEQ_VIEW_BOTTOM = 4;
-const byte SEQ_VIEW_TOP = 5;
+constexpr const byte SEQ_VIEW_BOTTOM = 4;
+constexpr const byte SEQ_VIEW_TOP = 5;
 
 byte SEQ_STEPSIZE_LEFT;
 byte SEQ_STEPSIZE_RIGHT;
-const byte SEQ_STEPSIZE_BOTTOM = 4;
-const byte SEQ_STEPSIZE_TOP = 5;
+constexpr const byte SEQ_STEPSIZE_BOTTOM = 4;
+constexpr const byte SEQ_STEPSIZE_TOP = 5;
 
 byte SEQ_LOOPSCREEN_COLUMN;
-const byte SEQ_LOOPSCREEN_ROW = 5;
+constexpr const byte SEQ_LOOPSCREEN_ROW = 5;
 
 byte SEQ_DIRECTION_COLUMN;
-const byte SEQ_DIRECTION_ROW = 4;
+constexpr const byte SEQ_DIRECTION_ROW = 4;
 
 byte SEQ_CLEAR_COLUMN;
-const byte SEQ_CLEAR_ROW = 7;
+constexpr const byte SEQ_CLEAR_ROW = 7;
 
 byte SEQ_COPY_COLUMN;
-const byte SEQ_COPY_ROW = 6;
+constexpr const byte SEQ_COPY_ROW = 6;
 
 byte SEQ_EVENTS_WIDTH;
 
-const byte SEQ_DURATION_EDIT_PANEL_COUNT = 17;
+constexpr const byte SEQ_DURATION_EDIT_PANEL_COUNT = 17;
 
 int32_t FXD_SEQ_DURATION_FADER_RATIO;
 
@@ -71,7 +71,7 @@ static short sequencerCopyStepSource = -1;
 
 static boolean sequencerSwitch1WasUsed = false;
 
-const byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
+LS_CONST byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
    1,  // StepSixtyfourthTriplet
    2,  // StepThirtysecondTriplet
    3,  // StepThirtysecond
@@ -91,7 +91,7 @@ const byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
    96  // StepWhole
 };
 
-const char* seqDurationEditPanelLabels[SEQ_DURATION_EDIT_PANEL_COUNT] {
+LS_CONST char* seqDurationEditPanelLabels[SEQ_DURATION_EDIT_PANEL_COUNT] {
   "64t",
   "32t",
   "32",
@@ -303,7 +303,7 @@ inline void applySequencerSettings() {
   fxd4CurrentTempo = FXD4_FROM_INT(Project.tempo);  
 }
 
-boolean requiresSequencerSlideTracking() {
+inline boolean requiresSequencerSlideTracking() {
   if (isSequencerEditing()) return true;
   if (sensorCol >= SEQ_FADER_LEFT && sensorRow <= SEQ_FADER_TOP && (!isWithinSequencerNavigationArea())) return true;
   return false;

@@ -1019,7 +1019,7 @@ void paintOSVersionBuildDisplay() {
 
 void paintMicroLinnOSVersionDisplay() {
   clearDisplay();
-  smallfont_draw_string(0, 0, microLinnOSVersion, COLOR_CYAN);
+  smallfont_draw_string(0, 0, OSinfo.microLinnOSVersion, COLOR_CYAN);
 }
 
 // paint the current preset number for a particular side, in large block characters
