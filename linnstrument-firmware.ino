@@ -499,6 +499,7 @@ struct __attribute__ ((packed)) TouchInfo {
   byte velocity:7;                           // velocity from 0 to 127
   boolean shouldRefreshZ:1;                  // indicate whether it's necessary to refresh Z
   byte velocityZ:7;                          // the Z value with velocity sensitivity
+  unsigned short peakRawZ:12;                // peak raw Z seen during this touch, for ghost note release detection
 };
 TouchInfo touchInfo[MAXCOLS][MAXROWS];       // store as much touch information instances as there are cells
 
