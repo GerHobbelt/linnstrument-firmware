@@ -2211,7 +2211,7 @@ void handleSensorSensitivityZNewTouch() {
 
 void handleSensorSensitivityZHold() {
   if (sensorCol != 0 && sensorRow != 0 && !(sensorCol == NUMCOLS-1 && sensorRow == NUMROWS-1)) {
-    // store the sensitivity setting that would be need to make the current pressure value reach to the maximum
+    // store the sensitivity setting that would be needed to make the current pressure value reach to the maximum
     lastAutoSensorSensitivityZ = constrain((calculatePreferredPressureRange(calculateSensorRangeZ() + Device.sensorLoZ) * 100) / applyRawZBias(lastReadSensorRawZ), 50, 100);
 
     paintLowRowPressureBar();
