@@ -1165,7 +1165,7 @@ boolean stopAnimation = false;                      // indicates whether animati
 int32_t fxd4CurrentTempo = FXD4_FROM_INT(120);               // the current tempo
 unsigned long midiDecimateRate = DEFAULT_MIDI_DECIMATION;    // default MIDI decimation rate
 unsigned long midiMinimumInterval = DEFAULT_MIDI_INTERVAL;   // minimum interval between sending two MIDI bytes
-byte lastValueMidiNotesOn[NUMSPLITS][128][16];               // for each split, keep track of MIDI note on to filter out note off messages that are not needed
+//byte lastValueMidiNotesOn[NUMSPLITS][128][16];               // for each split, keep track of MIDI note on to filter out note off messages that are not needed
 int32_t fxdPitchHoldSamples[NUMSPLITS];                      // for each split the actual pitch hold duration in samples
 int32_t fxdRateXThreshold[NUMSPLITS];                        // the threshold below which the average rate of change of X is considered 'stationary' and pitch hold quantization will start to occur
 int latestNoteNumberForAutoOctave = -1;                      // keep track of the latest note number that was generated to use for auto octave switching
