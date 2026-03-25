@@ -91,7 +91,9 @@ LS_CONST byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
    96  // StepWhole
 };
 
-LS_CONST char* seqDurationEditPanelLabels[SEQ_DURATION_EDIT_PANEL_COUNT] {
+LS_CONST struct seqDurationEditPanelLabels {
+  const char* labels[SEQ_DURATION_EDIT_PANEL_COUNT];
+} seqDurationEditPanelLabels = { {
   "64t",
   "32t",
   "32",
@@ -109,7 +111,7 @@ LS_CONST char* seqDurationEditPanelLabels[SEQ_DURATION_EDIT_PANEL_COUNT] {
   " 1t",
   " 2.",
   " 1"
-};
+} };
 
 struct StepSequencerState;
 
@@ -1185,7 +1187,7 @@ void handleSequencerFaderTouch(boolean newVelocity) {
         case 2:
         {
           int offset = 1;
-          const char* durationLabel = seqDurationEditPanelLabels[focus->getFaderValue(sensorRow)];
+          const char* durationLabel = seqDurationEditPanelLabels.labels[focus->getFaderValue(sensorRow)];
           if (durationLabel[0] == '1' || (durationLabel[0] == ' ' && durationLabel[1] == '1')) {
             offset += 2;
           }
