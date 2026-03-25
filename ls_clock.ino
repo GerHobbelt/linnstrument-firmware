@@ -30,6 +30,11 @@ unsigned char lastInternalClockCount;                    // the count of the int
 signed char previousMidiClockCount;                      // the previous MIDI clock count, used to detect if a change really occurred
 signed char previousInternalClockCount;                  // the previous internal clock count, used to detect if a change really occurred
 
+// the time before a led is turned off when flashing or pulsing, in microseconds: 1/4th of the current tempo
+unsigned int LED_FLASH_DELAY(void) {
+  return (INTERNAL_CLOCK_UNIT_BASE / 4) / FXD4_TO_INT(fxd4CurrentTempo);
+}
+
 void initializeClock() {
   prevClockTimerCount = micros();
 

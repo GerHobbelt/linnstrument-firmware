@@ -98,7 +98,7 @@ void handleMidiInput(unsigned long nowMicros) {
   if (isSyncedToMidiClock() &&
       controlButton != GLOBAL_SETTINGS_ROW &&
       tempoLedOn != 0 &&
-      calcTimeDelta(nowMicros, tempoLedOn) > LED_FLASH_DELAY) {
+      calcTimeDelta(nowMicros, tempoLedOn) > LED_FLASH_DELAY()) {
     tempoLedOn = 0;
     clearLed(0, GLOBAL_SETTINGS_ROW);
   }
