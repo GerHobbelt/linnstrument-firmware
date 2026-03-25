@@ -1856,7 +1856,7 @@ void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
     }
 
     // handle turning off the tap tempo led after minimum 30ms
-    if (tempoLedOn != 0 && calcTimeDelta(now, tempoLedOn) > LED_FLASH_DELAY) {
+    if (tempoLedOn != 0 && calcTimeDelta(now, tempoLedOn) > LED_FLASH_DELAY()) {
       tempoLedOn = 0;
       clearLed(col, row);
     }
@@ -1905,11 +1905,6 @@ void paintGlobalSettingsDisplay() {
 
   // set light for shortcut to microLinn menus
   if (!isLinn200()) setLed(16, 4, COLOR_LIME, cellOn);
-#ifdef DEBUG_ENABLED                                             // avoid conflict, column 17 also sets the debug level
-  if (isLinn200()) setLed(16, 4, COLOR_LIME, cellOn);
-#else
-  if (isLinn200()) setLed(17, 1, COLOR_LIME, cellOn);
-#endif
 
   // clearly indicate the calibration status
   setLed(16, 3, getCalibrationColor(), cellOn);
