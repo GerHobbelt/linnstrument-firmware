@@ -1386,7 +1386,7 @@ void handlePerSplitSettingNewTouch() {
     case 9:
       switch (sensorRow) {
         case 7:
-          // handled in release
+          // handled in hold and release
           break;
         case 6:
           Split[Global.currentPerSplit].expressionForY = timbreCC1;
@@ -1395,7 +1395,7 @@ void handlePerSplitSettingNewTouch() {
           applyTimbreCC74(Global.currentPerSplit);
           break;
         case 4:
-          // handled in release
+          // handled in hold and release
           break;
       }
       break;
@@ -1404,7 +1404,7 @@ void handlePerSplitSettingNewTouch() {
     case 10:
       switch (sensorRow) {
         case 7:
-          // handled in release
+          // handled in hold and release
           break;
         case 6:
           Split[Global.currentPerSplit].expressionForZ = loudnessPolyPressure;
@@ -1462,13 +1462,16 @@ void handlePerSplitSettingNewTouch() {
           Split[Global.currentPerSplit].lowRowMode = lowRowSustain;
           break;
         case 6:
-          // handled in release
+          Split[Global.currentPerSplit].lowRowMode = lowRowBend;
+          // also handled in hold
           break;
         case 5:
-          // handled in release
+          Split[Global.currentPerSplit].lowRowMode = lowRowCCX;
+          // also handled in hold
           break;
         case 4:
-          // handled in release
+          Split[Global.currentPerSplit].lowRowMode = lowRowCCXYZ;
+          // also handled in hold
           break;
       }
       lowRowJoystickLatched[Global.currentPerSplit] &= Split[Global.currentPerSplit].lowRowMode == lowRowCCXYZ;
@@ -1640,6 +1643,7 @@ void handlePerSplitSettingHold() {
       case 9:
         switch (sensorRow) {
           case 7:
+            Split[Global.currentPerSplit].sendY = true;
             resetNumericDataChange();
             setDisplayMode(displayLimitsForY);
             updateDisplay();
@@ -1650,6 +1654,7 @@ void handlePerSplitSettingHold() {
             updateDisplay();
             break;
           case 4:
+            Split[Global.currentPerSplit].relativeY = true;
             resetNumericDataChange();
             setDisplayMode(displayInitialForRelativeY);
             updateDisplay();
@@ -1660,6 +1665,7 @@ void handlePerSplitSettingHold() {
       case 10:
         switch (sensorRow) {
           case 7:
+            Split[Global.currentPerSplit].sendZ = true;
             resetNumericDataChange();
             setDisplayMode(displayLimitsForZ);
             updateDisplay();
@@ -1792,30 +1798,6 @@ void handlePerSplitSettingRelease() {
         case 5:
           if (ensureCellBeforeHoldWait(Split[Global.currentPerSplit].colorPlayed, cellOn)) {
             Split[Global.currentPerSplit].colorPlayed = colorCycle(Split[Global.currentPerSplit].colorPlayed, true);
-          }
-          break;
-      }
-      break;
-
-    case 13:
-      switch (sensorRow) {
-        case 6:
-          if (ensureCellBeforeHoldWait(getLowRowBendColor(Global.currentPerSplit),
-                                       Split[Global.currentPerSplit].lowRowMode == lowRowBend ? cellOn : cellOff)) {
-            Split[Global.currentPerSplit].lowRowMode = lowRowBend;
-          }
-          break;
-        case 5:
-          if (ensureCellBeforeHoldWait(getLowRowCCXColor(Global.currentPerSplit),
-                                       Split[Global.currentPerSplit].lowRowMode == lowRowCCX ? cellOn : cellOff)) {
-            Split[Global.currentPerSplit].lowRowMode = lowRowCCX;
-            lowRowJoystickLatched[Global.currentPerSplit] = false;
-          }
-          break;
-        case 4:
-          if (ensureCellBeforeHoldWait(getLowRowCCXYZColor(Global.currentPerSplit),
-                                       Split[Global.currentPerSplit].lowRowMode == lowRowCCXYZ ? cellOn : cellOff)) {
-            Split[Global.currentPerSplit].lowRowMode = lowRowCCXYZ;
           }
           break;
       }
@@ -2382,7 +2364,7 @@ void handleSensorSensitivityZNewTouch() {
 
 void handleSensorSensitivityZHold() {
   if (sensorCol != 0 && sensorRow != 0 && !(sensorCol == NUMCOLS-1 && sensorRow == NUMROWS-1)) {
-    // store the sensitivity setting that would be need to make the current pressure value reach to the maximum
+    // store the sensitivity setting that would be needed to make the current pressure value reach to the maximum
     lastAutoSensorSensitivityZ = constrain((calculatePreferredPressureRange(calculateSensorRangeZ() + Device.sensorLoZ) * 100) / applyRawZBias(lastReadSensorRawZ), 50, 100);
 
     paintLowRowPressureBar();
