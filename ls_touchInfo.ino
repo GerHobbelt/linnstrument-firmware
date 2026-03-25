@@ -616,6 +616,10 @@ boolean TouchInfo::isHigherPhantomPressure(short other) {
   // 1.125x margin: all three other corners must have >12.5% higher Z than the
   // candidate to reject it. Catches phantom crosstalk up to ~89% of real Z
   // while preventing cascade rejection of similar-pressure real touches.
+  //
+  // Tighter margins catch more phantoms but risk cascade rejection of
+  // real touches; this could benefit from being user-configurable or
+  // replaced by a physics-based predictive model in a future refactor.
   return currentRawZ > other + (other >> 3);
 }
 
