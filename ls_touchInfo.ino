@@ -17,6 +17,7 @@ These are the methods of the TouchInfo class, handling data related to the touch
 each individual cell.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
 
 extern int numCellsCalculatingVelocity;
 
@@ -33,7 +34,7 @@ int main(int argc, const char* argv[]) {
   printf("\n");
 }
 **************************************************************************************************/
-const short Z_CURVE_HIGH[1017] = {
+LS_CONST short Z_CURVE_HIGH[1017] = {
     0, 128, 148, 161, 172, 180, 188, 195, 201, 206, 212, 216, 221, 225, 230, 234, 237, 241, 245, 248, 251, 255, 258, 261, 264, 267, 270, 273, 275,
     278, 281, 283, 286, 288, 291, 293, 296, 298, 301, 303, 305, 307, 310, 312, 314, 316, 319, 321, 323, 325, 327, 329, 331, 333, 335, 337, 339, 341,
     343, 345, 347, 349, 350, 352, 354, 356, 358, 360, 362, 363, 365, 367, 369, 370, 372, 374, 376, 377, 379, 381, 382, 384, 386, 387, 389, 391, 392,
@@ -84,7 +85,7 @@ int main(int argc, const char* argv[]) {
   printf("\n");
 }
 **************************************************************************************************/
-const short Z_CURVE_MEDIUM[1017] = {
+LS_CONST short Z_CURVE_MEDIUM[1017] = {
     0, 91, 107, 119, 128, 135, 142, 148, 153, 158, 163, 167, 171, 175, 179, 182, 186, 189, 193, 196, 199, 202, 205, 208, 210, 213, 216, 218, 221, 224,
     226, 229, 231, 233, 236, 238, 240, 243, 245, 247, 249, 251, 254, 256, 258, 260, 262, 264, 266, 268, 270, 272, 274, 276, 278, 280, 281, 283, 285, 287,
     289, 291, 293, 294, 296, 298, 300, 301, 303, 305, 307, 308, 310, 312, 313, 315, 317, 319, 320, 322, 323, 325, 327, 328, 330, 332, 333, 335, 336, 338,
@@ -135,7 +136,7 @@ int main(int argc, const char* argv[]) {
   printf("\n");
 }
 **************************************************************************************************/
-const short Z_CURVE_LOW[1017] = {
+LS_CONST short Z_CURVE_LOW[1017] = {
     0, 53, 65, 74, 81, 87, 92, 97, 101, 106, 109, 113, 117, 120, 123, 126, 129, 132, 135, 138, 141, 143, 146, 148, 151, 153, 156, 158, 160, 163, 165,
     167, 169, 172, 174, 176, 178, 180, 182, 184, 186, 188, 190, 192, 194, 196, 198, 200, 202, 203, 205, 207, 209, 211, 213, 214, 216, 218, 220, 221, 223,
     225, 226, 228, 230, 232, 233, 235, 237, 238, 240, 241, 243, 245, 246, 248, 250, 251, 253, 254, 256, 257, 259, 261, 262, 264, 265, 267, 268, 270, 271,
@@ -231,7 +232,7 @@ void initializeTouchInfo() {
 // of data points to be always one more than the number of velocity samples
 
 // This element of the linear regression algorithm is constant based on the number of velocity samples 
-const int VELOCITY_SXX = (VELOCITY_N * VELOCITY_SUMXSQ) - VELOCITY_SUMX * VELOCITY_SUMX;
+constexpr const int VELOCITY_SXX = (VELOCITY_N * VELOCITY_SUMXSQ) - VELOCITY_SUMX * VELOCITY_SUMX;
 
 inline byte scale1016to127(int v, boolean allowZero) {
   // reduce 1016 > 127 by dividing, but we do this so that values are rounded instead of truncated
@@ -368,7 +369,7 @@ VelocityState calcVelocity(unsigned short z) {
   return velocityCalculated;
 }
 
-byte calcPreferredVelocity(byte velocity) {
+inline byte calcPreferredVelocity(byte velocity) {
   // determine the preferred velocity based on the sensitivity settings
   if (Global.velocitySensitivity == velocityFixed) {
     return Global.valueForFixedVelocity;
@@ -493,6 +494,20 @@ inline boolean TouchInfo::isStableYTouch() {
 
 inline boolean TouchInfo::isActiveTouch() {
   refreshZ();
+  // Detect ghost notes at rectangle corners: if Z drops below 50% of its
+  // peak and other touches exist on the same row AND column, treat this
+  // as a released finger with only phantom crosstalk remaining.
+  if (velocity && peakRawZ > 0 && currentRawZ < peakRawZ / 2) {
+    int32_t rowsInCol = rowsInColsTouched[sensorCol] & ~(int32_t)(1 << sensorRow);
+    int32_t colsInRow = colsInRowsTouched[sensorRow] & ~(int32_t)(1 << sensorCol);
+    if (rowsInCol && colsInRow) {
+      return false;
+    }
+  }
+  // Once velocity is calculated, require real Z signal (not just featherTouch).
+  if (velocity) {
+    return velocityZ > 0 || pressureZ > 0;
+  }
   return featherTouch || velocityZ > 0 || pressureZ > 0;
 }
 
@@ -555,6 +570,9 @@ inline void TouchInfo::refreshZ() {
     unsigned short previousPreviousRawZ = previousRawZ;
     previousRawZ = currentRawZ;
     currentRawZ = readZ();
+    if (currentRawZ > peakRawZ) {
+      peakRawZ = currentRawZ;
+    }
     featherTouch = false;
     velocityZ = 0;
     velocityZHi = 0;
@@ -674,7 +692,14 @@ void TouchInfo::setPhantoms(byte col1, byte col2, byte row1, byte row2) {
 }
 
 boolean TouchInfo::isHigherPhantomPressure(short other) {
-  return hasNote() || currentRawZ > other;
+  // 1.125x margin: all three other corners must have >12.5% higher Z than the
+  // candidate to reject it. Catches phantom crosstalk up to ~89% of real Z
+  // while preventing cascade rejection of similar-pressure real touches.
+  //
+  // Tighter margins catch more phantoms but risk cascade rejection of
+  // real touches; this could benefit from being user-configurable or
+  // replaced by a physics-based predictive model in a future refactor.
+  return currentRawZ > other + (other >> 3);
 }
 
 boolean TouchInfo::hasRogueSweepX() {
@@ -682,7 +707,7 @@ boolean TouchInfo::hasRogueSweepX() {
 }
 
 boolean TouchInfo::hasUsableX() {
-    return !phantomSet || !rogueSweepX;
+    return !phantomSet && !rogueSweepX;
 }
 
 void TouchInfo::clearMusicalData() {
@@ -717,6 +742,7 @@ void TouchInfo::clearSensorData() {
   velocityZ = 0;
   velocityZHi = 0;
   pressureZ = 0;
+  peakRawZ = 0;
   shouldRefreshZ = true;
   pendingReleaseCount = 0;
   didMove = false;

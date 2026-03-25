@@ -16,13 +16,26 @@ limitations under the License.
 
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 // Handshake codes for settings transfer
-const char* countDownCode = "5, 4, 3, 2, 1 ...\n";
-const byte countDownLength = 18;
-const char* linnGoCode = "LinnStruments are go!\n"; 
-const char* ackCode = "ACK\n";
-const char* linnStrumentControlCode = "LC\n";
-const byte linnStrumentControlLength = 3;
+LS_CONST struct HandshakeCodes {
+  const char* countDownCode;
+  //constexpr const byte countDownLength = 18;
+  const char* linnGoCode; 
+  const char* ackCode;
+  const char* linnStrumentControlCode;
+  //constexpr const byte linnStrumentControlLength = 3;
+} HandshakeCodes = {
+  .countDownCode = "5, 4, 3, 2, 1 ...\n",
+  //constexpr const byte countDownLength = 18;
+  .linnGoCode = "LinnStruments are go!\n",
+  .ackCode = "ACK\n",
+  .linnStrumentControlCode = "LC\n",
+  //constexpr const byte linnStrumentControlLength = 3;
+};
+static constexpr const byte countDownLength = 18;
+static constexpr const byte linnStrumentControlLength = 3;
 
 boolean waitingForCommands = false;
 
@@ -42,7 +55,7 @@ enum linnCommands {
 byte codePos = 0;
 uint32_t lastSerialMoment = 0;
 
-static PROGMEM prog_uint32_t crc_table[16] = {
+LS_CONST prog_uint32_t crc_table[16] = {
     0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
     0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
     0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
@@ -75,6 +88,11 @@ void handleSerialIO() {
 
   // get the next byte from the serial bus
   byte d = Serial.read();
+  DEBUGPRINT((5, "handleSerialIO: input="));
+  DEBUGPRINT((5, d));
+  DEBUGPRINT((5, ", waitingForCommands="));
+  DEBUGPRINT((5, (int)waitingForCommands));
+  DEBUGPRINT((5, "\n"));
 
   // check for a recognized command
   if (waitingForCommands) {
@@ -124,15 +142,15 @@ void handleSerialIO() {
   }
   // handle readyness countdown state
   else {
-    if (d == countDownCode[codePos]) {
+    if (d == HandshakeCodes.countDownCode[codePos]) {
       codePos++;
       if (codePos == countDownLength) {
         codePos = 0;
         waitingForCommands = true;
-        Serial.write(linnGoCode);
+        Serial.write(HandshakeCodes.linnGoCode);
       }
     }
-    else if (d == linnStrumentControlCode[codePos]) {
+    else if (d == HandshakeCodes.linnStrumentControlCode[codePos]) {
       codePos++;
       if (codePos == linnStrumentControlLength) {
         codePos = 0;
@@ -140,7 +158,7 @@ void handleSerialIO() {
         controlModeActive = true;
         clearDisplay();
         updateDisplay();
-        Serial.write(ackCode);
+        Serial.write(HandshakeCodes.ackCode);
       }
     }
     else {
@@ -149,7 +167,7 @@ void handleSerialIO() {
   }
 }
 
-boolean waitForSerialAck() {
+inline boolean waitForSerialAck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
   lastSerialMoment = millis();
@@ -157,7 +175,7 @@ boolean waitForSerialAck() {
   return true;
 }
 
-boolean waitForSerialCheck() {
+inline boolean waitForSerialCheck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
   lastSerialMoment = millis();
@@ -165,7 +183,7 @@ boolean waitForSerialCheck() {
   return true;
 }
 
-char waitForSerialCRC() {
+inline char waitForSerialCRC() {
   if (!serialWaitForMaximumTwoSeconds()) return 0;
   char ack = Serial.read();
   lastSerialMoment = millis();
@@ -205,7 +223,7 @@ int negotiateIncomingCRC(byte* buffer, uint8_t size) {
 }
 
 void serialSendSettings() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
@@ -233,7 +251,7 @@ void serialSendSettings() {
     src += actual;
   }
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 }
 
 boolean serialWaitForMaximumTwoSeconds() {
@@ -250,7 +268,7 @@ boolean serialWaitForMaximumTwoSeconds() {
 }
 
 void serialRestoreSettings() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
@@ -267,7 +285,7 @@ void serialRestoreSettings() {
   int32_t settingsSize;
   memcpy(&settingsSize, buff1, sizeof(int32_t));
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   // restore the actual settings
   uint32_t projectOffset = SETTINGS_OFFSET;
@@ -301,7 +319,7 @@ void serialRestoreSettings() {
   }
 
   // send the acknowledgement of success
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
   delayUsec(1000000);
 
   // Turn off OS upgrade mode
@@ -342,7 +360,7 @@ void serialLightLed() {
   updateDisplay();
 }
 
-int32_t serialSendProjectSize() {
+inline int32_t serialSendProjectSize() {
   // send the size of a project
   int32_t projectSize = sizeof(SequencerProject);
   Serial.write((byte*)&projectSize, sizeof(int32_t));
@@ -377,7 +395,7 @@ void serialSendProjectRaw(int32_t projectSize, byte projectNumber) {
 }
 
 void serialSendSingleProject() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
@@ -387,18 +405,18 @@ void serialSendSingleProject() {
   if (!serialWaitForMaximumTwoSeconds()) return;
   
   uint8_t projectNumber = Serial.read();
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   Serial.write(Device.version);
 
   int32_t projectSize = serialSendProjectSize();
   serialSendProjectRaw(projectSize, projectNumber);
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 }
 
 void serialSendProjects() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
@@ -412,12 +430,12 @@ void serialSendProjects() {
     serialSendProjectRaw(projectSize, p);
   }
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 }
 
 
 void serialRestoreProject() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
@@ -427,7 +445,7 @@ void serialRestoreProject() {
   if (!serialWaitForMaximumTwoSeconds()) return;
   uint8_t version = Serial.read();
   if (version < 9) return;
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
   lastSerialMoment = millis();
 
   // retrieve the size of a project
@@ -445,12 +463,12 @@ void serialRestoreProject() {
 
   if (projectSize != sizeof(SequencerProject)) return;
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   if (!serialWaitForMaximumTwoSeconds()) return;
 
   uint8_t p = Serial.read();
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   // write the actual project
   byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
@@ -480,6 +498,6 @@ void serialRestoreProject() {
   }
 
   // finished
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
   delayUsec(500000);
 }

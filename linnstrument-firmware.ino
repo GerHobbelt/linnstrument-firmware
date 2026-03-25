@@ -29,7 +29,99 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 =====================================================================================================================*/
 
 
+/*
+ * DUE Board pin   |  PORT  | Label
+ * ----------------+--------+-------
+ *   0             |  PA8   | "RX0"
+ *   1             |  PA9   | "TX0"
+ *   2       TIOA0 |  PB25  |
+ *   3       TIOA7 |  PC28  |
+ *   4       NPCS1 |  PA29  | SPI_SENSOR : touch sensor control over SPI
+ *           TIOB6 |  PC26  |
+ *   5       TIOA6 |  PC25  |
+ *   6       PWML7 |  PC24  |
+ *   7       PWML6 |  PC23  |
+ *   8       PWML5 |  PC22  |
+ *   9       PWML4 |  PC21  |
+ *  10       NPCS0 |  PA28  | SPI_LEDS : LED control over SPI
+ *           TIOB7 |  PC29  |
+ *  11       TIOA8 |  PD7   |
+ *  12       TIOB8 |  PD8   |
+ *  13       TIOB0 |  PB27  | ~~LED AMBER "L"~~
+ *  14       TXD3  |  PD4   | "TX3"
+ *  15       RXD3  |  PD5   | "RX3"
+ *  16       TXD1  |  PA13  | "TX2"
+ *  17       RXD1  |  PA12  | "RX2"
+ *  18       TXD0  |  PA11  | "TX1"
+ *  19       RXD0  |  PA10  | "RX1"
+ *  20             |  PB12  | "SDA"
+ *  21             |  PB13  | "SCL"
+ *  22             |  PB26  |
+ *  23             |  PA14  |
+ *  24             |  PA15  |
+ *  25             |  PD0   |
+ *  26             |  PD1   |
+ *  27             |  PD2   |
+ *  28             |  PD3   |
+ *  29             |  PD6   |
+ *  30             |  PD9   |
+ *  31             |  PA7   |
+ *  32             |  PD10  |
+ *  33             |  PC1   | FOOT_SW_LEFT
+ *  34             |  PC2   | FOOT_SW_RIGHT
+ *  35             |  PC3   | MIDI or SERIAL operation (output) : set it HIGH for serial operation i.e. debug output & firmware uploads
+ *  36             |  PC4   | DIN or USB connector (output) : set it HIGH for USB operation
+ *  37             |  PC5   | the output enable line for the 2 LED display chips (output) : set HIGH to enable the LEDs.
+ *  38             |  PC6   | LINNMODEL (input) : high = Model 200, low = Model 128
+ *  39             |  PC7   |
+ *  40             |  PC8   |
+ *  41             |  PC9   |
+ *  42             |  PA19  |
+ *  43             |  PA20  |
+ *  44             |  PC19  |
+ *  45             |  PC18  |
+ *  46             |  PC17  |
+ *  47             |  PC16  |
+ *  48             |  PC15  |
+ *  49             |  PC14  |
+ *  50             |  PC13  |
+ *  51             |  PC12  |
+ *  52       NPCS2 |  PB21  | SPI_ADC : input from TI ADS7883 12-bit A/D converter
+ *  53             |  PB14  |
+ *  54             |  PA16  | "A0"
+ *  55             |  PA24  | "A1"
+ *  56             |  PA23  | "A2"
+ *  57             |  PA22  | "A3"
+ *  58       TIOB2 |  PA6   | "A4"
+ *  69             |  PA4   | "A5"
+ *  60       TIOB1 |  PA3   | "A6"
+ *  61       TIOA1 |  PA2   | "A7"
+ *  62             |  PB17  | "A8"
+ *  63             |  PB18  | "A9"
+ *  64             |  PB19  | "A10"
+ *  65             |  PB20  | "A11"
+ *  66             |  PB15  | "DAC0"
+ *  67             |  PB16  | "DAC1"
+ *  68             |  PA1   | "CANRX"
+ *  69             |  PA0   | "CANTX"
+ *  70             |  PA17  | "SDA1"
+ *  71             |  PA18  | "SCL1"
+ *  72             |  PC30  | ~~LED AMBER "RX"~~
+ *  73             |  PA21  | ~~LED AMBER "TX"~~
+ *  74       MISO  |  PA25  |
+ *  75       MOSI  |  PA26  |
+ *  76       SCLK  |  PA27  |
+ *  77       NPCS0 |  PA28  |
+ *  78       NPCS3 |  PB23  | ~~unconnected!~~
+ *
+ * USB pin         |  PORT
+ * ----------------+--------
+ *  ID             |  PB11
+ *  VBOF           |  PB10
+ *
+ */
 
+#include "ls_compiler_tweaks.h"
 
 /*************************************** INCLUDED LIBRARIES **************************************/
 #include <SPI.h>
@@ -43,8 +135,13 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 
 /******************************************** CONSTANTS ******************************************/
 
-const char* OSVersion = "234.";
-const char* OSVersionBuild = ".072";
+LS_CONST struct OSinfo {
+  const char* OSVersion;
+  const char* OSVersionBuild;
+} OSinfo = {
+  .OSVersion = "234.",
+  .OSVersionBuild = ".074",
+};
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -54,12 +151,14 @@ const char* OSVersionBuild = ".072";
 // Uncomment to immediately start X, Y, or Z frame debugging when the LinnStrument launches
 // This is useful when having to inspect the sensor data without being able to
 // use the switches to change the active settings
-// #define DISPLAY_XFRAME_AT_LAUNCH
-// #define DISPLAY_YFRAME_AT_LAUNCH
-// #define DISPLAY_ZFRAME_AT_LAUNCH
-// #define DISPLAY_SURFACESCAN_AT_LAUNCH
-// #define DISPLAY_FREERAM_AT_LAUNCH
-// #define TESTING_SENSOR_DISABLE
+//
+//#define DISPLAY_XFRAME_AT_LAUNCH
+//#define DISPLAY_YFRAME_AT_LAUNCH
+//#define DISPLAY_ZFRAME_AT_LAUNCH
+//#define DISPLAY_SURFACESCAN_AT_LAUNCH
+#define DISPLAY_FREERAM_AT_LAUNCH
+#define DISPLAY_DEBUGMIDI_AT_LAUNCH
+//#define TESTING_SENSOR_DISABLE
 
 // Touch surface constants
 byte LINNMODEL = 200;
@@ -68,7 +167,7 @@ byte LINNMODEL = 200;
 #define MAXROWS 8
 
 byte NUMCOLS = 26;                   // number of touch sensor columns currently used for device
-byte NUMROWS = 8;                    // number of touch sensor rows
+constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 #define NUMSPLITS  2                 // number of splits supported
 #define LEFT       0
@@ -83,7 +182,25 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define READ_Y  1
 #define READ_Z  2
 
-// Supported colors
+// Supported colors:
+//
+// RGB led ==>
+// - Red
+// - Green
+// - Blue
+// plus all its permutations:
+// - Yellow         : Red + Green
+// - Purple/Magenta : Red + Blue
+// - Cyan           : Green + Blue
+// - White          : Red + Green + Blue
+// - Black          : all OFF
+// Then there's also the 50% duty cycle remixes: half the time color A, the other half its color B:
+// a.k.a. 'composite colors':
+// - Orange         : Yellow + Red
+// - Pink           : Purple/Magenta + Yellow
+// - Lime           : Yellow + Green
+// - (Cold) White   : White + Cyan
+//
 #define COLOR_OFF      0
 #define COLOR_RED      1
 #define COLOR_YELLOW   2
@@ -103,7 +220,7 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define ROWOFFSET_GUITAR           0x0d
 #define ROWOFFSET_ZERO             0x7f
 
-#define LED_FLASH_DELAY  50000        // the time before a led is turned off when flashing or pulsing, in microseconds
+#define LED_FLASH_DELAY  500000        // the time before a led is turned off when flashing or pulsing, in microseconds
 
 #define DEFAULT_MAINLOOP_DIVIDER      2
 #define DEFAULT_LED_REFRESH           333
@@ -125,7 +242,7 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
 #define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure
 
-#define MAX_TOUCHES_IN_COLUMN  3
+#define MAX_TOUCHES_IN_COLUMN  MAXROWS
 
 // Sequencer constants
 #define MAX_PROJECTS              16
@@ -219,9 +336,9 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 
 #define TEMPO_ARP_SIXTEENTH_SWING 0xff
 
-const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+LS_CONST unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-const int LED_PATTERNS = 3;
+constexpr const int LED_PATTERNS = 3;
 
 // Two buffers of ...
 // A 26 by 8 byte array containing one byte for each LED:
@@ -267,7 +384,7 @@ const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS+1) * LED_LAYER_SIZE;
 /****************************************** TOUCH TRACKING ***************************************/
 
 // Current cell in the scan routine
-byte cellCount = 0;                         // the number of the cell that's currently being processed
+byte cellCount = 0;                         // the index of the cell that's currently being processed
 byte sensorCol = 0;                         // currently read column in touch sensor
 byte sensorRow = 0;                         // currently read row in touch sensor
 byte sensorSplit = 0;                       // the split of the currently read touch sensor
@@ -390,6 +507,7 @@ struct __attribute__ ((packed)) TouchInfo {
 
   boolean didMove:1;                         // indicates whether the touch has ever moved
 
+  unsigned short peakRawZ:12;                // peak raw Z seen during this touch, for ghost note release detection
 };
 TouchInfo touchInfo[MAXCOLS][MAXROWS];       // store as much touch information instances as there are cells
 
@@ -910,15 +1028,17 @@ struct Configuration config;
 
 /**************************************** SECRET SWITCHES ****************************************/
 
-#define SECRET_SWITCHES 6
-#define SWITCH_DEBUGMIDI secretSwitch[0]
-#define SWITCH_XFRAME secretSwitch[1]
-#define SWITCH_YFRAME secretSwitch[2]
-#define SWITCH_ZFRAME secretSwitch[3]
+#define SECRET_SWITCHES 8
+#define SWITCH_DEBUGMIDI   secretSwitch[0]
+#define SWITCH_XFRAME      secretSwitch[1]
+#define SWITCH_YFRAME      secretSwitch[2]
+#define SWITCH_ZFRAME      secretSwitch[3]
 #define SWITCH_SURFACESCAN secretSwitch[4]
-#define SWITCH_FREERAM secretSwitch[5]
+#define SWITCH_FREERAM     secretSwitch[5]
+#define SWITCH_MCU_PINS    secretSwitch[6]
+#define SWITCH_TOUCHFRAME  secretSwitch[7] 
 
-boolean secretSwitch[SECRET_SWITCHES];  // The secretSwitch* values are controlled by cells in column 18
+boolean secretSwitch[SECRET_SWITCHES] = {0};  // The secretSwitch* values are controlled by cells in column 18
 
 
 /***************************************** OPERATING MODE ****************************************/
@@ -933,21 +1053,25 @@ OperatingMode operatingMode = modePerformance;
 
 /************************************** FLASH STORAGE LAYOUT *************************************/
 
-static int alignToByteBoundary(int value) {
+static constexpr inline int alignToWord32Boundary(int value) {
+#if 0
   if (value % 4 == 0) {
     return value;
   }
 
   return ((value / 4) + 1) * 4;
+#else
+  return int((value + 3) / 4) * 4;
+#endif
 }
 
-const int PROJECTS_OFFSET = 4;
-const int PROJECT_VERSION_MARKER_SIZE = 4;
-const int PROJECT_INDEXES_COUNT = 20;
-const int PROJECTS_MARKERS_SIZE = alignToByteBoundary(PROJECT_VERSION_MARKER_SIZE + 2 * PROJECT_INDEXES_COUNT);    // one version marker, two series on indexes for project references
-const int SINGLE_PROJECT_SIZE = alignToByteBoundary(sizeof(SequencerProject));
-const int ALL_PROJECTS_SIZE = PROJECTS_MARKERS_SIZE + (MAX_PROJECTS + 1)*SINGLE_PROJECT_SIZE;
-const int SETTINGS_OFFSET = PROJECTS_OFFSET + alignToByteBoundary(ALL_PROJECTS_SIZE);
+constexpr const int PROJECTS_OFFSET = 4;
+constexpr const int PROJECT_VERSION_MARKER_SIZE = 4;
+constexpr const int PROJECT_INDEXES_COUNT = 20;
+constexpr const int PROJECTS_MARKERS_SIZE = alignToWord32Boundary(PROJECT_VERSION_MARKER_SIZE + 2 * PROJECT_INDEXES_COUNT);    // one version marker, two series on indexes for project references
+constexpr const int SINGLE_PROJECT_SIZE = alignToWord32Boundary(sizeof(SequencerProject));
+constexpr const int ALL_PROJECTS_SIZE = PROJECTS_MARKERS_SIZE + (MAX_PROJECTS + 1)*SINGLE_PROJECT_SIZE;
+constexpr const int SETTINGS_OFFSET = PROJECTS_OFFSET + alignToWord32Boundary(ALL_PROJECTS_SIZE);
 
 #define PROJECT_INDEX_OFFSET(marker, index)   (PROJECTS_OFFSET + PROJECT_VERSION_MARKER_SIZE + marker * PROJECT_INDEXES_COUNT + index)
 
@@ -1032,9 +1156,9 @@ unsigned long lastReset;                            // the last time a reset was
 
 short lastReadSensorRawZ = 0;                       // the last pressure value that was read straight off of the sensor without any sensor bias nor sensitivity calibration
 
-byte globalColor = COLOR_BLUE;                      // color for global, split point and transpose settings
-byte globalAltColor = COLOR_CYAN;                   // alternate color for global, split point and transpose settings
-byte globalLowRowColor = COLOR_GREEN;               // color for low row painting in global settings
+constexpr const byte globalColor = COLOR_BLUE;                      // color for global, split point and transpose settings
+constexpr const byte globalAltColor = COLOR_CYAN;                   // alternate color for global, split point and transpose settings
+constexpr const byte globalLowRowColor = COLOR_GREEN;               // color for low row painting in global settings
 
 boolean changedSplitPoint = false;                  // reflects whether the split point was changed
 boolean splitButtonDown = false;                    // reflects state of Split button
@@ -1062,8 +1186,8 @@ unsigned long lastSwitchPress[5];                     // the last moment a parti
 boolean switchState[5][NUMSPLITS];                    // the current state of each switch for each split
 boolean switchTargetEnabled[NUMSPLITS][MAX_ASSIGNED]; // we keep track of switch targets individually for each split and whether they're active
 boolean switchCCEnabled[NUMSPLITS][128];              // we keep track of the switch targets that send out CC numbers for each split to determine whether they're active
-boolean footSwitchState[5];                           // holds the last read footswitch state, so that we only react on state changes of the input signal
-boolean footSwitchOffState[5];                        // holds the OFF state of foot switch, read at startup, thereby permit normally-closed or normally-open switches
+boolean footSwitchState[5];                           // holds the last read footswitch state, so that we only react on state changes of the input signal (L/R/B -- SW1/SW2 slots are unused in this array)
+boolean footSwitchOffState[2];                        // holds the OFF state of both foot switches, as read at startup, thereby permitting normally-closed or normally-open switches (L/R)
 unsigned long prevFootSwitchTimerCount;               // time interval (in microseconds) between foot switch reads
 boolean switchFootBothReleased = false;               // keep track of whether the last release was for both switches, in order to prevent individual releases to happen
 
@@ -1124,12 +1248,14 @@ short guitarTuningPreviewChannel = -1;              // active channel that is pr
 
 byte customLedColor = COLOR_GREEN;                  // color is used for drawing in the custom LED editor
 
+unsigned int debugContentWritten = 0;
+
 /************************* FUNCTION DECLARATIONS TO WORK AROUND COMPILER *************************/
 
 inline void selectSensorCell(byte col, byte row, byte switchCode);
 
-void setLed(byte col, byte row, byte color, CellDisplay disp);
-void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer);
+inline void setLed(byte col, byte row, byte color, CellDisplay disp);
+inline void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer);
 void initializeNoteLights(GlobalSettings& g);
 
 boolean ensureCellBeforeHoldWait(byte resetColor, CellDisplay resetDisplay);
@@ -1139,7 +1265,7 @@ void exitDisplayMode(DisplayMode mode);
 
 void applyBendRange(SplitSettings& target, byte bendRange);
 
-void cellTouched(TouchState state);
+inline void cellTouched(TouchState state);
 void cellTouched(byte col, byte row, TouchState state);
 
 VelocityState calcVelocity(unsigned short z);
@@ -1199,7 +1325,7 @@ boolean switchPressAtStartup(byte switchRow) {
 
 void activateSleepMode() {
   clearSwitches();
-  clearDisplayImmediately();
+  disableLedDisplay(); // clearDisplayImmediately();
   setDisplayMode(displaySleep);
 }
 
@@ -1261,12 +1387,12 @@ void setup() {
   /*!!*/  if (digitalRead(38) == HIGH) {
   /*!!*/    LINNMODEL = 200;
   /*!!*/    NUMCOLS = 26;
-  /*!!*/    NUMROWS = 8;
+  /*!!*/    //NUMROWS = 8;
   /*!!*/  }
   /*!!*/  else {
   /*!!*/    LINNMODEL = 128;
   /*!!*/    NUMCOLS = 17;
-  /*!!*/    NUMROWS = 8;
+  /*!!*/    //NUMROWS = 8;
   /*!!*/  }
   /*!!*/
   /*!!*/  initializeSensors();
@@ -1297,7 +1423,7 @@ void setup() {
   /*!!*/  SPI.begin(SPI_SENSOR);
   /*!!*/  SPI.setDataMode(SPI_SENSOR, SPI_MODE0);
   /*!!*/  SPI.setClockDivider(SPI_SENSOR, 4);                 // set clock speed to 84/4 = 21 mHz. Max clock is 25mHz @ 4.5v
-  /*!!*/  selectSensorCell(0, 0, READ_Z);                     // set it analog switches to read column 0, row 0 and to read pressure
+  /*!!*/  selectSensorCell(0, 0, READ_Z);                     // set its analog switches to read column 0, row 0 and to read pressure
   /*!!*/
   /*!!*/  // initialize the SPI input port for reading the TI ADS7883 ADC
   /*!!*/  SPI.begin(SPI_ADC);
@@ -1308,9 +1434,9 @@ void setup() {
   /*!!*/  pinMode(37, OUTPUT);
   /*!!*/  digitalWrite(37, HIGH);
   /*!!*/
-  /*!!*/  if (switchPressAtStartup(0)) {
+  /*!!*/  if (switchPressAtStartup(GLOBAL_SETTINGS_ROW)) {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
-  /*!!*/    if (switchPressAtStartup(2)) {
+  /*!!*/    if (switchPressAtStartup(SWITCH_2_ROW)) {
   /*!!*/      globalReset = true;
   /*!!*/      dueFlashStorage.write(0, 254);
   /*!!*/    }
@@ -1352,8 +1478,8 @@ void setup() {
 
   // ensure that the switches that are pressed down for the global reset at boot are not taken into account any further
   if (globalReset) {
-    cellTouched(0, 0, touchedCell);
-    cellTouched(0, 2, touchedCell);
+    cellTouched(0, GLOBAL_SETTINGS_ROW, touchedCell);
+    cellTouched(0, SWITCH_2_ROW, touchedCell);
   }
 
   // setup system timers for interval between LED column refreshes and foot switch reads
@@ -1364,12 +1490,12 @@ void setup() {
   initializeStorage();
   applyConfiguration();
 
-  for (byte ss=0; ss<SECRET_SWITCHES; ++ss) {
+  for (byte ss = 0; ss < SECRET_SWITCHES; ++ss) {
     secretSwitch[ss] = false;
   }
 
   // detect if test mode is active by holding down the per-split button at startup
-  if (switchPressAtStartup(7)) {
+  if (switchPressAtStartup(PER_SPLIT_ROW)) {
     operatingMode = modeManufacturingTest;
 
     Global.velocitySensitivity = velocityLow;
@@ -1397,11 +1523,11 @@ void setup() {
     operatingMode = modePerformance;
 
     // detect if low power mode is toggled by holding down the octave/transpose button at startup
-    if (switchPressAtStartup(4)) {
+    if (switchPressAtStartup(OCTAVE_ROW)) {
       Device.operatingLowPower = true;
       Device.serialMode = false;
       storeSettings();
-      cellTouched(0, 4, touchedCell);
+      cellTouched(0, OCTAVE_ROW, touchedCell);
     }
 
     applyLedInterval();
@@ -1441,6 +1567,13 @@ void setup() {
   #define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_FREERAM = true;
+#endif
+
+#ifdef DISPLAY_DEBUGMIDI_AT_LAUNCH
+  #define DEBUG_ENABLED
+  Device.serialMode = true;
+  SWITCH_DEBUGMIDI = true;
+  debugLevel = 5;
 #endif
 
   setupDone = true;
@@ -1547,8 +1680,10 @@ inline void modeLoopPerformance() {
   if (SWITCH_XFRAME) displayXFrame();                            // Turn on secret switch to display the X value of all cells in grid at the end of each total surface scan
   if (SWITCH_YFRAME) displayYFrame();                            // Turn on secret switch to display the Y value of all cells in grid at the end of each total surface scan
   if (SWITCH_ZFRAME) displayZFrame();                            // Turn on secret switch to display the pressure value of all cells in grid at the end of each total surface scan
+  if (SWITCH_TOUCHFRAME) displayCellTouchedFrame();              // Turn on secret switch to display the 'touched' state of all cells in grid at the end of each total surface scan
   if (SWITCH_SURFACESCAN) displaySurfaceScanTime();              // Turn on secret switch to display the total time for a total surface scan
   if (SWITCH_FREERAM) debugFreeRam();                            // Turn on secret switch to display the available free RAM
+  if (SWITCH_MCU_PINS) displayDigitalPins();                     // Turn on secret switch to display the SAM3X digital pins' status
 #endif
 
   nextSensorCell();                                              // done-- move on to the next sensor cell

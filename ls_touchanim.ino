@@ -16,6 +16,8 @@ limitations under the License.
 This displays evolved animations for each touch based on the global settings.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 int32_t colsInRowsAnimated[MAXROWS];
 unsigned long touchAnimationLastMoment[MAXCOLS][MAXROWS];
 unsigned long touchAnimationSpeed[MAXCOLS][MAXROWS];
@@ -46,7 +48,7 @@ void initializeTouchAnimation() {
   }
 }
 
-unsigned long calcTouchAnimationSpeed(byte mode, byte value7Bit) {
+inline unsigned long calcTouchAnimationSpeed(byte mode, byte value7Bit) {
   unsigned long speed = 140 - value7Bit;
   speed = speed * 3 / 2;
   switch (mode) {
@@ -126,7 +128,7 @@ void startTouchAnimation(byte col, byte row, unsigned long speed) {
   drawTouchedAnimation(col, row, cellOn, 0);
 }
 
-void touchAnimLed(byte col, byte row, byte color, CellDisplay disp) {
+inline void touchAnimLed(byte col, byte row, byte color, CellDisplay disp) {
   if (col > 0) {
     setLed(col, row, color, disp, LED_LAYER_PLAYED);
   }
