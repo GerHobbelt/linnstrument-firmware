@@ -1427,6 +1427,10 @@ void sendNewNote() {
       midiSendNoteOff(sensorSplit, note, channel);                 // read from old note & channel, send to new note & channel
     }
 
+    // send row & column in CC 14 and 15
+    midiSendControlChange(14, sensorRow, sensorCell->channel);
+    midiSendControlChange(15, sensorCol, sensorCell->channel);
+    
     // send the note on
     midiSendNoteOn(sensorSplit, note, sensorCell->velocity, channel);
   }
