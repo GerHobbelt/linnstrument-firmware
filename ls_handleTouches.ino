@@ -767,7 +767,20 @@ boolean handleXYZupdate() {
       return true;
 
     case velocityNew:
+      // Phantom detection uses only the rectangle-based contextual check.
+      // The individual X-calibration check (isPhantomTouchIndividual) is not used here
+      // because X calibration is performed with a single touch (cellsTouched == 1) and
+      // becomes unreliable under multi-touch load: the resistive matrix's parallel
+      // resistance paths shift X readings proportionally to the number and pressure of
+      // concurrent touches, causing false rejections of real touches at high polyphony.
+      // On a resistive matrix, phantom touches always form rectangles at row/column
+      // intersections of real touches, so the contextual check is both necessary and
+      // sufficient for phantom detection.
+#if 0
       if (cellsTouched <= 3 ? isPhantomTouchIndividual() : isPhantomTouchContextual()) {
+#else
+      if (isPhantomTouchContextual()) {
+#endif
         cellTouched(untouchedCell);
         return false;
       }
