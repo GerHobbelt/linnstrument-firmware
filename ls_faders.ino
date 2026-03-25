@@ -16,9 +16,11 @@ limitations under the License.
 These functions handle the CC faders for each split
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 #define CC_FADER_NUMBER_OFFSET 1
 
-void handleFaderTouch(boolean newVelocity) {
+inline void handleFaderTouch(boolean newVelocity) {
   if (sensorCell->velocity) {
     byte faderLeft, faderLength;
     determineFaderBoundaries(sensorSplit, faderLeft, faderLength);
@@ -126,7 +128,7 @@ byte calculateFaderValue(short x, byte faderLeft, byte faderLength) {
   return constrain(FXD_TO_INT(fxdFaderValue), 0, 127);
 }
 
-int32_t fxdCalculateFaderPosition(byte value, byte faderLeft, byte faderLength) {
+inline int32_t fxdCalculateFaderPosition(byte value, byte faderLeft, byte faderLength) {
   return fxdCalculateFaderPosition(value, faderLeft, faderLength, FXD_CONST_127);
 }
 

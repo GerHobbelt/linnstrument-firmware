@@ -16,6 +16,8 @@ limitations under the License.
 These functions handle the low-level communication with LinnStrument's 208 RGB LEDs.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 /*
  LinnStrument contains an array of 208 RGB LEDs arranged in a 26 by 8 matrix.
  Only one column (8 LEDs) can be turned on at a time and the columns are refreshed one at a time.
@@ -44,15 +46,15 @@ These functions handle the low-level communication with LinnStrument's 208 RGB L
 */
 
 byte COL_INDEX[MAXCOLS];
-const byte COL_INDEX_200[MAXCOLS] = {0, 1, 6, 11, 16, 21, 2, 7, 12, 17, 22, 3, 8, 13, 18, 23, 4, 9, 14, 19, 24, 5, 10, 15, 20, 25};
-const byte COL_INDEX_128[MAXCOLS] = {0, 1, 6, 11, 16, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+LS_CONST byte COL_INDEX_200[MAXCOLS] = {0, 1, 6, 11, 16, 21, 2, 7, 12, 17, 22, 3, 8, 13, 18, 23, 4, 9, 14, 19, 24, 5, 10, 15, 20, 25};
+LS_CONST byte COL_INDEX_128[MAXCOLS] = {0, 1, 6, 11, 16, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // array holding contents of display
 byte leds[2][LED_ARRAY_SIZE];
 byte visibleLeds = 0;
 byte bufferedLeds = 0;
 #define ledBuffered(layer, col, row)  leds[bufferedLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
-#define ledVisible(layer, col, row)  leds[visibleLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
+#define ledVisible(layer, col, row)   leds[visibleLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
 
 bool ledDisplayEnabled = true;
 
@@ -69,15 +71,15 @@ void initializeLeds() {
   }
 }
 
-void initializeLedLayers() {
+inline void initializeLedLayers() {
   memset(leds[bufferedLeds], 0, LED_ARRAY_SIZE);
 }
 
-void initializeLedsLayer(byte layer) {
+inline void initializeLedsLayer(byte layer) {
   memset(&leds[bufferedLeds][layer * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
 }
 
-int getActiveCustomLedPattern() {
+inline int getActiveCustomLedPattern() {
   return Global.activeNotes - 9;
 }
 
@@ -125,17 +127,17 @@ void clearStoredCustomLedLayer(int pattern)
   }
 }
 
-void startBufferedLeds() {
+inline void startBufferedLeds() {
   bufferedLeds = 1;
   memcpy(leds[bufferedLeds], leds[visibleLeds], LED_ARRAY_SIZE);
 }
 
-void finishBufferedLeds() {
+inline void finishBufferedLeds() {
   memcpy(leds[visibleLeds], leds[bufferedLeds], LED_ARRAY_SIZE);
   bufferedLeds = 0;
 }
 
-inline byte getCombinedLedData(byte col, byte row) {
+byte getCombinedLedData(byte col, byte row) {
   byte data = 0;
   byte layer = MAX_LED_LAYERS;
   do {
@@ -166,11 +168,11 @@ inline byte getCombinedLedData(byte col, byte row) {
   return data;
 }
 
-void setLed(byte col, byte row, byte color, CellDisplay disp) {
+inline void setLed(byte col, byte row, byte color, CellDisplay disp) {
   setLed(col, row, color, disp, LED_LAYER_MAIN);
 }
 
-void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer) {
+inline void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer) {
   if (col >= NUMCOLS || row >= NUMROWS || layer > MAX_LED_LAYERS) return;
 
   if (color == COLOR_OFF) {
@@ -191,57 +193,57 @@ void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer) {
   }
 }
 
-byte getLedColor(byte col, byte row, byte layer) {
+inline byte getLedColor(byte col, byte row, byte layer) {
   if (col >= NUMCOLS || row >= NUMROWS || layer > MAX_LED_LAYERS) return COLOR_OFF;
   return (ledVisible(layer, col, row) >> 3) & B00011111;
 }
 
 // light up a single LED with the default color
-void lightLed(byte col, byte row) {
+inline void lightLed(byte col, byte row) {
   setLed(col, row, globalColor, cellOn);
 }
 
 // clear a single LED
-void clearLed(byte col, byte row) {
+inline void clearLed(byte col, byte row) {
   clearLed(col, row, LED_LAYER_MAIN);
   clearLed(col, row, LED_LAYER_LOWROW);
 }
 
-void clearLed(byte col, byte row, byte layer) {
+inline void clearLed(byte col, byte row, byte layer) {
   setLed(col, row, COLOR_OFF, cellOff, layer);
 }
 
 // Turns all LEDs off
-void clearFullDisplay() {
+inline void clearFullDisplay() {
   clearSwitches();
   clearDisplay();
 }
 
 // Turns all LEDs off in columns 1 or higher
-void clearDisplay() {
+inline void clearDisplay() {
   for (byte col = 1; col < NUMCOLS; ++col) {
     clearColumn(col);
   }
 }
 
 // Turns all LEDs off in column 0
-void clearSwitches() {
+inline void clearSwitches() {
   clearColumn(0);
 }
 
-void clearColumn(byte col) {
+inline void clearColumn(byte col) {
   for (byte row = 0; row < NUMROWS; ++row) {
     clearLed(col, row);
   }
 }
 
-void clearRow(byte row) {
+inline void clearRow(byte row) {
   for (byte col = 0; col < NUMCOLS; ++col) {
     clearLed(col, row);
   }
 }
 
-void completelyRefreshLeds() {
+inline void completelyRefreshLeds() {
   for (byte row = 0; row < NUMROWS; ++row) {
     for (byte col = 0; col < NUMCOLS; ++col) {
       ledBuffered(LED_LAYER_COMBINED, col, row) = getCombinedLedData(col, row);
@@ -250,17 +252,17 @@ void completelyRefreshLeds() {
   }
 }
 
-void clearDisplayImmediately() {
+inline void clearDisplayImmediately() {
   // disable the outputs of the LED driver chips
   digitalWrite(37, HIGH);
 }
 
-void disableLedDisplay() {
+inline void disableLedDisplay() {
   ledDisplayEnabled = false;
   clearDisplayImmediately();
 }
 
-void enableLedDisplay() {
+inline void enableLedDisplay() {
   // enable the outputs of the LED driver chips
   digitalWrite(37, LOW);
   ledDisplayEnabled = true;
@@ -271,8 +273,10 @@ void enableLedDisplay() {
 void refreshLedColumn(unsigned long now) {
   if (!ledDisplayEnabled) return;
 
+  debugContentWritten = 0;
+
   // disabling the power output from the LED driver pins early prevents power leaking into unwanted cells.
-  digitalWrite(37, HIGH);                                         // disable the outputs of the LED driver chips
+  clearDisplayImmediately();                                         // disable the outputs of the LED driver chips
 
   // keep a steady pulsating going for those leds that need it
   static unsigned long lastPulse = 0;
@@ -364,9 +368,11 @@ void refreshLedColumn(unsigned long now) {
         case COLOR_BLACK:
           break;
         case COLOR_RED:
+        case COLOR_ORANGE:
           red = red | (B00000001 << rowCount);
           break;
         case COLOR_YELLOW:
+        case COLOR_LIME:
           red = red | (B00000001 << rowCount);
           green = green | (B00000001 << rowCount);
           break;
@@ -381,6 +387,7 @@ void refreshLedColumn(unsigned long now) {
           blue = blue | (B00000001 << rowCount);
           break;
         case COLOR_MAGENTA:
+        case COLOR_PINK:
           blue = blue | (B00000001 << rowCount);
           red = red | (B00000001 << rowCount);
           break;
@@ -388,17 +395,6 @@ void refreshLedColumn(unsigned long now) {
           blue = blue | (B00000001 << rowCount);
           red = red | (B00000001 << rowCount);
           green = green | (B00000001 << rowCount);
-          break;
-        case COLOR_ORANGE:
-          red = red | (B00000001 << rowCount);
-          break;
-        case COLOR_LIME:
-          red = red | (B00000001 << rowCount);
-          green = green | (B00000001 << rowCount);
-          break;
-        case COLOR_PINK:
-          blue = blue | (B00000001 << rowCount);
-          red = red | (B00000001 << rowCount);
           break;
       }
     }

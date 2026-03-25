@@ -17,7 +17,9 @@ These routines handle the processing of new touch events, continuous updates of 
 released touch events
 **************************************************************************************************/
 
-void cellTouched(TouchState state) {
+#include "ls_compiler_tweaks.h"
+
+inline void cellTouched(TouchState state) {
   cellTouched(sensorCol, sensorRow, state);
 };
 void cellTouched(byte col, byte row, TouchState state) {
@@ -54,7 +56,7 @@ void cellTouched(byte col, byte row, TouchState state) {
 
 #define TRANSFER_SLIDE_PROXIMITY 100
 
-byte countTouchesForMidiChannel(byte split, byte col, byte row) {
+inline byte countTouchesForMidiChannel(byte split, byte col, byte row) {
   if (!cell(col, row).hasNote()) {
     return 0;
   }
@@ -62,7 +64,7 @@ byte countTouchesForMidiChannel(byte split, byte col, byte row) {
   return noteTouchMapping[split].getMusicalTouchCount(cell(col, row).channel);
 }
 
-const int32_t PENDING_RELEASE_RATE_X = FXD_FROM_INT(5);
+constexpr const int32_t PENDING_RELEASE_RATE_X = FXD_FROM_INT(5);
 
 boolean potentialSlideTransferCandidate(byte col) {
   if (controlModeActive) return false;
@@ -95,12 +97,12 @@ boolean potentialSlideTransferCandidate(byte col) {
      abs(sensorCell->calibratedX() - cell(col, sensorRow).currentCalibratedX) < TRANSFER_SLIDE_PROXIMITY);   // both cells are touched simultaneously on the edges
 }
 
-boolean isReadyForSlideTransfer(byte col) {
+inline boolean isReadyForSlideTransfer(byte col) {
   return cell(col, sensorRow).pendingReleaseCount ||                 // there's a pending release waiting
     sensorCell->currentRawZ > cell(col, sensorRow).currentRawZ;      // the cell pressure is higher
 }
 
-boolean hasImpossibleX() {             // checks whether the calibrated X is outside of the possible bounds for the current cell
+inline boolean hasImpossibleX() {             // checks whether the calibrated X is outside of the possible bounds for the current cell
   return Device.calibrated &&
     (sensorCell->calibratedX() < FXD_TO_INT(Device.calRows[sensorCol][0].fxdReferenceX - FXD_CALX_PHANTOM_RANGE) ||
      sensorCell->calibratedX() > FXD_TO_INT(Device.calRows[sensorCol][0].fxdReferenceX + FXD_CALX_PHANTOM_RANGE));
@@ -257,12 +259,9 @@ boolean isPhantomTouchContextual() {
                cell(sensorCol, touchedRow).isHigherPhantomPressure(sensorCell->currentRawZ) &&
                cell(touchedCol, sensorRow).isHigherPhantomPressure(sensorCell->currentRawZ))) {
 
-            // store coordinates of the rectangle, which also serves as an indicator that we
-            // should stop looking for a phantom press
+            // Only set phantom flags on the rejected cell to avoid contaminating
+            // real corners' pitch/pressure state.
             cell(sensorCol, sensorRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
-            cell(touchedCol, touchedRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
-            cell(sensorCol, touchedRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
-            cell(touchedCol, sensorRow).setPhantoms(sensorCol, touchedCol, sensorRow, touchedRow);
 
             return true;
           }
@@ -496,16 +495,16 @@ boolean handleNewTouch() {
 }
 
 // Calculate the transposed note number for the current cell by taken the transposition settings into account
-short cellTransposedNote(byte split) {
+inline short cellTransposedNote(byte split) {
   return transposedNote(split, sensorCol, sensorRow);
 }
 
-short transposedNote(byte split, byte col, byte row) {
+inline short transposedNote(byte split, byte col, byte row) {
   return getNoteNumber(split, col, row) + Split[split].transposePitch + Split[split].transposeOctave;
 }
 
 // Check if the currently scanned cell is a focused cell
-boolean isFocusedCell() {
+inline boolean isFocusedCell() {
   return isFocusedCell(sensorCol, sensorRow);
 }
 
@@ -520,16 +519,16 @@ boolean isFocusedCell(byte col, byte row) {
 }
 
 // Check if X expression should be sent for this cell
-boolean isXExpressiveCell() {
+inline boolean isXExpressiveCell() {
   return isFocusedCell();
 }
 
-boolean isXExpressiveCell(byte col, byte row) {
+inline boolean isXExpressiveCell(byte col, byte row) {
   return isFocusedCell(col, row);
 }
 
 // Check if Y expression should be sent for this cell
-boolean isYExpressiveCell() {
+inline boolean isYExpressiveCell() {
   if (Split[sensorSplit].expressionForY == timbrePolyPressure) {
     return true;
   }
@@ -539,7 +538,7 @@ boolean isYExpressiveCell() {
 }
 
 // Check if Z expression should be sent for this cell
-boolean isZExpressiveCell() {
+inline boolean isZExpressiveCell() {
   if (Split[sensorSplit].expressionForZ == loudnessPolyPressure) {
     return true;
   }
@@ -768,7 +767,20 @@ boolean handleXYZupdate() {
       return true;
 
     case velocityNew:
-      if (isPhantomTouchIndividual() || isPhantomTouchContextual()) {
+      // Phantom detection uses only the rectangle-based contextual check.
+      // The individual X-calibration check (isPhantomTouchIndividual) is not used here
+      // because X calibration is performed with a single touch (cellsTouched == 1) and
+      // becomes unreliable under multi-touch load: the resistive matrix's parallel
+      // resistance paths shift X readings proportionally to the number and pressure of
+      // concurrent touches, causing false rejections of real touches at high polyphony.
+      // On a resistive matrix, phantom touches always form rectangles at row/column
+      // intersections of real touches, so the contextual check is both necessary and
+      // sufficient for phantom detection.
+#if 0
+      if (cellsTouched <= 3 ? isPhantomTouchIndividual() : isPhantomTouchContextual()) {
+#else
+      if (isPhantomTouchContextual()) {
+#endif
         cellTouched(untouchedCell);
         return false;
       }
@@ -1192,11 +1204,11 @@ void handleStrummedRowChange(boolean newFretting, byte velocity) {
   }
 }
 
-boolean isStrummedSplit(byte split) {
+inline boolean isStrummedSplit(byte split) {
   return Global.splitActive && Split[otherSplit(split)].strum;
 }
 
-boolean isStrummingSplit(byte split) {
+inline boolean isStrummingSplit(byte split) {
   return Global.splitActive && Split[split].strum;
 }
 
@@ -1361,7 +1373,7 @@ unsigned short handleZExpression() {
   return preferredPressure;
 }
 
-const int32_t fxdRateXSamples = FXD_FROM_INT(5);    // the number of samples over which the average rate of change of X is calculated
+constexpr const int32_t fxdRateXSamples = FXD_FROM_INT(5);    // the number of samples over which the average rate of change of X is calculated
 
 short handleXExpression() {
   sensorCell->refreshX();
@@ -1426,7 +1438,10 @@ short handleXExpression() {
 
   // determine if the last X movement was a rogue sweep
   sensorCell->rogueSweepX = (deltaX >= ROGUE_SWEEP_X_THRESHOLD);
-        
+
+  // Always update baseline so pitch resumes smoothly after suppression.
+  sensorCell->lastMovedX = movedX;
+
   if ((countTouchesInColumn() < 2 ||
        sensorCell->currentRawZ > (Device.sensorLoZ + SENSOR_PITCH_Z)) &&  // when there are multiple touches in the same column, reduce the pitch bend Z sensitivity to prevent unwanted pitch slides
       sensorCell->hasUsableX()) {                                         // if no phantom presses are active, send the pitch bend change, otherwise only send those changes that are small and gradual to prevent rogue pitch sweeps
@@ -1434,9 +1449,6 @@ short handleXExpression() {
     // calculate the average rate of X value changes over a number of samples
     sensorCell->fxdRateX -= FXD_DIV(sensorCell->fxdRateX, fxdRateXSamples);
     sensorCell->fxdRateX += FXD_DIV(FXD_FROM_INT(deltaX), fxdRateXSamples);
-
-    // remember the last X movement
-    sensorCell->lastMovedX = movedX;
 
     // if pitch quantize on hold is disabled, just output the current touch pitch
     if (!doQuantizeHold()) {
@@ -1481,11 +1493,11 @@ short handleXExpression() {
   return result;
 }
 
-boolean doQuantizeHold() {
+inline boolean doQuantizeHold() {
   return !userFirmwareActive && Split[sensorSplit].pitchCorrectHold != pitchCorrectHoldOff;
 }
 
-boolean isQuantizeHoldStable() {
+inline boolean isQuantizeHoldStable() {
   return sensorCell->fxdRateCountX >= fxdPitchHoldSamples[sensorSplit];
 }
 
@@ -1518,7 +1530,7 @@ short handleYExpression() {
   return FXD_TO_INT(fxdAveragedTimbre);
 }
 
-void releaseChannel(byte split, byte channel) {
+inline void releaseChannel(byte split, byte channel) {
   if (Split[split].midiMode == channelPerNote) {
     splitChannels[split].release(channel);
   }
@@ -1828,7 +1840,7 @@ void handleTouchRelease() {
   postTouchRelease();
 }
 
-void postTouchRelease() {
+inline void postTouchRelease() {
   sensorCell->clearAllPhantoms();
 
   // reset velocity calculations
@@ -1841,7 +1853,7 @@ void postTouchRelease() {
 #endif  
 }
 
-void handleOpenStringsRelease() {
+inline void handleOpenStringsRelease() {
   if (cellsTouched == 0) {
     // turn off all the notes of sounding open strings since no touches are active at all anymore
     for (byte row = 0; row < NUMROWS; ++row) {
@@ -1853,12 +1865,12 @@ void handleOpenStringsRelease() {
 // nextSensorCell:
 // Moves on to the next cell witin the total surface scan of all surface cells.
 
-#define MAX_CELLCOUNT 201
+#define MAX_CELLCOUNT 201       // 25*8 grid + 1 entry for the switches column = 200 + 1
 byte CELLCOUNT = MAX_CELLCOUNT;
-byte SCANNED_CELLS[MAX_CELLCOUNT][2];
+//byte SCANNED_CELLS[MAX_CELLCOUNT][2];
 
 // Columns and rows are scanned in non-sequential order to minimize sensor crosstalk
-const byte SCANNED_CELLS_200[MAX_CELLCOUNT][2] = {
+LS_CONST byte SCANNED_CELLS_200[MAX_CELLCOUNT][2] = {
   {0, 0},
   {3, 4}, {7, 1}, {10, 5}, {13, 2}, {17, 6}, {20, 3}, {24, 7}, {1, 4}, {4, 0}, {8, 5}, {11, 1}, {14, 6}, {18, 2}, {21, 7}, {25, 3}, {2, 0}, {5, 4}, {9, 1}, {12, 5}, {15, 2}, {19, 6}, {22, 3}, {6, 7}, {16, 4}, {23, 0},
   {3, 0}, {7, 5}, {10, 1}, {13, 6}, {17, 2}, {20, 7}, {24, 3}, {1, 0}, {4, 4}, {8, 1}, {11, 5}, {14, 2}, {18, 6}, {21, 3}, {25, 7}, {2, 4}, {5, 0}, {9, 5}, {12, 1}, {15, 6}, {19, 2}, {22, 7}, {6, 3}, {16, 0}, {23, 4},
@@ -1869,7 +1881,7 @@ const byte SCANNED_CELLS_200[MAX_CELLCOUNT][2] = {
   {3, 7}, {7, 4}, {10, 0}, {13, 5}, {17, 1}, {20, 6}, {24, 2}, {1, 7}, {4, 3}, {8, 0}, {11, 4}, {14, 1}, {18, 5}, {21, 2}, {25, 6}, {2, 3}, {5, 7}, {9, 4}, {12, 0}, {15, 5}, {19, 1}, {22, 6}, {6, 2}, {16, 7}, {23, 3},
   {3, 3}, {7, 0}, {10, 4}, {13, 1}, {17, 5}, {20, 2}, {24, 6}, {1, 3}, {4, 7}, {8, 4}, {11, 0}, {14, 5}, {18, 1}, {21, 6}, {25, 2}, {2, 7}, {5, 3}, {9, 0}, {12, 4}, {15, 1}, {19, 5}, {22, 2}, {6, 6}, {16, 3}, {23, 7}
 };
-const byte SCANNED_CELLS_128[MAX_CELLCOUNT][2] = {
+LS_CONST byte SCANNED_CELLS_128[MAX_CELLCOUNT][2] = {
   {0, 0},
   {3, 4}, {7, 1}, {10, 5}, {13, 2}, {1, 4}, {4, 0}, {8, 5}, {11, 1}, {14, 6}, {2, 0}, {5, 4}, {9, 1}, {12, 5}, {15, 2}, {6, 7}, {16, 4},
   {3, 0}, {7, 5}, {10, 1}, {13, 6}, {1, 0}, {4, 4}, {8, 1}, {11, 5}, {14, 2}, {2, 4}, {5, 0}, {9, 5}, {12, 1}, {15, 6}, {6, 3}, {16, 0},
@@ -1885,20 +1897,17 @@ const byte SCANNED_CELLS_128[MAX_CELLCOUNT][2] = {
   {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}, {0, 0}
 };
 
+const auto *SCANNED_CELLS = &SCANNED_CELLS_200[0];    // a *reference* to the actual CellScanStepGrid to use for our model (these are stored in ROM)
+
 void initializeTouchHandling() {
   if (LINNMODEL == 200) {
     CELLCOUNT = 201;
-    for (byte i = 0; i < MAX_CELLCOUNT; ++i) {
-      SCANNED_CELLS[i][0] = SCANNED_CELLS_200[i][0];
-      SCANNED_CELLS[i][1] = SCANNED_CELLS_200[i][1];
-    }
+    SCANNED_CELLS = &SCANNED_CELLS_200[0];
   }
   else if (LINNMODEL == 128) {
     CELLCOUNT = 129;
-    for (byte i = 0; i < MAX_CELLCOUNT; ++i) {
-      SCANNED_CELLS[i][0] = SCANNED_CELLS_128[i][0];
-      SCANNED_CELLS[i][1] = SCANNED_CELLS_128[i][1];
-    }
+    // https://isocpp.org/wiki/faq/references#reseating-refs
+    SCANNED_CELLS = &SCANNED_CELLS_128[0];
   }
 }
 

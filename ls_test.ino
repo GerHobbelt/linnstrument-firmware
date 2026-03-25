@@ -16,28 +16,82 @@ limitations under the License.
 Assorted debug functions. 
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
 
-void debugPrint(int level, const char* msg) {
+
+static void debugPrint1(const char* msg) {
+  unsigned int msgLen = strlen(msg);
+  boolean shouldBlank = (debugContentWritten > 10);
+  debugContentWritten += msgLen;
+  if (shouldBlank)
+    beginPreventBrightLedFlash();
+
+  Serial.print(msg);
+
+  if (shouldBlank)
+    endPreventBrightLedFlash();
+}
+
+static void debugPrintln1(const char* msg) {
+  unsigned int msgLen = strlen(msg);
+  boolean shouldBlank = (debugContentWritten > 10);
+  debugContentWritten += msgLen;
+  if (shouldBlank)
+    beginPreventBrightLedFlash();
+
+  Serial.println(msg);
+
+  if (shouldBlank)
+    endPreventBrightLedFlash();
+}
+
+static void debugPrint1(int val) {
+  const unsigned int msgLen = 2;
+  boolean shouldBlank = (debugContentWritten > 10);
+  debugContentWritten += msgLen;
+  if (shouldBlank)
+    beginPreventBrightLedFlash();
+
+  Serial.print(val);
+
+  if (shouldBlank)
+    endPreventBrightLedFlash();
+}
+
+static void debugPrintln1(int val) {
+  const unsigned int msgLen = 2;
+  boolean shouldBlank = (debugContentWritten > 10);
+  debugContentWritten += msgLen;
+  if (shouldBlank)
+    beginPreventBrightLedFlash();
+
+  Serial.println(val);
+
+  if (shouldBlank)
+    endPreventBrightLedFlash();
+}
+
+inline void debugPrint(int level, const char* msg) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.print(msg);
+    debugPrint1(msg);
   }
 }
 
-void debugPrintln(int level, const char* msg) {
+inline void debugPrintln(int level, const char* msg) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.println(msg);
+    debugPrintln1(msg);
   }
 }
 
-void debugPrint(int level, int val) {
+inline void debugPrint(int level, int val) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.print(val);
+    debugPrint1(val);
   }
 }
 
-void debugPrintln(int level, int val) {
+inline void debugPrintln(int level, int val) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.println(val);
+    debugPrintln1(val);
   }
 }
 
@@ -45,20 +99,66 @@ void displayDigitalPins() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
     lastFrame = now;
 
     Serial.println();
-    for (byte p = 0; p < 54; ++p) {
-      Serial.print(p);
-      Serial.print("\t");
-    }
+    Serial.print("MCU/Pins info:\n");
+    displayDigitalPins(0, 27);
     Serial.println();
-    for (byte p = 0; p < 54; ++p) {
-      Serial.print(digitalRead(p));
-      Serial.print("\t");
-    }
-    Serial.println();
+    displayDigitalPins(27, 54);
+
+    endPreventBrightLedFlash();
   }
+}
+
+void displayDigitalPins(byte start, byte end) {
+  for (byte p = start; p < end; ++p) {
+    Serial.print(p);
+    Serial.print("\t");
+  }
+  Serial.println();
+  for (byte p = start; p < end; ++p) {
+    // ripped from the Arduino RTL:
+  	if (g_APinDescription[p].ulPinType == PIO_NOT_A_PIN) {
+      Serial.print("---");
+    }
+    else {
+      byte mode = g_pinStatus[p] & 0xF;
+      switch (mode) {
+      default:
+        Serial.print("?_");
+        Serial.print(mode);
+        break;
+      case 0:
+        Serial.print("<~>");
+        break;
+      case PIN_STATUS_ANALOG:
+        Serial.print("ANA");
+        break;
+      case PIN_STATUS_DIGITAL_OUTPUT:
+        Serial.print("OUT");
+        break;
+      case PIN_STATUS_DIGITAL_INPUT:
+        Serial.print("IN");
+        break;
+      case PIN_STATUS_DIGITAL_INPUT_PULLUP:
+        Serial.print("IN+P");
+        break;
+      case PIN_STATUS_PWM:
+        Serial.print("PWM");
+        break;
+      }
+    }
+    Serial.print("\t");
+  }
+  Serial.println();
+  for (byte p = start; p < end; ++p) {
+    Serial.print(digitalRead(p));
+    Serial.print("\t");
+  }
+  Serial.println();
 }
 
 // displayXFrame:
@@ -71,9 +171,12 @@ void displayXFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
     lastFrame = now;
 
     Serial.println();
+    Serial.print("XFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
@@ -82,15 +185,15 @@ void displayXFrame() {
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
         if (cell(x, y-1).touched == touchedCell) {
-          Serial.print(cell(x, y-1).currentRawX);
+          Serial.print("#_");
         }
-        else {
-          Serial.print("-");
-        }
+        Serial.print(cell(x, y-1).currentRawX);
         Serial.print("\t");
       }
       Serial.println();
     }
+
+    endPreventBrightLedFlash();
   }
 }
 
@@ -104,9 +207,12 @@ void displayYFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
     lastFrame = now;
     
     Serial.println();
+    Serial.print("YFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
@@ -115,15 +221,15 @@ void displayYFrame() {
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
         if (cell(x, y-1).touched == touchedCell) {
-          Serial.print(cell(x, y-1).currentRawY);
+          Serial.print("#_");
         }
-        else {
-          Serial.print("-");
-        }
+        Serial.print(cell(x, y-1).currentRawY);
         Serial.print("\t");
       }
       Serial.println();
     }
+
+    endPreventBrightLedFlash();
   }
 }
 
@@ -133,9 +239,12 @@ void displayZFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
     lastFrame = now;
     
     Serial.println();
+    Serial.print("ZFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
@@ -143,22 +252,34 @@ void displayZFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("#_");
+        }
         Serial.print(cell(x, y-1).currentRawZ);
         Serial.print("\t");
       }
       Serial.println();
     }
+
+    endPreventBrightLedFlash();
   }
 }
 
 // For debug, displays an entire frame of raw Z values in the Arduino serial monitor. Values are collected during each full read of the touch surface.
 void displaySurfaceScanTime() { 
+  unsigned long now = micros();
+  static unsigned long lastFrame = now;
   if (sensorCol == 1 && sensorRow == 0) {
-    static int scanCount; 
-    static unsigned long scanPeriod; 
-    if (++scanCount > 255) { 
+    static int scanCount = 0; 
+    static unsigned long scanPeriod = micros();
+    ++scanCount;
+    if (calcTimeDelta(now, lastFrame) >= 500000 && scanCount > 0) {
+      lastFrame = now;
       Serial.print("Total surface scan time in microseconds: ");
-      Serial.println((micros() - scanPeriod) / 256); 
+      Serial.print((micros() - scanPeriod) / scanCount);
+      Serial.print(", calculated across ");
+      Serial.print(scanCount);
+      Serial.println(" scans.");
       scanPeriod = micros(); 
       scanCount = 0;   
     }
@@ -166,20 +287,45 @@ void displaySurfaceScanTime() {
 }
 
 // displayCellTouchedFrame:
-// For debug, displays an entire frame of raw Z values in the Arduino serial monitor. Values are collected during each full read of the touch surface.
+// For debug, displays an entire frame of 'touch' states in the Arduino serial monitor. Values are collected during each full read of the touch surface.
 void displayCellTouchedFrame() {
-  Serial.println();
-  for (byte x = 0; x < NUMCOLS; ++x) {
-    Serial.print(x);
-    Serial.print("\t");
-  }
-  Serial.println();
-  for (byte y = NUMROWS; y > 0; --y) {
+  static unsigned long lastFrame = 0;
+  unsigned long now = micros();
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+    beginPreventBrightLedFlash();
+
+    lastFrame = now;
+
+    Serial.println();
+    Serial.print("CellTouchedFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
-      Serial.print(cell(x, y-1).touched);
+      Serial.print(x);
       Serial.print("\t");
     }
     Serial.println();
+    for (byte y = NUMROWS; y > 0; --y) {
+      for (byte x = 0; x < NUMCOLS; ++x) {
+        switch (cell(x, y-1).touched) {
+        case untouchedCell:
+          Serial.print("-");
+          break;
+        case ignoredCell:
+          Serial.print("ignor");
+          break;
+        case transferCell:
+          Serial.print("TRANS");
+          break;
+        case touchedCell:
+          Serial.print("TOUCH");
+          break;
+        }
+        //Serial.print(cell(x, y-1).touched);
+        Serial.print("\t");
+      }
+      Serial.println();
+    }
+
+    endPreventBrightLedFlash();
   }
 }
 

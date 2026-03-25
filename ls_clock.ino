@@ -18,7 +18,9 @@ When incoming MIDI clock is running it will be used, otherwise an internal clock
 active tempo will be calculated.
 **************************************************************************************************/
 
-const unsigned long INTERNAL_CLOCK_UNIT_BASE = 2500000;  // 1000000 ( microsecond) * 60 ( minutes - bpm) / 24 ( frames per beat)
+#include "ls_compiler_tweaks.h"
+
+constexpr const unsigned long INTERNAL_CLOCK_UNIT_BASE = 2500000;  // 1000000 ( microsecond) * 60 ( minutes - bpm) / 24 ( frames per beat)
 
 unsigned long prevClockTimerCount;                       // the last time the microsecond timer was updated for the musical clock
 
@@ -38,7 +40,7 @@ void initializeClock() {
   resetClockAdvancement(0);
 }
 
-void resetClockAdvancement(unsigned long now) {
+inline void resetClockAdvancement(unsigned long now) {
   lastInternalClockMoment = now;
   lastInternalClockCount = 0;
   previousMidiClockCount = -1;

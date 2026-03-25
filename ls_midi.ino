@@ -16,6 +16,7 @@ limitations under the License.
 These are the MIDI functions for the LinnStrument
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
 #include "ls_bytebuffer.h"
 #include "ls_midi.h"
 
@@ -53,17 +54,21 @@ unsigned long lastMidiClockTime = 0;                       // the last time we r
 int32_t fxd4MidiTempoAverage = fxd4CurrentTempo;           // the current average of the MIDI clock tempo, in fixes precision
 byte midiClockMessageCount = 0;                            // the number of MIDI clock messages we've received, from 1 to 24, with 0 meaning none has been received yet
 byte initialMidiClockMessageCount = 0;                     // the first MIDI clock messages, counted until the minimum number of samples have been received
-bool receivedSongPositionPointer = false;                  // tracks whether a song position pointer message was received before the MIDI clock start
-bool standaloneMidiClockRunning = false;                   // indicates whether the MIDI Clock is sending data in a standalone fashion, without sequencer
+boolean receivedSongPositionPointer = false;               // tracks whether a song position pointer message was received before the MIDI clock start
+boolean standaloneMidiClockRunning = false;                // indicates whether the MIDI Clock is sending data in a standalone fashion, without sequencer
 
-byte lastRpnMsb = 127;
-byte lastRpnLsb = 127;
-byte lastNrpnMsb = 127;
-byte lastNrpnLsb = 127;
-byte lastDataMsb = 0;
-byte lastDataLsb = 0;
+byte lastRpnMsb;
+byte lastRpnLsb;
+byte lastNrpnMsb;
+byte lastNrpnLsb;
+byte lastDataMsb;
+byte lastDataLsb;
+// flags to ensure robust RPN/NRPN parsing
+boolean isValidRpn = false;        // not true until both bytes of the parameter number are received
+boolean isValidNrpn = false;       // ditto
+signed char lastCC = -1;
 
-boolean isMidiUsingDIN() {
+inline boolean isMidiUsingDIN() {
   return Global.midiIO == 0;
 }
 
@@ -347,7 +352,7 @@ void handleMidiInput(unsigned long nowMicros) {
       case MIDIChannelPressure:
       {
         if (ccSplit != -1) {
-          bool handled = false;
+          boolean handled = false;
 
           for (byte f = 0; f < 8; ++f) {
             unsigned short cc = Split[ccSplit].ccForFader[f];
@@ -370,12 +375,63 @@ void handleMidiInput(unsigned long nowMicros) {
 
       case MIDIControlChange:
       {
+        // Prioritize handling NRPN / RPN messages
+        boolean received_rpn_nrpn = false;
+        switch (midiData1) {
+          case 6:
+            // if an NRPN or RPN parameter was selected, start constituting the data
+            // otherwise control the fader of MIDI CC 6
+            if (hasValidRpn() || hasValidNrpn()) {
+              lastDataMsb = midiData2;
+              received_rpn_nrpn = true;
+            }
+            break;
+          case 38:
+            if (hasValidRpn()) {
+              lastDataLsb = midiData2;
+              receivedRpn(midiChannel, (lastRpnMsb<<7)+lastRpnLsb, (lastDataMsb<<7)+lastDataLsb);
+              received_rpn_nrpn = true;
+            }
+            else if (hasValidNrpn()) {
+              lastDataLsb = midiData2;
+              receivedNrpn((lastNrpnMsb<<7)+lastNrpnLsb, (lastDataMsb<<7)+lastDataLsb, midiChannel);
+              received_rpn_nrpn = true;
+            }
+            break;
+          case 98:
+            lastNrpnLsb = midiData2;
+            lastRpnLsb = 127;
+            lastRpnMsb = 127;
+            break;
+          case 99:
+            lastNrpnMsb = midiData2;
+            lastRpnLsb = 127;
+            lastRpnMsb = 127;
+            break;
+          case 100:
+            lastRpnLsb = midiData2;
+            lastNrpnLsb = 127;
+            lastNrpnMsb = 127;
+            break;
+          case 101:
+            lastRpnMsb = midiData2;
+            lastNrpnLsb = 127;
+            lastNrpnMsb = 127;
+            break;          
+        }
+
+        if (received_rpn_nrpn) {
+          break;
+        }
+
         // try to match incoming CC message to the faders that generate CCs
         // if faders are set up to handle a particular incoming CC,
         // these CCs will update the faders and not control any of the
         // LinnStrument features
-        if (ccSplit != -1) {
-          bool handled = false;
+        else if (!userFirmwareActive && ccSplit != -1) {
+          // possible further restriction: replace the previous line with the following line
+          // else if (!userFirmwareActive && ccSplit != -1 && Split[ccSplit].ccFaders) {
+          boolean handled = false;
 
           for (byte f = 0; f < 8; ++f) {
             unsigned short cc = Split[ccSplit].ccForFader[f];
@@ -391,6 +447,8 @@ void handleMidiInput(unsigned long nowMicros) {
             if ((displayMode == displayNormal && Split[ccSplit].ccFaders) || displayMode == displayVolume) {
               updateDisplay();
             }
+            // if a fader intercepts a CC, don't apply that CC to RPN/NRPN construction
+            lastCC = -1;
             break;
           }
         }
@@ -398,14 +456,6 @@ void handleMidiInput(unsigned long nowMicros) {
         // handle the CC message by trying to match it to any of the
         // supported incoming MIDI CC messages
         switch (midiData1) {
-          case 6:
-            // if an NRPN or RPN parameter was selected, start constituting the data
-            // otherwise control the fader of MIDI CC 6
-            if ((lastRpnMsb != 127 || lastRpnLsb != 127) ||
-                (lastNrpnMsb != 127 || lastNrpnLsb != 127)) {
-              lastDataMsb = midiData2;
-              break;
-            }
           case 9:
             if (userFirmwareActive && midiChannel < NUMROWS && (midiData2 == 0 || midiData2 == 1)) {
               userFirmwareSlideMode[midiChannel] = midiData2;
@@ -473,34 +523,9 @@ void handleMidiInput(unsigned long nowMicros) {
               storeSettings();
             }
             break;
-          case 38:
-            if (lastRpnMsb != 127 || lastRpnLsb != 127) {
-              lastDataLsb = midiData2;
-              receivedRpn(midiChannel, (lastRpnMsb<<7)+lastRpnLsb, (lastDataMsb<<7)+lastDataLsb);
-            }
-            else if (lastNrpnMsb != 127 || lastNrpnLsb != 127) {
-              lastDataLsb = midiData2;
-              receivedNrpn((lastNrpnMsb<<7)+lastNrpnLsb, (lastDataMsb<<7)+lastDataLsb, midiChannel);
-            }
-            break;
-          case 98:
-            lastNrpnLsb = midiData2;
-            break;
-          case 99:
-            lastNrpnMsb = midiData2;
-            break;
-          case 100:
-            lastRpnLsb = midiData2;
-            // resetting RPN numbers also resets NRPN numbers
-            if (lastRpnLsb == 127 && lastRpnMsb == 127) {
-              lastNrpnLsb = 127;
-              lastNrpnMsb = 127;
-            }
-            break;
-          case 101:
-            lastRpnMsb = midiData2;
-            break;
         }
+        lastCC = midiData1;
+        break;        
       }
       default:
         // don't handle other MIDI messages
@@ -604,6 +629,14 @@ void receivedRpn(byte midiChannel, int parameter, int value) {
   }
 
   updateDisplay();
+}
+
+boolean hasValidRpn() {
+  return lastRpnMsb != 127 || lastRpnLsb != 127;
+}
+
+boolean hasValidNrpn() {
+  return lastNrpnMsb != 127 || lastNrpnLsb != 127;
 }
 
 void receivedNrpn(int parameter, int value, int channel) {
@@ -1957,12 +1990,12 @@ void preSendPitchBend(byte split, int pitchValue) {
 }
 
 // Called to send a Pitch Bend message. Depending on mode, sends different Bend data
-void preSendPitchBend(byte split, int pitchValue, byte channel) {
+inline void preSendPitchBend(byte split, int pitchValue, byte channel) {
   midiSendPitchBend(scalePitch(split, pitchValue), channel);    // Send the bend amount as a difference from bend center (8192)
 }
 
 // Calculate the real value if custom limits are set
-byte applyLimits(byte value, byte minValue, byte maxValue, int32_t ratio) {
+inline byte applyLimits(byte value, byte minValue, byte maxValue, int32_t ratio) {
   if (minValue != 0 || maxValue != 127) {
     value = minValue + FXD_TO_INT(FXD_MUL(FXD_FROM_INT(value), ratio));
   }
@@ -1970,7 +2003,7 @@ byte applyLimits(byte value, byte minValue, byte maxValue, int32_t ratio) {
   return value;
 }
 
-unsigned short applyLimits1016(unsigned short value, byte minValue, byte maxValue, int32_t ratio) {
+inline unsigned short applyLimits1016(unsigned short value, byte minValue, byte maxValue, int32_t ratio) {
   if (minValue != 0 || maxValue != 127) {
     value = minValue * 8 + FXD_TO_INT(FXD_MUL(FXD_FROM_INT(value), ratio));
   }
@@ -2094,7 +2127,7 @@ void preSendLoudness(byte split, byte pressureValueLo, short pressureValueHi, by
   }
 }
 
-void resetLastMidiPolyPressure(byte note, byte channel) {
+inline void resetLastMidiPolyPressure(byte note, byte channel) {
   note = constrain(note, 0, 127);
   channel = constrain(channel-1, 0, 15);
 
@@ -2102,7 +2135,7 @@ void resetLastMidiPolyPressure(byte note, byte channel) {
   lastMomentMidiPP[channel][note] = 0;
 }
 
-void resetLastMidiAfterTouch(byte channel) {
+inline void resetLastMidiAfterTouch(byte channel) {
   channel = constrain(channel-1, 0, 15);
 
   lastValueMidiAT[channel] = 0xFF;
@@ -2176,7 +2209,7 @@ void preResetLastMidiCC(byte split, byte controlnum) {
   }
 }
 
-void resetLastMidiCC(byte controlnum, byte channel) {
+inline void resetLastMidiCC(byte controlnum, byte channel) {
   controlnum = constrain(controlnum, 0, 127);
   channel = constrain(channel-1, 0, 15);
 
@@ -2184,7 +2217,7 @@ void resetLastMidiCC(byte controlnum, byte channel) {
   lastMomentMidiCC[channel][controlnum] = 0;
 }
 
-void resetLastMidiPitchBend(byte channel) {
+inline void resetLastMidiPitchBend(byte channel) {
   channel = constrain(channel-1, 0, 15);
   
   lastValueMidiPB[channel] = 0x7FFF;
@@ -2264,7 +2297,7 @@ void initializeLastMidiTracking() {
   }
 }
 
-void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
+inline void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
   // we always queue four bytes and will process them as MIDI messages in the handlePendingMidi
   midiOutQueue.push(channel & 0x0F);
   midiOutQueue.push((byte)type);
@@ -2364,22 +2397,22 @@ void handlePendingMidi(unsigned long now) {
   }
 }
 
-void preSendFader(byte split, byte v) {
+inline void preSendFader(byte split, byte v) {
 }
 
-void preSendVolume(byte split, byte v) {
+inline void preSendVolume(byte split, byte v) {
   preSendControlChange(split, 7, v, false);
 }
 
-void preSendSustain(byte split, byte v) {
+inline void preSendSustain(byte split, byte v) {
   preSendControlChange(split, 64, v, true);
 }
 
-void preSendSwitchSustain(byte whichSwitch, byte split, byte v) {
+inline void preSendSwitchSustain(byte whichSwitch, byte split, byte v) {
   preSendControlChange(split, Global.ccForSwitchSustain[whichSwitch], v, true);
 }
 
-void preSendSwitchCC65(byte whichSwitch, byte split, byte v) {
+inline void preSendSwitchCC65(byte whichSwitch, byte split, byte v) {
   preSendControlChange(split, Global.ccForSwitchCC65[whichSwitch], v, true);
 }
 
@@ -2530,7 +2563,7 @@ void midiSendAllNotesOff(byte split) {
   }
 }
 
-void midiSendControlChange(byte controlnum, byte controlval, byte channel) {
+inline void midiSendControlChange(byte controlnum, byte controlval, byte channel) {
   midiSendControlChange(controlnum, controlval, channel, false);
 }
 
@@ -2550,7 +2583,7 @@ void midiSendControlChange(byte controlnum, byte controlval, byte channel, boole
 
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
-    if (SWITCH_DEBUGMIDI) {
+    if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendControlChange controlnum=");
       Serial.print((int)controlnum);
       Serial.print(", controlval=");
@@ -2589,7 +2622,7 @@ void midiSendControlChange14BitUserFirmware(byte controlMsb, byte controlLsb, sh
 
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
-    if (SWITCH_DEBUGMIDI) {
+    if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendControlChange14BitUserFirmware controlMsb=");
       Serial.print((int)controlMsb);
       Serial.print(", controlLsb=");
@@ -2626,7 +2659,7 @@ void midiSendControlChange14BitMIDISpec(byte controlMsb, byte controlLsb, short 
        calcTimeDelta(now, lastMomentMidiCC[channel][controlLsb]) <= midiDecimateRate)) return;
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
-    if (SWITCH_DEBUGMIDI) {
+    if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendControlChange14BitMIDISpec controlMsb=");
       Serial.print((int)controlMsb);
       Serial.print(", controlLsb=");
@@ -2661,7 +2694,7 @@ void midiSendNoteOn(byte split, byte notenum, byte velocity, byte channel) {
 
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
-    if (SWITCH_DEBUGMIDI) {
+    if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendNoteOn notenum=");
       Serial.print((int)notenum);
       Serial.print(", velocity=");
@@ -2677,14 +2710,14 @@ void midiSendNoteOn(byte split, byte notenum, byte velocity, byte channel) {
   }
 }
 
-boolean hasActiveMidiNote(byte split, byte notenum, byte channel) {
+inline boolean hasActiveMidiNote(byte split, byte notenum, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
   channel = constrain(channel-1, 0, 15);
   return lastValueMidiNotesOn[split][notenum][channel] > 0;
 }
 
-void midiSendNoteOff(byte split, byte notenum, byte channel) {
+inline void midiSendNoteOff(byte split, byte notenum, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
   channel = constrain(channel-1, 0, 15);
@@ -2695,7 +2728,7 @@ void midiSendNoteOff(byte split, byte notenum, byte channel) {
   }
 }
 
-void midiSendNoteOffWithVelocity(byte split, byte notenum, byte velocity, byte channel) {
+inline void midiSendNoteOffWithVelocity(byte split, byte notenum, byte velocity, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
   channel = constrain(channel-1, 0, 15);
@@ -2709,7 +2742,7 @@ void midiSendNoteOffWithVelocity(byte split, byte notenum, byte velocity, byte c
 void midiSendNoteOffRaw(byte notenum, byte velocity, byte channel) {
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
-    if (SWITCH_DEBUGMIDI) {
+    if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendNoteOff notenum=");
       Serial.print((int)notenum);
       Serial.print(", channel=");
@@ -2743,7 +2776,7 @@ void midiSendNoteOffForAllTouches(byte split) {
   }
 }
 
-boolean hasPreviousPitchBendValue(byte channel) {
+inline boolean hasPreviousPitchBendValue(byte channel) {
   channel = constrain(channel-1, 0, 15);
   return lastValueMidiPB[channel] != 0x2000 && lastValueMidiPB[channel] != 0x7FFF;
 }
@@ -2760,7 +2793,7 @@ void midiSendPitchBend(int pitchval, byte channel) {
 
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
-    if (SWITCH_DEBUGMIDI) {
+    if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendPitchBend pitchval=");
       Serial.print(pitchval);
       Serial.print(", channel=");
@@ -2779,6 +2812,7 @@ void midiSendProgramChange(byte preset, byte channel) {
   channel = constrain(channel-1, 0, 15);
 
   if (Device.serialMode) {
+#ifdef DEBUG_ENABLED
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendProgramChange preset=");
       Serial.print(preset);
@@ -2786,13 +2820,14 @@ void midiSendProgramChange(byte preset, byte channel) {
       Serial.print((int)channel);
       Serial.print("\n");
     }
+#endif
   }
   else {
     queueMidiMessage(MIDIProgramChange, preset, 0, channel);
   }
 }
 
-void midiSendAfterTouch(byte value, byte channel) {
+inline void midiSendAfterTouch(byte value, byte channel) {
   midiSendAfterTouch(value, channel, false);
 }
 
@@ -2809,6 +2844,7 @@ void midiSendAfterTouch(byte value, byte channel, boolean always) {
   lastMomentMidiAT[channel] = now;
 
   if (Device.serialMode) {
+#ifdef DEBUG_ENABLED
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendAfterTouch value=");
       Serial.print(value);
@@ -2816,6 +2852,7 @@ void midiSendAfterTouch(byte value, byte channel, boolean always) {
       Serial.print((int)channel);
       Serial.print("\n");
     }
+#endif
   }
   else {
     queueMidiMessage(MIDIChannelPressure, value, 0, channel);
@@ -2835,6 +2872,7 @@ void midiSendPolyPressure(byte notenum, byte value, byte channel) {
   lastMomentMidiPP[channel][notenum] = now;
 
   if (Device.serialMode) {
+#ifdef DEBUG_ENABLED
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendPolyPressure notenum=");
       Serial.print((int)notenum);
@@ -2844,6 +2882,7 @@ void midiSendPolyPressure(byte notenum, byte value, byte channel) {
       Serial.print((int)channel);
       Serial.print("\n");
     }
+#endif
   }
   else {
     queueMidiMessage(MIDIPolyphonicPressure, notenum, value, channel);
@@ -2857,7 +2896,7 @@ void midiSendNRPN(unsigned short number, unsigned short value, byte channel) {
 
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
-    if (SWITCH_DEBUGMIDI) {
+    if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendNRPN number=");
       Serial.print((int)number);
       Serial.print(", value=");
@@ -2890,7 +2929,7 @@ void midiSendRPN(unsigned short number, unsigned short value, byte channel) {
 
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
-    if (SWITCH_DEBUGMIDI) {
+    if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.print("midiSendRPN number=");
       Serial.print((int)number);
       Serial.print(", value=");
@@ -2939,7 +2978,7 @@ void midiSendMpePitchBendRange(byte split) {
   }
 }
 
-bool isStandaloneMidiClockRunning() {
+inline boolean isStandaloneMidiClockRunning() {
   return standaloneMidiClockRunning;
 }
 
@@ -2967,33 +3006,39 @@ void standaloneMidiClockStop() {
   }
 }
 
-void midiSendStart() {
+inline void midiSendStart() {
   if (Device.serialMode) {
+#ifdef DEBUG_ENABLED
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.println("midiSendStart");
     }
+#endif
   }
   else {
     queueMidiMessage(MIDIStart, 0, 0, 0);
   }
 }
 
-void midiSendTimingClock() {
+inline void midiSendTimingClock() {
   if (Device.serialMode) {
+#ifdef DEBUG_ENABLED
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.println("midiSendTimingClock");
     }
+#endif
   }
   else {
     queueMidiMessage(MIDITimingClock, 0, 0, 0);
   }
 }
 
-void midiSendStop() {
+inline void midiSendStop() {
   if (Device.serialMode) {
+#ifdef DEBUG_ENABLED
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
       Serial.println("midiSendStop");
     }
+#endif
   }
   else {
     queueMidiMessage(MIDIStop, 0, 0, 0);
