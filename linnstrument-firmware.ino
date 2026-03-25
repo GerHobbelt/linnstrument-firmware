@@ -220,7 +220,8 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define ROWOFFSET_GUITAR           0x0d
 #define ROWOFFSET_ZERO             0x7f
 
-#define LED_FLASH_DELAY  500000        // the time before a led is turned off when flashing or pulsing, in microseconds
+// the time before a led is turned off when flashing or pulsing, in microseconds: 1/4th of the current tempo
+unsigned int LED_FLASH_DELAY(void);
 
 #define DEFAULT_MAINLOOP_DIVIDER      2
 #define DEFAULT_LED_REFRESH           333

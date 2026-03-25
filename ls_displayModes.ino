@@ -1746,7 +1746,7 @@ void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
     }
 
     // handle turning off the tap tempo led after minimum 30ms
-    if (tempoLedOn != 0 && calcTimeDelta(now, tempoLedOn) > LED_FLASH_DELAY) {
+    if (tempoLedOn != 0 && calcTimeDelta(now, tempoLedOn) > LED_FLASH_DELAY()) {
       tempoLedOn = 0;
       clearLed(col, row);
     }
