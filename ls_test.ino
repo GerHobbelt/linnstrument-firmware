@@ -131,6 +131,9 @@ void displayDigitalPins(byte start, byte end) {
         Serial.print("?_");
         Serial.print(mode);
         break;
+      case 0:
+        Serial.print("<~>");
+        break;
       case PIN_STATUS_ANALOG:
         Serial.print("ANA");
         break;
@@ -182,11 +185,9 @@ void displayXFrame() {
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
         if (cell(x, y-1).touched == touchedCell) {
-          Serial.print(cell(x, y-1).currentRawX);
+          Serial.print("#_");
         }
-        else {
-          Serial.print("-");
-        }
+        Serial.print(cell(x, y-1).currentRawX);
         Serial.print("\t");
       }
       Serial.println();
@@ -220,11 +221,9 @@ void displayYFrame() {
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
         if (cell(x, y-1).touched == touchedCell) {
-          Serial.print(cell(x, y-1).currentRawY);
+          Serial.print("#_");
         }
-        else {
-          Serial.print("-");
-        }
+        Serial.print(cell(x, y-1).currentRawY);
         Serial.print("\t");
       }
       Serial.println();
@@ -253,6 +252,9 @@ void displayZFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("#_");
+        }
         Serial.print(cell(x, y-1).currentRawZ);
         Serial.print("\t");
       }
