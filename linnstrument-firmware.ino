@@ -28,7 +28,6 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 =======================================================================================================================
 =====================================================================================================================*/
 
-
 /*
  * DUE Board pin   |  PORT  | Label
  * ----------------+--------+-------
@@ -136,7 +135,7 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 /******************************************** CONSTANTS ******************************************/
 
 const char* OSVersion = "234.";
-const char* OSVersionBuild = ".079";
+const char* OSVersionBuild = ".080";
 const char* microLinnOSVersion = ".902";
 
 // SPI addresses
