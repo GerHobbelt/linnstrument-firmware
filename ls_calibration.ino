@@ -590,7 +590,7 @@ boolean handleCalibrationRelease() {
           calibrationPhase = calibrationInactive;
           clearDisplay();
           bigfont_draw_string((NUMCOLS-11)/2 - 1, 0, "OK", globalColor, false);
-          delayUsec(500000);
+          delayUsec(1000000);
 
           storeSettings();
                     
