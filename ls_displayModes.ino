@@ -957,14 +957,14 @@ void paintOSVersionDisplay() {
   clearDisplay();
 
   byte color = Split[LEFT].colorMain;
-  smallfont_draw_string(0, 0, OSVersion, color);
+  smallfont_draw_string(0, 0, OSinfo.OSVersion, color);
 }
 
 void paintOSVersionBuildDisplay() {
   clearDisplay();
 
   byte color = Split[LEFT].colorAccent;
-  smallfont_draw_string(0, 0, OSVersionBuild, color);
+  smallfont_draw_string(0, 0, OSinfo.OSVersionBuild, color);
 }
 
 // paint the current preset number for a particular side, in large block characters
@@ -1866,8 +1866,7 @@ void paintGlobalSettingsDisplay() {
   if (displayMode == displayGlobalWithTempo) {
     byte color = Split[LEFT].colorMain;
     char str[4];
-    const char* format = "%3d";
-    snprintf(str, sizeof(str), format, FXD4_TO_INT(fxd4CurrentTempo));
+    snprintf(str, sizeof(str), "%3d", FXD4_TO_INT(fxd4CurrentTempo));
     tinyfont_draw_string(0, 4, str, color);
   }
 

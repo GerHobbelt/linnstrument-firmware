@@ -135,8 +135,13 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 
 /******************************************** CONSTANTS ******************************************/
 
-const char* OSVersion = "234.";
-const char* OSVersionBuild = ".074";
+LS_CONST struct OSinfo {
+  const char* OSVersion;
+  const char* OSVersionBuild;
+} OSinfo = {
+  .OSVersion = "234.",
+  .OSVersionBuild = ".074",
+};
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -331,9 +336,9 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 #define TEMPO_ARP_SIXTEENTH_SWING 0xff
 
-const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+LS_CONST unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-const int LED_PATTERNS = 3;
+constexpr const int LED_PATTERNS = 3;
 
 // Two buffers of ...
 // A 26 by 8 byte array containing one byte for each LED:
