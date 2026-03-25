@@ -389,12 +389,14 @@ void handleSlideTransferCandidate(byte siblingCol) {
 }
 
 boolean handleNewTouch() {
-  DEBUGPRINT((1,"handleNewTouch"));
-  DEBUGPRINT((1," col="));DEBUGPRINT((1,(int)sensorCol));
-  DEBUGPRINT((1," row="));DEBUGPRINT((1,(int)sensorRow));
-  DEBUGPRINT((1," velocityZ="));DEBUGPRINT((1,(int)sensorCell->velocityZ));
-  DEBUGPRINT((1," pressureZ="));DEBUGPRINT((1,(int)sensorCell->pressureZ));
-  DEBUGPRINT((1,"\n"));
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((1,"handleNewTouch"));
+    DEBUGPRINT((1," col="));DEBUGPRINT((1,(int)sensorCol));
+    DEBUGPRINT((1," row="));DEBUGPRINT((1,(int)sensorRow));
+    DEBUGPRINT((1," velocityZ="));DEBUGPRINT((1,(int)sensorCell->velocityZ));
+    DEBUGPRINT((1," pressureZ="));DEBUGPRINT((1,(int)sensorCell->pressureZ));
+    DEBUGPRINT((1,"\n"));
+  }
 
   lastTouchMoment = millis();
   
@@ -895,12 +897,14 @@ boolean handleXYZupdate() {
     return false;
   }
 
-  DEBUGPRINT((2,"handleXYZupdate"));
-  DEBUGPRINT((2," col="));DEBUGPRINT((2,(int)sensorCol));
-  DEBUGPRINT((2," row="));DEBUGPRINT((2,(int)sensorRow));
-  DEBUGPRINT((2," velocityZ="));DEBUGPRINT((2,(int)sensorCell->velocityZ));
-  DEBUGPRINT((2," pressureZ="));DEBUGPRINT((2,(int)sensorCell->pressureZ));
-  DEBUGPRINT((2,"\n"));
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((2,"handleXYZupdate"));
+    DEBUGPRINT((2," col="));DEBUGPRINT((2,(int)sensorCol));
+    DEBUGPRINT((2," row="));DEBUGPRINT((2,(int)sensorRow));
+    DEBUGPRINT((2," velocityZ="));DEBUGPRINT((2,(int)sensorCell->velocityZ));
+    DEBUGPRINT((2," pressureZ="));DEBUGPRINT((2,(int)sensorCell->pressureZ));
+    DEBUGPRINT((2,"\n"));
+  }
 
   lastTouchMoment = millis();
     
@@ -1847,11 +1851,13 @@ boolean handleNonPlayingRelease() {
 
 // Called when a touch is released to handle note off or other release events
 void handleTouchRelease() {
-  DEBUGPRINT((1,"handleTouchRelease"));
-  DEBUGPRINT((1," col="));DEBUGPRINT((1,(int)sensorCol));
-  DEBUGPRINT((1," row="));DEBUGPRINT((1,(int)sensorRow));
-  DEBUGPRINT((1,"\n"));
-
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((1,"handleTouchRelease"));
+    DEBUGPRINT((1," col="));DEBUGPRINT((1,(int)sensorCol));
+    DEBUGPRINT((1," row="));DEBUGPRINT((1,(int)sensorRow));
+    DEBUGPRINT((1,"\n"));
+  }
+  
   // if a release is pending, decrease the counter
   if (sensorCell->pendingReleaseCount > 0) {
     sensorCell->pendingReleaseCount--;
