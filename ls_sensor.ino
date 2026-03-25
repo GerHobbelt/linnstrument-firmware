@@ -88,14 +88,12 @@ void initializeSensors() {
   Device.sensorRangeZ = DEFAULT_SENSOR_RANGE_Z;
 }
 
-short readX(byte zPct) {                       // returns the raw X value at the addressed cell
+inline short readX(byte zPct) {                       // returns the raw X value at the addressed cell
 #ifdef TESTING_SENSOR_DISABLE
     if (sensorCell->disabled) {
       return 0;
     }
 #endif
-
-  DEBUGPRINT((5,"readX\n"));
 
   selectSensorCell(sensorCol, sensorRow, READ_X);     // set analog switches to this column and row, and to read X
 
@@ -108,7 +106,20 @@ short readX(byte zPct) {                       // returns the raw X value at the
   }
 
   delayUsec(d);                                       // delay required after setting analog switches for stable X read
-  return spiAnalogRead();
+  short rawX = spiAnalogRead();
+
+#ifdef DEBUG_ENABLED
+  boolean dbg = (rawX > 0);
+  if (dbg) {
+    DEBUGPRINT((6,"readX: d="));
+    DEBUGPRINT((6,d));
+    DEBUGPRINT((6,",rawX="));
+    DEBUGPRINT((6,rawX));
+    DEBUGPRINT((6,"\n"));
+  }
+#endif
+
+  return rawX;
 }
 
 // readY:
@@ -126,8 +137,6 @@ inline short readY(byte zPct) {                       // returns a value of 0-12
     }
 #endif
 
-  DEBUGPRINT((5,"readY\n"));
-
   selectSensorCell(sensorCol, sensorRow, READ_Y);     // set analog switches to this cell and to read Y
 
   short d;
@@ -139,7 +148,20 @@ inline short readY(byte zPct) {                       // returns a value of 0-12
   }
 
   delayUsec(d);                                       // delay required after setting analog switches for stable Y read
-  return spiAnalogRead();
+  short rawY = spiAnalogRead();
+
+#ifdef DEBUG_ENABLED
+  boolean dbg = (rawY > 0);
+  if (dbg) {
+    DEBUGPRINT((6,"readY: d="));
+    DEBUGPRINT((6,d));
+    DEBUGPRINT((6,",rawY="));
+    DEBUGPRINT((6,rawY));
+    DEBUGPRINT((6,"\n"));
+  }
+#endif
+
+  return rawY;
 }
 
 // readZ:
@@ -175,9 +197,10 @@ inline unsigned short readZ() {                       // returns the raw Z value
   selectSensorCell(sensorCol, sensorRow, READ_Z);     // set analog switches to current cell in touch sensor and read Z
 
   short rawZ;
+  short d = 0;
 
   if (controlModeActive) {
-    delayUsec(READZ_DELAY_CONTROLMODE);
+    delayUsec(d = READZ_DELAY_CONTROLMODE);
 
     // read raw Z value and invert it from (4095 - 0) to (0-4095)
     rawZ = 4095 - spiAnalogRead();
@@ -185,10 +208,10 @@ inline unsigned short readZ() {                       // returns the raw Z value
   else {
     // if there are active touches in the column, always use a settling time
     if (sensorCol == 0) {
-      delayUsec(READZ_DELAY_SWITCH);
+      delayUsec(d = READZ_DELAY_SWITCH);
     }
     else if (rowsInColsTouched[sensorCol]) {
-      delayUsec(READZ_DELAY_SENSOR);
+      delayUsec(d = READZ_DELAY_SENSOR);
     }
 
     // read raw Z value and invert it from (4095 - 0) to (0-4095)
@@ -197,7 +220,7 @@ inline unsigned short readZ() {                       // returns the raw Z value
     // if there are no active touches in the column, but the raw pressure without settling time exceeds the value threshold,
     // introduce a settling time to read the proper stabilized value
     if (rowsInColsTouched[sensorCol] == 0 && rawZ > READZ_SETTLING_PRESSURE_THRESHOLD) {
-        delayUsec(READZ_DELAY_SENSORINITIAL);
+        delayUsec(d += READZ_DELAY_SENSORINITIAL);
         rawZ = 4095 - spiAnalogRead();
     }
   }
@@ -208,10 +231,13 @@ inline unsigned short readZ() {                       // returns the raw Z value
 #ifdef DEBUG_ENABLED
   boolean dbg = (rawZ > 0);
   if (dbg) {
-    DEBUGPRINT((6,"readZ: rawZ:"));
+    DEBUGPRINT((6,"readZ: d="));
+    DEBUGPRINT((6,d));
+    DEBUGPRINT((6,",rawZ="));
     DEBUGPRINT((6,rawZ));
+    DEBUGPRINT((6,"\n"));
   }
-#endif  
+#endif
 
   // scale the sensor based on the sensitivity setting
   rawZ = rawZ * Device.sensorSensitivityZ / 100;

@@ -43,7 +43,7 @@ LS_CONST short CALY_DEFAULT_MIN[MAXROWS] = {243, 781, 1299, 1810, 2281, 2718, 31
 LS_CONST short CALY_DEFAULT_MAX[MAXROWS] = {473, 991, 1486, 1965, 2449, 2925, 3401, 3851};
 
 // only use a portion of the Y distance, since the fingers can't comfortably reach until the real edges
-const byte CALY_MARGIN_FRACTION = 4;
+constexpr const byte CALY_MARGIN_FRACTION = 4;
 
 void initializeCalibration() {
   if (LINNMODEL == 200) {

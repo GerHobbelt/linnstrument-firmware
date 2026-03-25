@@ -63,9 +63,9 @@ static inline T max(T a, T b) {
 #endif
 
 #if 01
-#define LS_CONST           __attribute__((section ("text"))) static const
+#define LS_CONST           __attribute__((section("text"))) static const
 #else
-#define LS_CONST           static 
+#define LS_CONST           static const
 #endif
 
 #endif // LS_COMPILER_TWEAKS_H
