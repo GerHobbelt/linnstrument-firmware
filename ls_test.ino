@@ -445,6 +445,103 @@ void debugFreeRam() {
     Serial.print(&_end - ramstart);
     Serial.print(" free:");
     Serial.println(stack_ptr - heapend + mi.fordblks);
+
+    // read RTT (Real Time Timer) value (seconds elapsed):
+    const RoReg& rtt_vr = REG_RTT_VR;
+    Serial.print("Real Time Timer: RTT_VR:");
+    Serial.print(rtt_vr);
+    Serial.print("\n");
+
+    Serial.print("Chip Identifier: 	CHIPID_CIDR:");
+    const RoReg& cidr = REG_CHIPID_CIDR;
+    const RoReg& cidr_ext = REG_CHIPID_EXID;
+    const auto v = cidr;
+    const auto ext = v >> 31;
+    const auto nvptyp = (v >> 28) & 0b0111;
+    const auto arch = (v >> 20) & 0b11111111;
+    const auto sramsiz = (v >> 16) & 0b1111;
+    const auto nvpsiz2 = (v >> 12) & 0b1111;
+    const auto nvpsiz1 = (v >> 8) & 0b1111;
+    const auto eproc = (v >> 5) & 0b0111;
+    const auto version = (v >> 0) & 0b00011111;
+    Serial.print(" EXT:");
+    Serial.print(ext);
+    Serial.print(" NVPTYP:");
+    Serial.print(nvptyp);
+    Serial.print(" ARCH:");
+    Serial.print(arch);
+    Serial.print(" SRAMSIZ:");
+    Serial.print(sramsiz);
+    Serial.print(" NVPSIZ2:");
+    Serial.print(nvpsiz2);
+    Serial.print(" NVPSIZ1:");
+    Serial.print(nvpsiz1);
+    Serial.print(" EPROC:");
+    Serial.print(eproc);
+    Serial.print(" VERSION:");
+    Serial.print(version);
+
+    Serial.print("    CIDR_EXT:");
+    Serial.print(cidr_ext);
+    Serial.print("\n");
+
+    // TC_hitcount
+    Serial.print("TC_hitcount: t=");
+    Serial.print(millis() / 1000);
+    auto ck_en = pmc_is_periph_clk_enabled(ID_TC1);
+    Serial.print(" TC1.clock_enable=");
+    Serial.print(ck_en);
+
+    for (byte i = 0; i <= 8; i++) {
+      Serial.print(" [");
+      Serial.print(i);
+      Serial.print("]=");
+      Serial.print(TC_hitcount[i]);
+      
+      static Tc * const idToTC[] = {
+        TC0, TC0, TC0, 
+        TC1, TC1, TC1, 
+        TC2, TC2, TC2 };
+
+      auto v = TC_ReadCV(idToTC[i], i % 3);
+      Serial.print(" / CV=");
+      Serial.print(v);
+    }
+    Serial.print("\n");
+
+    Tc *tc = TC1;
+    Serial.print("TC1: CCR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_CCR, 16); // Write-only
+    Serial.print(" CMR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_CMR, 16);
+    Serial.print(" SMMR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_SMMR, 16);
+    Serial.print(" CV=");
+    Serial.print(tc->TC_CHANNEL[0].TC_CV, 16);
+    Serial.print(" RA=");
+    Serial.print(tc->TC_CHANNEL[0].TC_RA, 16);
+    Serial.print(" RB=");
+    Serial.print(tc->TC_CHANNEL[0].TC_RB, 16);
+    Serial.print(" RC=");
+    Serial.print(tc->TC_CHANNEL[0].TC_RC, 16);
+    Serial.print(" SR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_SR, 16);
+    Serial.print(" IER=");
+    Serial.print(tc->TC_CHANNEL[0].TC_IER, 16); // Write-only
+    Serial.print(" IDR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_IDR, 16); // Write-only
+    Serial.print(" IMR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_IMR, 16);
+
+    Serial.print("   TC_BCR=");
+    Serial.print(tc->TC_BCR, 16);
+    Serial.print(" TC_BMR=");
+    Serial.print(tc->TC_BMR, 16);
+    Serial.print(" TC_FMR=");
+    Serial.print(tc->TC_FMR, 16);
+    Serial.print(" TC_WPMR=");
+    Serial.print(tc->TC_WPMR, 16);
+    Serial.print("\n");
   }
 }
 

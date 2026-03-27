@@ -5,3 +5,5 @@ build/*
 linnstrument-firmware.sublime-*
 stino.settings
 .DS_Store
+
+/Arduino.Core.1.6.12/
