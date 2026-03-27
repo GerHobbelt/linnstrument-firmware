@@ -530,7 +530,6 @@ void debugFreeRam() {
     Serial.print(" TC1.clock_enable=");
     Serial.print(ck_en);
 
-#if 0
     for (byte i = 0; i <= 8; i++) {
       Serial.print(" [");
       Serial.print(i);
@@ -546,7 +545,6 @@ void debugFreeRam() {
       Serial.print(" / CV=");
       Serial.print(v);
     }
-#endif
     Serial.print("\n");
 
     Tc *tc = TC1;
