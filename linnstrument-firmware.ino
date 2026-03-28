@@ -1397,7 +1397,7 @@ void setup() {
 
   /*!!*/  // Initialize the output enable line for the 2 LED display chips
   /*!!*/  pinMode(37, OUTPUT);
-  /*!!*/  digitalWrite(37, HIGH);
+  /*!!*/  digitalWrite(37, HIGH); // clearDisplayImmediately();
   /*!!*/
   /*!!*/  if (switchPressAtStartup(GLOBAL_SETTINGS_ROW)) {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
