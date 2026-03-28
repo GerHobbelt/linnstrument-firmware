@@ -464,25 +464,26 @@ void debugFreeRam() {
     const auto nvpsiz1 = (v >> 8) & 0b1111;
     const auto eproc = (v >> 5) & 0b0111;
     const auto version = (v >> 0) & 0b00011111;
+    Serial.print(v, 16);
     Serial.print(" EXT:");
-    Serial.print(ext);
+    Serial.print(ext, 16);
     Serial.print(" NVPTYP:");
-    Serial.print(nvptyp);
+    Serial.print(nvptyp, 16);
     Serial.print(" ARCH:");
-    Serial.print(arch);
+    Serial.print(arch, 16);
     Serial.print(" SRAMSIZ:");
-    Serial.print(sramsiz);
+    Serial.print(sramsiz, 16);
     Serial.print(" NVPSIZ2:");
-    Serial.print(nvpsiz2);
+    Serial.print(nvpsiz2, 16);
     Serial.print(" NVPSIZ1:");
-    Serial.print(nvpsiz1);
+    Serial.print(nvpsiz1, 16);
     Serial.print(" EPROC:");
-    Serial.print(eproc);
+    Serial.print(eproc, 16);
     Serial.print(" VERSION:");
-    Serial.print(version);
+    Serial.print(version, 16);
 
     Serial.print("    CIDR_EXT:");
-    Serial.print(cidr_ext);
+    Serial.print(cidr_ext, 16);
     Serial.print("\n");
 
     // TC_hitcount
