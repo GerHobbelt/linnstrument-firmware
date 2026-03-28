@@ -284,6 +284,100 @@ inline void enableLedDisplay() {
   ledDisplayEnabled = true;
 }
 
+
+// the cache slot of 1 pulsing LED:
+struct Pulsar {
+  unsigned column: 5;
+  unsigned row: 3;
+  unsigned state: 1;    // on/off
+  unsigned mode: 1;     // slow/fast
+  unsigned counter: 6;
+};
+
+// a nice cache for our blinking LEDs.
+//
+// As we expect to have very few blinking LEDs we forego fancy hashtable footwork here and merely
+// perform linear scans through the tiny cache/array for each node access.
+//
+template <unsigned int N = 16>
+struct PulsarArray {
+  Pulsar pulsars[N];
+
+  PulsarArray() {
+    init();
+  }
+  
+  inline void init() {
+    memset(&pulsars[0], 0, sizeof(pulsars));
+  }
+
+  inline Pulsar* get(byte column, byte row) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == column && node->row == row)
+        return node;
+    }
+    return nullptr;
+  }
+
+  inline boolean has(byte column, byte row) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == column && node->row == row)
+        return true;
+    }
+    return false;
+  }
+
+  inline Pulsar* add(byte column, byte row, boolean mode) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == 0) {
+        node->column = column;
+        node->row = row;
+        node->state = 1;
+        node->mode = mode;
+        node->counter = 0;
+        return node;
+      }
+    }
+    DEBUGPRINT((0, "Pulsar::add -- SHOULD NEVER GET HERE!"));
+    return &pulsars[0];
+  }
+
+  // clear all nodes which reside in this column
+  inline void clear(byte column) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == column)
+        node->column = 0;
+    }
+  }
+
+  // increment all counts
+  inline void kick() {
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      node->counter++;
+      if (node->mode /* == slow */ && node->counter == 3) { 
+        // 3x 40ms = 120ms pulse width
+        node->counter = 0;
+        node->state = !node->state;
+      }
+      else if (!node->mode /* == fast */ && node->counter == 2) { 
+        // 2x 40ms = 80ms pulse width
+        node->counter = 0;
+        node->state = !node->state;
+      }
+    }
+  }
+};
+
+
 // refreshLedColumn:
 // Called when it's time to refresh the next column of LEDs. Internally increments the column number every time it's called.
 void refreshLedColumn(unsigned long now) {
@@ -296,16 +390,12 @@ void refreshLedColumn(unsigned long now) {
 
   // keep a steady pulsating going for those leds that need it
   static unsigned long lastPulse = 0;
-  static byte lastPulseCount = 0;
-  static byte lastSlowPulseCount = 0;
+  static PulsarArray<8> pulsars;         // we assume two subsequent displays don't ever amount to more than 8 pulsar LEDs total.
 
-  boolean edge = false;
   if (calcTimeDelta(now, lastPulse) >= 40000) {
     lastPulse = now;
 
-    lastPulseCount++;
-    lastSlowPulseCount++;
-    edge = true;
+    pulsars.kick();
   }
   
   boolean lastFocusPulseOn = !(clock24PPQ < 6);
@@ -327,53 +417,25 @@ void refreshLedColumn(unsigned long now) {
     }
   }
 
+  byte numberOfPulsarsInColumn = 0;
+
    // Initialize bytes to send to LEDs over SPI. Each bit represents a single LED on or off
   for (byte rowCount = 0; rowCount < NUMROWS; ++rowCount) {       // step through the 8 rows
     byte color = (ledVisible(actualCol, rowCount) & B11111000) >> 3;    // set temp value 'color' to 4 color bits of this LED within array
     byte cellDisplay = ledVisible(actualCol, rowCount) & B00000111;     // get cell display value
-
-    if (edge) {
-      switch (cellDisplay) {
-        case cellFastPulse:
-          if (lastPulseCount == 2) {   // 2x 40ms = 80ms
-            lastPulseCount = 0;
-            ledVisible(actualCol, rowCount) &= ~B00000111;
-            ledVisible(actualCol, rowCount) |= cellFastPulse_Off;
-          }
-          break;
-        case cellSlowPulse:
-          if (lastSlowPulseCount == 3) {   // 3x 40ms = 120ms
-            lastSlowPulseCount = 0;
-            ledVisible(actualCol, rowCount) &= ~B00000111;
-            ledVisible(actualCol, rowCount) |= cellSlowPulse_Off;
-          }
-          break;
-
-        case cellFastPulse_Off:
-          if (lastPulseCount == 2) {   // 2x 40ms = 80ms
-            lastPulseCount = 0;
-            ledVisible(actualCol, rowCount) &= ~B00000111;
-            ledVisible(actualCol, rowCount) |= cellFastPulse;
-          }
-          break;
-        case cellSlowPulse_Off:
-          if (lastSlowPulseCount == 3) {   // 3x 40ms = 120ms
-            lastSlowPulseCount = 0;
-            ledVisible(actualCol, rowCount) &= ~B00000111;
-            ledVisible(actualCol, rowCount) |= cellSlowPulse;
-          }
-          break;
-      }
-    }
     
     switch (cellDisplay) {
       case cellFastPulse:
       case cellSlowPulse:
-        cellDisplay = cellOn;
-        break;
-      case cellFastPulse_Off:
-      case cellSlowPulse_Off:
-        cellDisplay = cellOff;
+        numberOfPulsarsInColumn++;
+
+        {
+          Pulsar *node = pulsars.get(actualCol, rowCount);
+          if (!node) {
+            node = pulsars.add(actualCol, rowCount, cellDisplay == cellSlowPulse);
+          }
+          cellDisplay = node->state ? cellOn : cellOff;
+        }
         break;
       case cellFocusPulse:
         cellDisplay = lastFocusPulseOn ? cellOn : cellOff;
@@ -456,6 +518,13 @@ void refreshLedColumn(unsigned long now) {
       }
     }
   }
+
+  if (numberOfPulsarsInColumn == 0) {
+    // when there are no pulsars in this column, this is the perfect time to clear out the old, lingering, ones:
+    // clean the pulsar cache so there's plenty room for new ones.
+    pulsars.clear(actualCol);
+  }
+        
 
   if (++ledCol >= NUMCOLS) ledCol = 0;
 

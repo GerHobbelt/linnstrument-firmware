@@ -577,9 +577,6 @@ enum CellDisplay {
   cellFastPulse = 2,
   cellSlowPulse = 3,
   cellFocusPulse = 4,
-  // internal use only:
-  cellFastPulse_Off = 5,
-  cellSlowPulse_Off = 6,
 };
 
 enum DisplayMode {
