@@ -1865,7 +1865,9 @@ void highlightPossibleNoteCells(byte split, byte notenum) {
           if (isMicroLinnOn()) {
             color = revealMicroLinnRainbowColor(split, col, row);
           }
-          else color = Split[split].colorPlayed;
+          else {
+            color = Split[split].colorPlayed;
+          }
         }
         setLed(col, row, color, cellSlowPulse, LED_LAYER_PLAYED);
       } else {

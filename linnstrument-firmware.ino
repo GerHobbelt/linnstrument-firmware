@@ -195,7 +195,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 // - Cyan           : Green + Blue
 // - White          : Red + Green + Blue
 // - Black          : all OFF
-// Then there's also the 50% duty cycle remixes: half the time color A, the other half its color B:
+// Then there's also the 50% duty cycle remixes: half the time color A, the other half it's color B:
 // a.k.a. 'composite colors':
 // - Orange         : Yellow + Red
 // - Pink           : Purple/Magenta + Yellow
@@ -1553,7 +1553,7 @@ void setup() {
 
   /*!!*/  // Initialize the output enable line for the 2 LED display chips
   /*!!*/  pinMode(37, OUTPUT);
-  /*!!*/  digitalWrite(37, HIGH);
+  /*!!*/  digitalWrite(37, HIGH); // clearDisplayImmediately();
   /*!!*/
   /*!!*/  if (switchPressAtStartup(GLOBAL_SETTINGS_ROW)) {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
