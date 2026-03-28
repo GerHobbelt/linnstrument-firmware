@@ -245,14 +245,15 @@ void updateDisplay() {
 
 // handle logic tied to entering specific display mode, like clearing
 void enterDisplayMode(DisplayMode mode) {
-  DEBUGPRINT((0,"enterDisplayMode\n"));
-
+  DEBUGPRINT((0,"enterDisplayMode:"));
+  DEBUGPRINT((0,int(mode)));
+  DEBUGPRINT((0,"\n"));
   switch (mode) {
     case displaySleep:
       disableLedDisplay();
-#if 0
-      [[fallthrough]];
-#endif
+      clearDisplay();
+      clearSwitches();
+      break;
     // ensure that in non settings displays, the control buttons are cleared out
     case displayNormal:
     case displayAnimation:
@@ -279,7 +280,9 @@ void enterDisplayMode(DisplayMode mode) {
 
 // handle logic tied to exiting specific display mode, like post-processing or saving
 void exitDisplayMode(DisplayMode mode) {
-  DEBUGPRINT((0,"exitDisplayMode\n"));
+  DEBUGPRINT((0,"exitDisplayMode:"));
+  DEBUGPRINT((0,int(mode)));
+  DEBUGPRINT((0,"\n"));
   switch (mode) {
     case displaySleep:
       enableLedDisplay();
