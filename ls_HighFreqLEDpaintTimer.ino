@@ -169,6 +169,17 @@ void startHFLEDpaintTimer(uint32_t frequency) {
   //tc->TC_WPMR = (0x54494D << 8) | 1; // WPEN=1
 }
 
+void stopHFLEDpaintTimer() {
+  auto tc = TC1;
+  tc->TC_WPMR = (0x54494D << 8) | 0; // WPEN=0
+
+  constexpr const auto channel = 0;
+  
+  TC_Stop(tc, channel);
+
+  //tc->TC_WPMR = (0x54494D << 8) | 1; // WPEN=1
+}
+
   // Start timer. Parameters are:
 
   // TC1 : timer counter. Can be TC0, TC1 or TC2
