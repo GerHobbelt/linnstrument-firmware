@@ -353,8 +353,20 @@ struct PulsarArray {
     column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
     for (byte idx = 0; idx < N; idx++) {
       Pulsar* node = &pulsars[idx];
-      if (node->column == column)
+      if (node->column == column) {
         node->column = 0;
+      }
+    }
+  }
+
+  inline void clear(byte column, byte row) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == column && node->row == row) {
+        node->column = 0;
+        break;
+      }
     }
   }
 
@@ -363,13 +375,13 @@ struct PulsarArray {
     for (byte idx = 0; idx < N; idx++) {
       Pulsar* node = &pulsars[idx];
       node->counter++;
-      if (node->mode /* == slow */ && node->counter == 3) { 
-        // 3x 40ms = 120ms pulse width
+      if (node->mode /* == slow */ && node->counter == 5) { 
+        // 5x 30ms = 150ms pulse width
         node->counter = 0;
         node->state = !node->state;
       }
-      else if (!node->mode /* == fast */ && node->counter == 2) { 
-        // 2x 40ms = 80ms pulse width
+      else if (!node->mode /* == fast */ && node->counter == 3) { 
+        // 3x 30ms = 90ms pulse width
         node->counter = 0;
         node->state = !node->state;
       }
@@ -390,7 +402,7 @@ void refreshLedColumn(unsigned long now) {
   static unsigned long lastPulse = 0;
   static PulsarArray<8> pulsars;         // we assume two subsequent displays don't ever amount to more than 8 pulsar LEDs total.
 
-  if (calcTimeDelta(now, lastPulse) >= 40000) {
+  if (calcTimeDelta(now, lastPulse) >= 30000) {
     lastPulse = now;
 
     pulsars.kick();
@@ -435,8 +447,52 @@ void refreshLedColumn(unsigned long now) {
           cellDisplay = node->state ? cellOn : cellOff;
         }
         break;
+
       case cellFocusPulse:
         cellDisplay = lastFocusPulseOn ? cellOn : cellOff;
+        break;
+
+      case cellTempoPulse:
+        {
+          if (!animationActive && !userFirmwareActive) {
+            bool flash_on = false;
+            if (isVisibleSequencer()) {
+              flash_on = sequencerFlashTempoOn();
+            }
+            else {
+              flash_on = (clock24PPQ == 0);
+            }
+
+            // flash the tap tempo cell at the beginning of the beat
+            if (flash_on) {
+              cellDisplay = cellOn;
+
+              numberOfPulsarsInColumn++;
+
+              {
+                // destroy old cached instance, then create a fresh pulsar for the current pulse
+                pulsars.clear(actualCol, rowCount);
+                (void)pulsars.add(actualCol, rowCount, false /* fast */);
+              }
+            }
+            else {
+              cellDisplay = cellOff;
+
+              // handle turning off the tap tempo led after minimum 30ms
+              Pulsar *node = pulsars.get(actualCol, rowCount);
+              if (node) {
+                if (node->counter == 0) {   // LED_FLASH_DELAY() ~ 30ms after the `flash_on` condition stops to hold.
+                  cellDisplay = cellOn;
+                } else {
+                  // destroy the pulsar node, i.e. stop using a cache slot as soon as the pulse has to die out.
+                  // The next flash of light will be determined by the `flash_on` logic further above, which
+                  // will also allocate a fresh pulsar slot to stretch that next pulse, just like we did this one.
+                  pulsars.clear(node->column, node->row);
+                }
+              }
+            }
+          }
+        }
         break;
     }
 
