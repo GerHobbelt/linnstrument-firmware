@@ -2703,6 +2703,7 @@ void handleGlobalSettingNewTouch() {
 
     case 16:
       if (isCalibrationCellHeld()) {
+        // the calibration settings submenu: displaySensorLoZ et al
         switch (sensorRow) {
           case 4:
             resetNumericDataChange();
@@ -2737,7 +2738,7 @@ void handleGlobalSettingNewTouch() {
 
   if (!userFirmwareActive) {
 
-    // handle tempo change
+    // handle tempo change: active editing area for this is (col,row) range: (1,6)..(15,4)
     if (!isCalibrationCellHeld() && sensorRow >= 4 && sensorRow != 7 && sensorCol < 16) {
       handleTempoNewTouch();
     }
@@ -3025,7 +3026,7 @@ void handleGlobalSettingNewTouch() {
             break;
           case 3:
             if (!isSyncedToMidiClock()) {
-              lightLed(14, 3);
+              lightLed(14, 3);                 // pulses once, 100ms
 
               tapTempoPress();
 
@@ -3038,18 +3039,9 @@ void handleGlobalSettingNewTouch() {
         break;
 
       case 16:
-        if (sensorRow == 4 && !isLinn200()) enterMicroLinnConfig();
-#ifdef DEBUG_ENABLED
-        if (sensorRow == 4 &&  isLinn200()) enterMicroLinnConfig();
-#endif
+        // avoid conflict with calibration submenu at (16,4)..(16,6) when calibration button is held.
+        if (sensorRow == 4 && !isCalibrationCellHeld()) enterMicroLinnConfig();
         break;
-
-      case 17: 
-#ifndef DEBUG_ENABLED                                  // avoid conflict, column 17 also sets the debug level
-        if (sensorRow == 1 && isLinn200()) enterMicroLinnConfig();
-#endif
-        break;
-
     }
   }
 
@@ -3410,13 +3402,13 @@ void handleGlobalSettingRelease() {
   }
 
   if (!userFirmwareActive) {
-    if (sensorRow >= 4 && sensorRow != 7) {
+    if (sensorRow >= 4 && sensorRow != 7 && sensorCol < 16) {
       handleNumericDataReleaseCol(false);
     }
     else if (sensorCol == 16) {
       // Send AllNotesOff
       if (sensorRow == 0) {
-        lightLed(16, 0);
+        lightLed(16, 0);                 // pulses once, 100ms
         if (Global.splitActive) {
           midiSendAllNotesOff(LEFT);
           midiSendAllNotesOff(RIGHT);

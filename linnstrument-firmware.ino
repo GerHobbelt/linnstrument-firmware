@@ -156,7 +156,7 @@ LS_CONST struct OSinfo {
 //#define DISPLAY_XFRAME_AT_LAUNCH
 //#define DISPLAY_YFRAME_AT_LAUNCH
 //#define DISPLAY_ZFRAME_AT_LAUNCH
-//#define DISPLAY_SURFACESCAN_AT_LAUNCH
+#define DISPLAY_SURFACESCAN_AT_LAUNCH
 #define DISPLAY_FREERAM_AT_LAUNCH
 #define DISPLAY_DEBUGMIDI_AT_LAUNCH
 //#define TESTING_SENSOR_DISABLE
@@ -576,7 +576,10 @@ enum CellDisplay {
   cellOn = 1,
   cellFastPulse = 2,
   cellSlowPulse = 3,
-  cellFocusPulse = 4
+  cellFocusPulse = 4,
+  // internal use only:
+  cellFastPulse_Off = 5,
+  cellSlowPulse_Off = 6,
 };
 
 enum DisplayMode {
@@ -629,7 +632,8 @@ enum DisplayMode {
   displayMicroLinnOsVersion,
   displayMicroLinnConfig,
   displayMicroLinnAnchorChooser,
-  displayMicroLinnFretboardEditor
+  displayMicroLinnFretboardEditor,
+  displayDevelopmentTestMenu,
 };
 DisplayMode displayMode = displayNormal;
 

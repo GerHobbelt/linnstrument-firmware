@@ -65,6 +65,7 @@ displayMicroLinnOsVersion       : display the 001 in 234.072.001
 displayMicroLinnConfig          : select EDO, anchor data and column offsets
 displayMicroLinnAnchorChooser   : choose the anchor cell from the performance display
 displayMicroLinnFretboardEditor : edit the fret markers for the current edo
+displayDevelopmentTestMenu
 
 These routines handle the painting of these display modes on LinnStument's 208 LEDs.
 **************************************************************************************************/
@@ -124,6 +125,9 @@ void updateDisplay() {
       break;
     case displayMicroLinnOsVersion:
       paintMicroLinnOSVersionDisplay();
+      break;
+    case displayDevelopmentTestMenu:
+      paintDevelopmentTestMenu();
       break;
     case displayVolume:
       paintVolumeDisplay(Global.currentPerSplit);
@@ -1006,20 +1010,39 @@ inline void paintShowSplitSelection(byte side) {
 void paintOSVersionDisplay() {
   clearDisplay();
 
-  byte color = COLOR_GREEN;
-  smallfont_draw_string(0, 0, OSinfo.OSVersion, color);
+  smallfont_draw_string(0, 0, OSinfo.OSVersion, COLOR_GREEN);
+
+  // extended menu at bottom row:
+  if (Device.serialMode) {
+    setLed(1, 0, Device.microLinn.uninstall ? COLOR_RED : globalColor, cellOn);
+  } else if (Device.microLinn.uninstall) {
+    setLed(1, 0, COLOR_ORANGE, cellOn);     // for debugging, delete later
+  }
+  else {
+    setLed(1, 0, COLOR_WHITE, cellOn);
+  }
+
+  for (byte col = 2; col <= 16; col++) {
+    lightLed(col, 0);
+  }
 }
 
 void paintOSVersionBuildDisplay() {
   clearDisplay();
 
-  byte color = COLOR_LIME;
-  smallfont_draw_string(0, 0, OSinfo.OSVersionBuild, color);
+  smallfont_draw_string(0, 0, OSinfo.OSVersionBuild, COLOR_LIME);
 }
 
 void paintMicroLinnOSVersionDisplay() {
   clearDisplay();
+
   smallfont_draw_string(0, 0, OSinfo.microLinnOSVersion, COLOR_CYAN);
+}
+
+void paintDevelopmentTestMenu() {
+  clearDisplay();
+
+  //...
 }
 
 // paint the current preset number for a particular side, in large block characters
@@ -1903,14 +1926,21 @@ void paintGlobalSettingsDisplay() {
     setLed(16, 2, COLOR_ORANGE, cellOn);     // for debugging, delete later
   }
 
-  // set light for shortcut to microLinn menus
-  setLed(16, 4, COLOR_LIME, cellOn);
+  if (isCalibrationCellHeld()) {
+    // set 'hint' lights for the calibration settings submenu: displaySensorLoZ et al
+    for (byte r = 4; r <= 6; r++) {
+      setLed(16, r, COLOR_RED, cellOn);
+    }
+  }
+  else {
+    // set light for shortcut to microLinn menus
+    setLed(16, 4, COLOR_LIME, cellOn);
+  }
 
   // clearly indicate the calibration status
   setLed(16, 3, getCalibrationColor(), cellOn);
 
   if (!userFirmwareActive) {
-
     if (Device.otherHanded) {
       setLed(1, 3, getSplitHandednessColor(), cellOn);
     }
@@ -2064,11 +2094,11 @@ void paintGlobalSettingsDisplay() {
   }
 
 #ifdef DEBUG_ENABLED
-  // Colum 17 is for setting/showing the debug level
+  // Column 17 is for setting/showing the debug level
   // The value of debugLevel is from -1 up.
   lightLed(17, debugLevel + 1);
 
-  // The columns in column 18 are secret switches.
+  // The pads in column 18 are secret switches.
   for (byte ss = 0; ss < SECRET_SWITCHES; ++ss) {
     if (secretSwitch[ss]) {
       lightLed(18, ss);

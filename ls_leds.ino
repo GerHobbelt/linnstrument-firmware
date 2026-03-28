@@ -52,11 +52,10 @@ const byte* COL_INDEX = COL_INDEX_200;
 // array holding contents of display: a double-buffered system where one buffer is READ (visible) while the other is WRITTEN (buffered).
 // 
 // one cycle runs from startBufferedLeds() until finishBufferedLeds()
-byte ledsGrid[2][LED_ARRAY_SIZE];
-constexpr const byte visibleLeds = 0;
-constexpr const byte bufferedLeds = 1;
-#define ledBuffered(layer, col, row)  ledsGrid[bufferedLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
-#define ledVisible(col, row)   ledsGrid[visibleLeds][LED_LAYER_COMBINED * LED_LAYER_SIZE + row * MAXCOLS + col]
+byte ledsBufferedGrid[LED_ARRAY_SIZE];
+byte ledsVisibleGrid[LED_LAYER_SIZE];
+#define ledBuffered(layer, col, row)  ledsBufferedGrid[layer * LED_LAYER_SIZE + row * MAXCOLS + col]
+#define ledVisible(col, row)          ledsVisibleGrid[row * MAXCOLS + col]
 
 bool ledDisplayEnabled = true;
 
@@ -70,11 +69,12 @@ void initializeLeds() {
 }
 
 inline void initializeLedLayers() {
-  memset(ledsGrid[bufferedLeds], 0, LED_ARRAY_SIZE);
+  memset(ledsBufferedGrid, 0, LED_ARRAY_SIZE);
+  memset(ledsVisibleGrid, 0, LED_LAYER_SIZE);
 }
 
 inline void initializeLedsLayer(byte layer) {
-  memset(&ledsGrid[bufferedLeds][layer * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
+  memset(&ledsBufferedGrid[layer * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
   updateLedLayerCombined();
 }
 
@@ -86,16 +86,14 @@ void loadCustomLedLayer(int pattern)
 {
   if (pattern < 0 || pattern >= LED_PATTERNS) {
     if (customLedPatternActive) {
-      memset(&ledsGrid[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
-      memset(&ledsGrid[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
+      memset(&ledsBufferedGrid[LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
       updateLedLayerCombined();
     }
     customLedPatternActive = false;
     return;
   }
 
-  memcpy(&ledsGrid[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], &Device.customLeds[pattern][0], LED_LAYER_SIZE);
-  memcpy(&ledsGrid[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], &Device.customLeds[pattern][0], LED_LAYER_SIZE);
+  memcpy(&ledsBufferedGrid[LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], &Device.customLeds[pattern][0], LED_LAYER_SIZE);
   customLedPatternActive = true;
   lightSettings = 2;
   updateLedLayerCombined();
@@ -106,15 +104,14 @@ void storeCustomLedLayer(int pattern)
 {
   if (pattern < 0 || pattern >= LED_PATTERNS) {
     if (customLedPatternActive) {
-      memset(&ledsGrid[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
-      memset(&ledsGrid[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
+      memset(&ledsBufferedGrid[LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
       updateLedLayerCombined();
     }
     customLedPatternActive = false;
     return;
   }
 
-  memcpy(&Device.customLeds[pattern][0], &ledsGrid[visibleLeds][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], LED_LAYER_SIZE);
+  memcpy(&Device.customLeds[pattern][0], &ledsBufferedGrid[LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], LED_LAYER_SIZE);
   customLedPatternActive = true;
   lightSettings = 2;
 }
@@ -137,7 +134,7 @@ inline void startBufferedLeds() {
 }
 
 inline void finishBufferedLeds() {
-  memcpy(ledsGrid[visibleLeds], ledsGrid[bufferedLeds], LED_ARRAY_SIZE);
+  memcpy(ledsVisibleGrid, &ledsBufferedGrid[LED_LAYER_COMBINED * LED_LAYER_SIZE], LED_LAYER_SIZE);
 #if 0
   bufferedLeds = 0;
 #endif
@@ -195,9 +192,7 @@ inline void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer)
     ledBuffered(LED_LAYER_COMBINED, col, row) = getCombinedLedData(col, row);
   }
 
-  if (bufferedLeds == 1) {
-    performContinuousTasks();
-  }
+  performContinuousTasks();
 }
 
 inline byte getLedColor(byte col, byte row, byte layer) {
@@ -301,28 +296,22 @@ void refreshLedColumn(unsigned long now) {
 
   // keep a steady pulsating going for those leds that need it
   static unsigned long lastPulse = 0;
-  static boolean lastPulseOn = true;
-  static unsigned long lastSlowPulse = 0;
-  static boolean lastSlowPulseOn = true;
-  static boolean lastFocusPulseOn = true;
+  static byte lastPulseCount = 0;
+  static byte lastSlowPulseCount = 0;
 
-  if (calcTimeDelta(now, lastPulse) > 80000) {
+  boolean edge = false;
+  if (calcTimeDelta(now, lastPulse) >= 40000) {
     lastPulse = now;
-    lastPulseOn = !lastPulseOn;
+
+    lastPulseCount++;
+    lastSlowPulseCount++;
+    edge = true;
   }
-  if (calcTimeDelta(now, lastSlowPulse) > 120000) {
-    lastSlowPulse = now;
-    lastSlowPulseOn = !lastSlowPulseOn;
-  }
-  if (clock24PPQ < 6) {
-    lastFocusPulseOn = false;
-  }
-  else {
-    lastFocusPulseOn = true;
-  }
+  
+  boolean lastFocusPulseOn = !(clock24PPQ < 6);
 
   static byte ledCol = 0;
-  static byte displayInterval[MAXCOLS][MAXROWS];
+  static byte displayInterval = 0;
 
   byte red = 0;                                           // red value to be sent
   byte green = 0;                                         // green value to be sent
@@ -331,22 +320,60 @@ void refreshLedColumn(unsigned long now) {
   // actual column being refreshed, permitting columns to be lit non-sequentially by using COL_INDEX[] array
   byte actualCol = COL_INDEX[ledCol];                     // using COL_INDEX[], permits non-sequential lighting of LED columns, which doesn't seem to improve appearance
 
+  // allow several levels of brightness by modulating LED's ON time
+  if (actualCol == 0) {
+    if (++displayInterval >= 12) {
+      displayInterval = 0;
+    }
+  }
+
    // Initialize bytes to send to LEDs over SPI. Each bit represents a single LED on or off
   for (byte rowCount = 0; rowCount < NUMROWS; ++rowCount) {       // step through the 8 rows
-    // allow several levels of brightness by modulating LED's ON time
-    if (++displayInterval[actualCol][rowCount] >= 12) {
-      displayInterval[actualCol][rowCount] = 0;
-    }
-
     byte color = (ledVisible(actualCol, rowCount) & B11111000) >> 3;    // set temp value 'color' to 4 color bits of this LED within array
     byte cellDisplay = ledVisible(actualCol, rowCount) & B00000111;     // get cell display value
 
+    if (edge) {
+      switch (cellDisplay) {
+        case cellFastPulse:
+          if (lastPulseCount == 2) {   // 2x 40ms = 80ms
+            lastPulseCount = 0;
+            ledVisible(actualCol, rowCount) &= ~B00000111;
+            ledVisible(actualCol, rowCount) |= cellFastPulse_Off;
+          }
+          break;
+        case cellSlowPulse:
+          if (lastSlowPulseCount == 3) {   // 3x 40ms = 120ms
+            lastSlowPulseCount = 0;
+            ledVisible(actualCol, rowCount) &= ~B00000111;
+            ledVisible(actualCol, rowCount) |= cellSlowPulse_Off;
+          }
+          break;
+
+        case cellFastPulse_Off:
+          if (lastPulseCount == 2) {   // 2x 40ms = 80ms
+            lastPulseCount = 0;
+            ledVisible(actualCol, rowCount) &= ~B00000111;
+            ledVisible(actualCol, rowCount) |= cellFastPulse;
+          }
+          break;
+        case cellSlowPulse_Off:
+          if (lastSlowPulseCount == 3) {   // 3x 40ms = 120ms
+            lastSlowPulseCount = 0;
+            ledVisible(actualCol, rowCount) &= ~B00000111;
+            ledVisible(actualCol, rowCount) |= cellSlowPulse;
+          }
+          break;
+      }
+    }
+    
     switch (cellDisplay) {
       case cellFastPulse:
-        cellDisplay = lastPulseOn ? cellOn : cellOff;
-        break;
       case cellSlowPulse:
-        cellDisplay = lastSlowPulseOn ? cellOn : cellOff;
+        cellDisplay = cellOn;
+        break;
+      case cellFastPulse_Off:
+      case cellSlowPulse_Off:
+        cellDisplay = cellOff;
         break;
       case cellFocusPulse:
         cellDisplay = lastFocusPulseOn ? cellOn : cellOff;
@@ -354,7 +381,7 @@ void refreshLedColumn(unsigned long now) {
     }
 
     if (Device.operatingLowPower > 0) {
-      if (displayInterval[actualCol][rowCount] % 2 != 0) {
+      if (displayInterval % 2 != 0) {
         cellDisplay = cellOff;
       }
     }
@@ -362,9 +389,11 @@ void refreshLedColumn(unsigned long now) {
     // if this LED is not off, process it
     // set the color bytes to the correct color
     if (cellDisplay) {
-      // construct composite colors
-      if ((Device.operatingLowPower == 0 && displayInterval[actualCol][rowCount] % 2 != 0) ||
-          (Device.operatingLowPower >= 1 && displayInterval[actualCol][rowCount] % 4 != 0)) {
+      // construct composite colors, while we reckon with both normal and lowPower display:
+      // in the latter case every odd (second) displayInterval is blanked, hence the obvious
+      // 2-color toggle scheme is ABBA, which in lowPower mode will become A_B_.
+      const uint16_t intervalBit = uint16_t(1U) << displayInterval;
+      if (0b100110011001 & intervalBit) {
         switch (color)
         {
           case COLOR_WHITE:
@@ -430,8 +459,14 @@ void refreshLedColumn(unsigned long now) {
 
   if (++ledCol >= NUMCOLS) ledCol = 0;
 
-  byte ledColShifted = actualCol << 2;                                 // LED column address, which is shifted 2 bits to left within byte
+  byte ledColShifted = actualCol << 2;                            // LED column address, which is shifted 2 bits to left within byte
+#if 0
   if ((actualCol & 16) == 0) ledColShifted |= B10000000;          // if column address 4 is 0, set bit 7
+#else
+  // if column address 4 is 0, set bit 7
+  byte ledColAdr4Inv = ~(ledColShifted << 1) & 0b10000000;
+  ledColShifted |= ledColAdr4Inv;
+#endif
 
   SPI.transfer16(SPI_LEDS, ((((uint16_t)~ledColShifted) << 8) | blue), SPI_CONTINUE);           // send column address + blue byte
   SPI.transfer16(SPI_LEDS, (((uint16_t)green) << 8) | red);                                     // send green byte + red byte

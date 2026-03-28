@@ -654,6 +654,7 @@ byte takeChannel(byte split, byte row) {
 
 void handleNonPlayingTouch() {
   switch (displayMode) {
+    default:
     case displayNormal:
     case displaySplitPoint:
     case displayVolume:
