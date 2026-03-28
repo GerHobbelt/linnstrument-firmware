@@ -1360,8 +1360,6 @@ short updaterSettingsSize = -2;                     // the incoming settings siz
 short updaterImpliedSettingsSize = -2;              // size of the incoming settings implied by the 2 versions, should match
 short updaterBadBatchNum = -2;                      // the number of the 96-byte batch that flunked crc, -1 means all good
 
-unsigned int debugContentWritten = 0;
-
 /************************* FUNCTION DECLARATIONS TO WORK AROUND COMPILER *************************/
 
 inline void selectSensorCell(byte col, byte row, byte switchCode);

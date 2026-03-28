@@ -20,55 +20,19 @@ Assorted debug functions.
 
 
 static void debugPrint1(const char* msg) {
-  unsigned int msgLen = strlen(msg);
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.print(msg);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 static void debugPrintln1(const char* msg) {
-  unsigned int msgLen = strlen(msg);
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.println(msg);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 static void debugPrint1(int val) {
-  const unsigned int msgLen = 2;
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.print(val);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 static void debugPrintln1(int val) {
-  const unsigned int msgLen = 2;
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.println(val);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 inline void debugPrint(int level, const char* msg) {
@@ -99,8 +63,6 @@ void displayDigitalPins() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
 
     Serial.println();
@@ -108,8 +70,6 @@ void displayDigitalPins() {
     displayDigitalPins(0, 27);
     Serial.println();
     displayDigitalPins(27, 54);
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -171,8 +131,6 @@ void displayXFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
 
     Serial.println();
@@ -192,8 +150,6 @@ void displayXFrame() {
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -207,8 +163,6 @@ void displayYFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
     
     Serial.println();
@@ -228,8 +182,6 @@ void displayYFrame() {
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -239,8 +191,6 @@ void displayZFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
     
     Serial.println();
@@ -260,8 +210,6 @@ void displayZFrame() {
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -292,8 +240,6 @@ void displayCellTouchedFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
 
     Serial.println();
@@ -324,8 +270,6 @@ void displayCellTouchedFrame() {
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
