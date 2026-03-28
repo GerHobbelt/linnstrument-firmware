@@ -220,9 +220,6 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define ROWOFFSET_GUITAR           0x0d
 #define ROWOFFSET_ZERO             0x7f
 
-// the time before a led is turned off when flashing or pulsing, in microseconds: 1/4th of the current tempo
-unsigned int LED_FLASH_DELAY(void);
-
 #define DEFAULT_MAINLOOP_DIVIDER      2
 #define DEFAULT_LED_REFRESH           333
 #define DEFAULT_MIDI_DECIMATION       8000
@@ -557,7 +554,8 @@ enum CellDisplay {
   cellOn = 1,
   cellFastPulse = 2,
   cellSlowPulse = 3,
-  cellFocusPulse = 4
+  cellFocusPulse = 4,
+  cellTempoPulse = 5
 };
 
 enum DisplayMode {
@@ -1126,12 +1124,9 @@ unsigned long lastControlPress[MAXROWS];
 byte mainLoopDivider = DEFAULT_MAINLOOP_DIVIDER;         // loop divider at which continuous tasks are ran
 unsigned long ledRefreshInterval = DEFAULT_LED_REFRESH;  // LED timing
 unsigned long prevLedTimerCount;                         // timer for refreshing leds
-unsigned long prevGlobalSettingsDisplayTimerCount;       // timer for refreshing the global settings display
 unsigned long prevTouchAnimTimerCount;                   // timer for refreshing the touch animation
 
 boolean customLedPatternActive = false;                  // was a custom led pattern loaded from flash
-
-unsigned long tempoLedOn = 0;                       // indicates when the tempo clock led was turned on
 
 ChannelBucket splitChannels[NUMSPLITS];             // the MIDI channels that are being handed out
 unsigned short midiPreset[NUMSPLITS];               // preset number 0-127
@@ -1619,7 +1614,7 @@ uint32_t adc_get_latest_value(const Adc *p_adc)
   }
 
   // setup system timers for interval between LED column refreshes and foot switch reads
-  prevLedTimerCount = prevFootSwitchTimerCount = prevGlobalSettingsDisplayTimerCount = micros();
+  prevLedTimerCount = prevFootSwitchTimerCount = micros();
 
   // perform some initialization
   initializeCalibrationSamples();

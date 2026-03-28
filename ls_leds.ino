@@ -52,11 +52,10 @@ const byte* COL_INDEX = COL_INDEX_200;
 // array holding contents of display: a double-buffered system where one buffer is READ (visible) while the other is WRITTEN (buffered).
 // 
 // one cycle runs from startBufferedLeds() until finishBufferedLeds()
-byte ledsGrid[2][LED_ARRAY_SIZE];
-constexpr const byte visibleLeds = 0;
-constexpr const byte bufferedLeds = 1;
-#define ledBuffered(layer, col, row)  ledsGrid[bufferedLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
-#define ledVisible(col, row)   ledsGrid[visibleLeds][LED_LAYER_COMBINED * LED_LAYER_SIZE + row * MAXCOLS + col]
+byte ledsBufferedGrid[LED_ARRAY_SIZE];
+byte ledsVisibleGrid[LED_LAYER_SIZE];
+#define ledBuffered(layer, col, row)  ledsBufferedGrid[layer * LED_LAYER_SIZE + row * MAXCOLS + col]
+#define ledVisible(col, row)          ledsVisibleGrid[row * MAXCOLS + col]
 
 bool ledDisplayEnabled = true;
 
@@ -70,11 +69,12 @@ void initializeLeds() {
 }
 
 inline void initializeLedLayers() {
-  memset(ledsGrid[bufferedLeds], 0, LED_ARRAY_SIZE);
+  memset(ledsBufferedGrid, 0, LED_ARRAY_SIZE);
+  memset(ledsVisibleGrid, 0, LED_LAYER_SIZE);
 }
 
 inline void initializeLedsLayer(byte layer) {
-  memset(&ledsGrid[bufferedLeds][layer * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
+  memset(&ledsBufferedGrid[layer * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
   updateLedLayerCombined();
 }
 
@@ -86,16 +86,14 @@ void loadCustomLedLayer(int pattern)
 {
   if (pattern < 0 || pattern >= LED_PATTERNS) {
     if (customLedPatternActive) {
-      memset(&ledsGrid[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
-      memset(&ledsGrid[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
+      memset(&ledsBufferedGrid[LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
       updateLedLayerCombined();
     }
     customLedPatternActive = false;
     return;
   }
 
-  memcpy(&ledsGrid[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], &Device.customLeds[pattern][0], LED_LAYER_SIZE);
-  memcpy(&ledsGrid[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], &Device.customLeds[pattern][0], LED_LAYER_SIZE);
+  memcpy(&ledsBufferedGrid[LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], &Device.customLeds[pattern][0], LED_LAYER_SIZE);
   customLedPatternActive = true;
   lightSettings = 2;
   updateLedLayerCombined();
@@ -106,15 +104,14 @@ void storeCustomLedLayer(int pattern)
 {
   if (pattern < 0 || pattern >= LED_PATTERNS) {
     if (customLedPatternActive) {
-      memset(&ledsGrid[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
-      memset(&ledsGrid[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
+      memset(&ledsBufferedGrid[LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
       updateLedLayerCombined();
     }
     customLedPatternActive = false;
     return;
   }
 
-  memcpy(&Device.customLeds[pattern][0], &ledsGrid[visibleLeds][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], LED_LAYER_SIZE);
+  memcpy(&Device.customLeds[pattern][0], &ledsBufferedGrid[LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], LED_LAYER_SIZE);
   customLedPatternActive = true;
   lightSettings = 2;
 }
@@ -137,7 +134,7 @@ inline void startBufferedLeds() {
 }
 
 inline void finishBufferedLeds() {
-  memcpy(ledsGrid[visibleLeds], ledsGrid[bufferedLeds], LED_ARRAY_SIZE);
+  memcpy(ledsVisibleGrid, &ledsBufferedGrid[LED_LAYER_COMBINED * LED_LAYER_SIZE], LED_LAYER_SIZE);
 #if 0
   bufferedLeds = 0;
 #endif
@@ -195,9 +192,7 @@ inline void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer)
     ledBuffered(LED_LAYER_COMBINED, col, row) = getCombinedLedData(col, row);
   }
 
-  if (bufferedLeds == 1) {
-    performContinuousTasks();
-  }
+  performContinuousTasks();
 }
 
 inline byte getLedColor(byte col, byte row, byte layer) {
@@ -289,6 +284,112 @@ inline void enableLedDisplay() {
   ledDisplayEnabled = true;
 }
 
+
+// the cache slot of 1 pulsing LED:
+struct Pulsar {
+  unsigned column: 5;
+  unsigned row: 3;
+  unsigned state: 1;    // on/off
+  unsigned mode: 1;     // slow/fast
+  unsigned counter: 6;
+};
+
+// a nice cache for our blinking LEDs.
+//
+// As we expect to have very few blinking LEDs we forego fancy hashtable footwork here and merely
+// perform linear scans through the tiny cache/array for each node access.
+//
+template <unsigned int N = 16>
+struct PulsarArray {
+  Pulsar pulsars[N];
+
+  PulsarArray() {
+    init();
+  }
+  
+  inline void init() {
+    memset(&pulsars[0], 0, sizeof(pulsars));
+  }
+
+  inline Pulsar* get(byte column, byte row) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == column && node->row == row)
+        return node;
+    }
+    return nullptr;
+  }
+
+  inline boolean has(byte column, byte row) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == column && node->row == row)
+        return true;
+    }
+    return false;
+  }
+
+  inline Pulsar* add(byte column, byte row, boolean mode) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == 0) {
+        node->column = column;
+        node->row = row;
+        node->state = 1;
+        node->mode = mode;
+        node->counter = 0;
+        return node;
+      }
+    }
+    DEBUGPRINT((0, "Pulsar::add -- SHOULD NEVER GET HERE!"));
+    return &pulsars[0];
+  }
+
+  // clear all nodes which reside in this column
+  inline void clear(byte column) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == column) {
+        node->column = 0;
+      }
+    }
+  }
+
+  inline void clear(byte column, byte row) {
+    column++;   // column 0 is used to mark unused slots, so we use 1-based columns here
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      if (node->column == column && node->row == row) {
+        node->column = 0;
+        break;
+      }
+    }
+  }
+
+  // increment all counts
+  inline void kick() {
+    for (byte idx = 0; idx < N; idx++) {
+      Pulsar* node = &pulsars[idx];
+      node->counter++;
+      if (node->mode /* == slow */ && node->counter == 5) { 
+        // 5x 30ms = 150ms pulse width
+        node->counter = 0;
+        node->state = !node->state;
+      }
+      else if (!node->mode /* == fast */ && node->counter == 3) { 
+        // 3x 30ms = 90ms pulse width
+        node->counter = 0;
+        node->state = !node->state;
+      }
+    }
+  }
+};
+
+
 // refreshLedColumn:
 // Called when it's time to refresh the next column of LEDs. Internally increments the column number every time it's called.
 void refreshLedColumn(unsigned long now) {
@@ -299,28 +400,18 @@ void refreshLedColumn(unsigned long now) {
 
   // keep a steady pulsating going for those leds that need it
   static unsigned long lastPulse = 0;
-  static boolean lastPulseOn = true;
-  static unsigned long lastSlowPulse = 0;
-  static boolean lastSlowPulseOn = true;
-  static boolean lastFocusPulseOn = true;
+  static PulsarArray<8> pulsars;         // we assume two subsequent displays don't ever amount to more than 8 pulsar LEDs total.
 
-  if (calcTimeDelta(now, lastPulse) > 80000) {
+  if (calcTimeDelta(now, lastPulse) >= 30000) {
     lastPulse = now;
-    lastPulseOn = !lastPulseOn;
+
+    pulsars.kick();
   }
-  if (calcTimeDelta(now, lastSlowPulse) > 120000) {
-    lastSlowPulse = now;
-    lastSlowPulseOn = !lastSlowPulseOn;
-  }
-  if (clock24PPQ < 6) {
-    lastFocusPulseOn = false;
-  }
-  else {
-    lastFocusPulseOn = true;
-  }
+  
+  boolean lastFocusPulseOn = !(clock24PPQ < 6);
 
   static byte ledCol = 0;
-  static byte displayInterval[MAXCOLS][MAXROWS];
+  static byte displayInterval = 0;
 
   byte red = 0;                                           // red value to be sent
   byte green = 0;                                         // green value to be sent
@@ -329,30 +420,84 @@ void refreshLedColumn(unsigned long now) {
   // actual column being refreshed, permitting columns to be lit non-sequentially by using COL_INDEX[] array
   byte actualCol = COL_INDEX[ledCol];                     // using COL_INDEX[], permits non-sequential lighting of LED columns, which doesn't seem to improve appearance
 
+  // allow several levels of brightness by modulating LED's ON time
+  if (actualCol == 0) {
+    if (++displayInterval >= 12) {
+      displayInterval = 0;
+    }
+  }
+
+  byte numberOfPulsarsInColumn = 0;
+
    // Initialize bytes to send to LEDs over SPI. Each bit represents a single LED on or off
   for (byte rowCount = 0; rowCount < NUMROWS; ++rowCount) {       // step through the 8 rows
-    // allow several levels of brightness by modulating LED's ON time
-    if (++displayInterval[actualCol][rowCount] >= 12) {
-      displayInterval[actualCol][rowCount] = 0;
-    }
-
     byte color = (ledVisible(actualCol, rowCount) & B11111000) >> 3;    // set temp value 'color' to 4 color bits of this LED within array
     byte cellDisplay = ledVisible(actualCol, rowCount) & B00000111;     // get cell display value
-
+    
     switch (cellDisplay) {
       case cellFastPulse:
-        cellDisplay = lastPulseOn ? cellOn : cellOff;
-        break;
       case cellSlowPulse:
-        cellDisplay = lastSlowPulseOn ? cellOn : cellOff;
+        numberOfPulsarsInColumn++;
+
+        {
+          Pulsar *node = pulsars.get(actualCol, rowCount);
+          if (!node) {
+            node = pulsars.add(actualCol, rowCount, cellDisplay == cellSlowPulse);
+          }
+          cellDisplay = node->state ? cellOn : cellOff;
+        }
         break;
+
       case cellFocusPulse:
         cellDisplay = lastFocusPulseOn ? cellOn : cellOff;
+        break;
+
+      case cellTempoPulse:
+        {
+          if (!animationActive && !userFirmwareActive) {
+            bool flash_on = false;
+            if (isVisibleSequencer()) {
+              flash_on = sequencerFlashTempoOn();
+            }
+            else {
+              flash_on = (clock24PPQ == 0);
+            }
+
+            // flash the tap tempo cell at the beginning of the beat
+            if (flash_on) {
+              cellDisplay = cellOn;
+
+              numberOfPulsarsInColumn++;
+
+              {
+                // destroy old cached instance, then create a fresh pulsar for the current pulse
+                pulsars.clear(actualCol, rowCount);
+                (void)pulsars.add(actualCol, rowCount, false /* fast */);
+              }
+            }
+            else {
+              cellDisplay = cellOff;
+
+              // handle turning off the tap tempo led after minimum 30ms
+              Pulsar *node = pulsars.get(actualCol, rowCount);
+              if (node) {
+                if (node->counter == 0) {   // LED_FLASH_DELAY() ~ 30ms after the `flash_on` condition stops to hold.
+                  cellDisplay = cellOn;
+                } else {
+                  // destroy the pulsar node, i.e. stop using a cache slot as soon as the pulse has to die out.
+                  // The next flash of light will be determined by the `flash_on` logic further above, which
+                  // will also allocate a fresh pulsar slot to stretch that next pulse, just like we did this one.
+                  pulsars.clear(node->column, node->row);
+                }
+              }
+            }
+          }
+        }
         break;
     }
 
     if (Device.operatingLowPower) {
-      if (displayInterval[actualCol][rowCount] % 2 != 0) {
+      if (displayInterval % 2 != 0) {
         cellDisplay = cellOff;
       }
     }
@@ -360,9 +505,11 @@ void refreshLedColumn(unsigned long now) {
     // if this LED is not off, process it
     // set the color bytes to the correct color
     if (cellDisplay) {
-      // construct composite colors
-      if ((!Device.operatingLowPower && displayInterval[actualCol][rowCount] % 2 != 0) ||
-          (Device.operatingLowPower && displayInterval[actualCol][rowCount] % 4 != 0)) {
+      // construct composite colors, while we reckon with both normal and lowPower display:
+      // in the latter case every odd (second) displayInterval is blanked, hence the obvious
+      // 2-color toggle scheme is ABBA, which in lowPower mode will become A_B_.
+      const uint16_t intervalBit = uint16_t(1U) << displayInterval;
+      if (0b100110011001 & intervalBit) {
         switch (color)
         {
           case COLOR_WHITE:
@@ -417,6 +564,13 @@ void refreshLedColumn(unsigned long now) {
       }
     }
   }
+
+  if (numberOfPulsarsInColumn == 0) {
+    // when there are no pulsars in this column, this is the perfect time to clear out the old, lingering, ones:
+    // clean the pulsar cache so there's plenty room for new ones.
+    pulsars.clear(actualCol);
+  }
+        
 
   if (++ledCol >= NUMCOLS) ledCol = 0;
 

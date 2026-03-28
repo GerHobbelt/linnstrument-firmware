@@ -78,7 +78,8 @@ inline void performContinuousTasks(unsigned long nowMicros) {
 
   static boolean continuousSerialIO = false;
 
-  boolean ledsRefreshed = false;
+  boolean ledsRefreshed = false;  // TODO [GHo]
+  
   static boolean continuousRefreshLeds = false;
   if (!continuousRefreshLeds && !continuousSerialIO) {
     continuousRefreshLeds = true;
@@ -115,13 +116,6 @@ inline void performContinuousTasks(unsigned long nowMicros) {
       continuousFootSwitches = true;
       checkTimeToReadFootSwitches(nowMicros);
       continuousFootSwitches = false;
-    }
-
-    static boolean continuousRefreshGlobalSettingsDisplay = false;
-    if (!continuousRefreshGlobalSettingsDisplay) {
-      continuousRefreshGlobalSettingsDisplay = true;
-      checkRefreshGlobalSettingsDisplay(nowMicros);
-      continuousRefreshGlobalSettingsDisplay = false;
     }
 
     static boolean continuousSleep = false;
@@ -194,15 +188,6 @@ inline void checkTimeToReadFootSwitches(unsigned long now) {
   if (calcTimeDelta(now, prevFootSwitchTimerCount) > 20000) {              // is it time to check the foot switches?
     checkFootSwitches();                                                   // yes, check the foot switches and if state has changed, handle the event, then...
     prevFootSwitchTimerCount = now;                                        // reset the foot switch timer to current time
-  }
-}
-
-// checks to see if it's time to refresh the global settings display, and if so, does it
-inline void checkRefreshGlobalSettingsDisplay(unsigned long now) {
-  if ((displayMode == displayGlobal || displayMode == displayGlobalWithTempo) &&
-      calcTimeDelta(now, prevGlobalSettingsDisplayTimerCount) > 30000) {                                      // is it time to refresh the global settings display
-    paintGlobalSettingsFlashTempo(now);                                                                       // yes, refresh the display...
-    prevGlobalSettingsDisplayTimerCount = now;                                                                // and reset the timer count to current time
   }
 }
 

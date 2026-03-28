@@ -94,15 +94,6 @@ void applyMidiIo() {
 }
 
 void handleMidiInput(unsigned long nowMicros) {
-  // handle turning off the MIDI clock led after minimum 30ms
-  if (isSyncedToMidiClock() &&
-      controlButton != GLOBAL_SETTINGS_ROW &&
-      tempoLedOn != 0 &&
-      calcTimeDelta(nowMicros, tempoLedOn) > LED_FLASH_DELAY()) {
-    tempoLedOn = 0;
-    clearLed(0, GLOBAL_SETTINGS_ROW);
-  }
-
   // if no serial data is available, return
   if (Serial.available() <= 0) {
     return;
@@ -206,8 +197,7 @@ void handleMidiInput(unsigned long nowMicros) {
 
           // flash the global settings led green on tempo, unless it's currently pressed down
           if (controlButton != GLOBAL_SETTINGS_ROW && midiClockMessageCount == 1) {
-            setLed(0, GLOBAL_SETTINGS_ROW, COLOR_GREEN, cellOn);
-            tempoLedOn = nowMicros;
+            setLed(0, GLOBAL_SETTINGS_ROW, COLOR_GREEN, cellTempoPulse);
           }
 
           // play the next arpeggiator and sequencer steps if needed
@@ -215,9 +205,10 @@ void handleMidiInput(unsigned long nowMicros) {
             performCheckAdvanceArpeggiator();
             performCheckAdvanceSequencer();
           }
-
+#if 0
           // flash the tempo led in the global display when it is on
           updateGlobalSettingsFlashTempo(nowMicros);
+#endif          
         }
         break;
       }
@@ -2999,11 +2990,6 @@ void standaloneMidiClockStart() {
 void standaloneMidiClockStop() {
   if (!sequencerIsRunning() && !isSyncedToMidiClock()) {
     if (standaloneMidiClockRunning) {
-      if (controlButton != GLOBAL_SETTINGS_ROW && tempoLedOn != 0) {
-        tempoLedOn = 0;
-        clearLed(0, GLOBAL_SETTINGS_ROW);
-      }
-
       standaloneMidiClockRunning = false;
       midiSendStop();
     }
