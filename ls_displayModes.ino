@@ -1710,23 +1710,55 @@ void paintSwitchAssignment(byte mode) {
   }
 }
 
-void updateGlobalSettingsFlashTempo(unsigned long now) {  
-  if (displayMode == displayGlobal || displayMode == displayGlobalWithTempo) {
-    paintGlobalSettingsFlashTempo(now);
+#if 0
+// checks to see if it's time to refresh the global settings display, and if so, does it
+inline void checkRefreshGlobalSettingsDisplay(unsigned long now) {
+  if ((displayMode == displayGlobal || displayMode == displayGlobalWithTempo) &&
+      calcTimeDelta(now, prevGlobalSettingsDisplayTimerCount) > 30000) {                                      // is it time to refresh the global settings display
+    paintGlobalSettingsFlashTempo(now);                                                                       // yes, refresh the display...
+    prevGlobalSettingsDisplayTimerCount = now;                                                                // and reset the timer count to current time
   }
-  else if (controlButton != GLOBAL_SETTINGS_ROW &&
+}
+#endif
+
+inline void paintGlobalSettingsFlashTempo() {
+  paintGlobalSettingsFlashTempo(globalColor);
+}
+
+void paintGlobalSettingsFlashTempo(byte color) {
+#if 0
+  if (displayMode == displayGlobal || displayMode == displayGlobalWithTempo) {
+    paintGlobalSettingsFlashTempo(now, 14, 3);
+    setLed(14, 3, globalColor, cellTempoPulse);
+  }
+  else 
+#endif
+  if (controlButton != GLOBAL_SETTINGS_ROW &&
+#if 0
            !isSyncedToMidiClock() &&
+#endif
            (isArpeggiatorEnabled(Global.currentPerSplit) ||
             isVisibleSequencer() ||
+#if 0
+            sequencerIsRunning() ||
+#endif
             isStandaloneMidiClockRunning())) {
-    paintGlobalSettingsFlashTempo(now, 0, 0);
+    //paintGlobalSettingsFlashTempo(now, 0, 0);
+    setLed(0, GLOBAL_SETTINGS_ROW, color, cellTempoPulse);
   }
+#if 0
+  // handle turning off the MIDI clock led after minimum 30ms
+  if (isSyncedToMidiClock() &&
+      controlButton != GLOBAL_SETTINGS_ROW &&
+      tempoLedOn != 0 &&
+      calcTimeDelta(nowMicros, tempoLedOn) > LED_FLASH_DELAY()) {
+    tempoLedOn = 0;
+    clearLed(0, GLOBAL_SETTINGS_ROW);
+  }
+#endif
 }
 
-inline void paintGlobalSettingsFlashTempo(unsigned long now) {
-    paintGlobalSettingsFlashTempo(now, 14, 3);
-}
-
+#if 0
 void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
   if (!animationActive && !userFirmwareActive) {
     bool flash_on = false;
@@ -1752,6 +1784,7 @@ void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
     }
   }
 }
+#endif
 
 // paintGlobalSettingsDisplay:
 // Paints LEDs with state of all global settings
@@ -1931,7 +1964,7 @@ void paintGlobalSettingsDisplay() {
       lightLed(14, 1);
     }
 
-    paintGlobalSettingsFlashTempo(micros());
+    setLed(14, 3, globalColor, cellTempoPulse);
   }
 
   if (displayMode == displayGlobalWithTempo) {
