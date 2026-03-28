@@ -18,20 +18,4 @@ Assorted debug functions.
 
 #include "ls_compiler_tweaks.h"
 
-// extern bool ledDisplayEnabled;
-
-// Don't have the LEDs flash extra brightly due to the additional delays caused by our debug output activity 
-// (writing to the USB/Serial debug output)
-
-inline void beginPreventBrightLedFlash() {
-  clearDisplayImmediately();
-}
-
-inline void endPreventBrightLedFlash() {
-  if (ledDisplayEnabled) {
-    enableLedDisplay();
-  } 
-  else {
-    disableLedDisplay();
-  }
-}
+// ...
