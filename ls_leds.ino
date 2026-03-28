@@ -294,8 +294,6 @@ inline void enableLedDisplay() {
 void refreshLedColumn(unsigned long now) {
   if (!ledDisplayEnabled) return;
 
-  debugContentWritten = 0;
-
   // disabling the power output from the LED driver pins early prevents power leaking into unwanted cells.
   clearDisplayImmediately();                                         // disable the outputs of the LED driver chips
 
