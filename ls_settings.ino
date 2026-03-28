@@ -213,23 +213,34 @@ void writeSettingsToFlash() {
 
   // read the marker to know which configuration version was last written successfully
   byte marker = dueFlashStorage.read(SETTINGS_OFFSET);
-  // update the marker and the flash memory offset to now write to the other configuration version
-  // ensuring that the previous one remains coherent
-  uint32_t configOffset;
-  if (marker == 0) {
-    marker = 1;
+
+  uint32_t configOffset = 0;
+  if (marker != 0) {
     configOffset = sizeof(Configuration);
   }
-  else {
-    marker = 0;
-    configOffset = 0;
+  auto diff = memcmp(&config, dueFlashStorage.readAddress(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset), sizeof(Configuration));
+  if (diff == 0) {
+    DEBUGPRINT((0,"writeSettingsToFlash: no changes to store.\n"));
   }
+  else {
+    // update the marker and the flash memory offset to now write to the other configuration version
+    // ensuring that the previous one remains coherent
+    uint32_t configOffset;
+    if (marker == 0) {
+      marker = 1;
+      configOffset = sizeof(Configuration);
+    }
+    else {
+      marker = 0;
+      configOffset = 0;
+    }
 
-  // write to flash, taking low power mode into account
-  writeAdaptivelyToFlash(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset, (byte*)&config, sizeof(Configuration));
+    // write to flash, taking low power mode into account
+    writeAdaptivelyToFlash(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset, (byte*)&config, sizeof(Configuration));
 
-  // write the marker after the configuration data so that this version becomes the latest coherent one
-  dueFlashStorage.write(SETTINGS_OFFSET, marker);
+    // write the marker after the configuration data so that this version becomes the latest coherent one
+    dueFlashStorage.write(SETTINGS_OFFSET, marker);
+  }
 
   clearFullDisplay();
   completelyRefreshLeds();
@@ -249,6 +260,11 @@ inline void loadSettings() {
 }
 
 void writeInitialProjectSettings() {
+  DEBUGPRINT((2,"writeInitialProjectSettings size="));
+  DEBUGPRINT((2,PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + MAX_PROJECTS * SINGLE_PROJECT_SIZE));
+  DEBUGPRINT((2," bytes"));
+  DEBUGPRINT((2,"\n"));
+
   dueFlashStorage.write(PROJECTS_OFFSET, 0);
 
   for (byte i = 0; i < PROJECT_INDEXES_COUNT; ++i) {
@@ -261,7 +277,7 @@ void writeInitialProjectSettings() {
   }
 }
 
-void writeProjectToFlashRaw(byte project) {
+inline void writeProjectToFlashRaw(byte project) {
   // write to flash, taking low power mode into account
   uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + project * SINGLE_PROJECT_SIZE;
   Project.tempo = FXD4_TO_INT(fxd4CurrentTempo);
@@ -300,6 +316,11 @@ void writeProjectToFlash(byte project) {
 }
 
 void loadProject(byte project) {
+  DEBUGPRINT((2,"loadProject size="));
+  DEBUGPRINT((2,sizeof(SequencerProject)));
+  DEBUGPRINT((2," bytes"));
+  DEBUGPRINT((2,"\n"));
+
   // read the marker to know which configuration version was last written successfully
   byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
   byte prjIndex = dueFlashStorage.read(PROJECT_INDEX_OFFSET(marker, project));
