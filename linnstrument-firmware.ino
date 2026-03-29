@@ -1193,7 +1193,7 @@ inline int32_t FXD_MUL(int32_t a, int32_t b) {
   return t >> FXD_FBITS;
 }
 
-inline int32_t FXD_DIV(int32_t a, int32_t b) {
+constexpr inline int32_t FXD_DIV(int32_t a, int32_t b) {
   return ((int32_t)a << FXD_FBITS) / (int32_t)b;
 }
 
