@@ -2379,6 +2379,8 @@ boolean StepSequencerState::isRunning() {
 }
 
 void StepSequencerState::advanceSequencer() {
+  DEBUGPRINT_FUNCNAME();
+
   // handle the preview event's duration
   if (previewEvent.isActive()) {
     DEBUGPRINT_FUNCNAME_L5();
