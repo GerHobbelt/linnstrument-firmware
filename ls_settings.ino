@@ -1114,7 +1114,9 @@ void handleControlButtonRelease() {
       break;
 
     case SPLIT_ROW:                                          // SPLIT button released
-      if (!sequencerIsRunning()) calcMicroLinnTuning();
+      if (!sequencerIsRunning()) 
+        calcMicroLinnTuning();
+      
       if (Split[otherSplit(Global.currentPerSplit)].sequencer) {
         Global.currentPerSplit = otherSplit(Global.currentPerSplit);
         setLed(0, SPLIT_ROW, globalColor, Global.splitActive ? cellOn : cellOff);
