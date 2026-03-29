@@ -197,7 +197,6 @@ struct StepSequencerState {
   void selectNextPattern();
   void selectPattern(byte pattern);
 
-  byte split;
   StepDataState steps[MAX_SEQUENCER_STEPS];
   unsigned short ticksUntilNextStep;
   unsigned short clock24PPQOffset;
@@ -207,15 +206,16 @@ struct StepSequencerState {
   short nextPosition;
   short currentPattern;
   short nextPattern;
-  boolean focused;
-  boolean focusedEvent;
-  boolean switchPatternOnBeat;
-  boolean running;
-  boolean editing;
-  boolean muted;
-  boolean advancingForward;
-  boolean switch2Waiting;
-  boolean isBeingTurnedOff;
+  byte split;
+  boolean focused : 1;
+  boolean focusedEvent : 1;
+  boolean switchPatternOnBeat : 1;
+  boolean running : 1;
+  boolean editing : 1;
+  boolean muted : 1;
+  boolean advancingForward : 1;
+  boolean switch2Waiting : 1;
+  boolean isBeingTurnedOff : 1;
 
   StepEventState previewEvent;
 };
@@ -460,6 +460,8 @@ inline boolean isControlButtonForSequencer() {
 }
 
 boolean handleSequencerControlButtonNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (!isControlButtonForSequencer()) {
     return false;
   }
@@ -491,6 +493,8 @@ boolean handleSequencerControlButtonNewTouch() {
 }
 
 boolean handleSequencerControlButtonRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (!isControlButtonForSequencer()) {
     return false;
   }
@@ -536,6 +540,8 @@ boolean handleSequencerControlButtonRelease() {
 }
 
 void handleSequencerTouch(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCell->velocity) {
     StepSequencerState& state = seqState[sensorSplit];
 
@@ -603,6 +609,8 @@ void handleSequencerTouch(boolean newVelocity) {
 }
 
 void handleSequencerRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCell->velocity) {
     StepSequencerState& state = seqState[sensorSplit];
 
@@ -697,6 +705,8 @@ inline boolean isWithinSequencerFaderArea() {
 }
 
 void handleSequencerLowRowTouch(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   if (newVelocity) {
     StepSequencerState& state = seqState[sensorSplit];
     byte stepNum = sensorCol - 1 + state.positionOffset;
@@ -760,11 +770,15 @@ void handleSequencerLowRowTouch(boolean newVelocity) {
 }
 
 inline void handleSequencerMuterTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   byte mutedSplit = 1 - (sensorRow - SEQ_MUTER_BOTTOM);
   sequencerToggleMute(mutedSplit);
 }
 
 inline void handleSequencerClearTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   clearLed(SEQ_COPY_COLUMN, SEQ_COPY_ROW);
   if (cell(SEQ_COPY_COLUMN, SEQ_COPY_ROW).touched != untouchedCell) {
     cellTouched(SEQ_COPY_COLUMN, SEQ_COPY_ROW, ignoredCell);
@@ -773,6 +787,8 @@ inline void handleSequencerClearTouch() {
 }
 
 inline void handleSequencerClearRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   clearLed(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW);
 }
 
@@ -789,6 +805,8 @@ inline boolean isSequencerClearPressed() {
 }
 
 inline void handleSequencerCopyTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   clearLed(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW);
   if (cell(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW).touched != untouchedCell) {
     cellTouched(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW, ignoredCell);
@@ -797,6 +815,8 @@ inline void handleSequencerCopyTouch() {
 }
 
 inline void handleSequencerCopyRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   clearLed(SEQ_COPY_COLUMN, SEQ_COPY_ROW);
   sequencerCopyPatternSource = -1;
   sequencerCopySplitSource = -1;
@@ -811,6 +831,8 @@ inline boolean isSequencerCopyPressed() {
 }
 
 void handleSequencerViewModeRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
   
   SequencerView mode = sequencerNotes;
@@ -852,6 +874,8 @@ inline void autoSelectFirstStepForNotesView() {
 }
 
 void handleSequencerStepSizeRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
 
   const SequencerStepSize currentStepSize = state.getCurrentPattern().stepSize;
@@ -1021,6 +1045,8 @@ void handleSequencerStepSizeRelease() {
 }
 
 inline void handleSequencerLoopScreenTouch(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   if (newVelocity) {
     StepSequencerState& state = seqState[sensorSplit];
     state.getCurrentPattern().loopScreen = !state.getCurrentPattern().loopScreen;
@@ -1029,6 +1055,8 @@ inline void handleSequencerLoopScreenTouch(boolean newVelocity) {
 }
 
 void handleSequencerDirectionTouch(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
   if (newVelocity) {
     setLed(sensorCol, sensorRow, state.getDirectionColor(), cellSlowPulse);
@@ -1040,6 +1068,8 @@ void handleSequencerDirectionTouch(boolean newVelocity) {
 }
 
 void handleSequencerDirectionRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
 
   SequencerDirection direction = (state.getCurrentPattern().sequencerDirection == sequencerForward ? sequencerBackward : sequencerForward);
@@ -1054,6 +1084,8 @@ void handleSequencerDirectionRelease() {
 }
 
 inline void handleSequencerPerformanceSettingsTouch(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol == SEQ_LOOPSCREEN_COLUMN && sensorRow == SEQ_LOOPSCREEN_ROW) {
     handleSequencerLoopScreenTouch(newVelocity);
   }
@@ -1063,6 +1095,8 @@ inline void handleSequencerPerformanceSettingsTouch(boolean newVelocity) {
 }
 
 inline void handleSequencerPerformanceSettingsRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol == SEQ_VIEW_COLUMN) {
     handleSequencerViewModeRelease();
   }
@@ -1075,6 +1109,8 @@ inline void handleSequencerPerformanceSettingsRelease() {
 }
 
 void handleSequencerNavigationTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
 
   int newPositionOffset = (sensorCol-SEQ_NAVIGATION_LEFT)*SEQ_EVENTS_WIDTH;
@@ -1103,6 +1139,8 @@ void handleSequencerNavigationTouch() {
 }
 
 void handleSequencerPatternTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   short pattern = sensorCol - SEQ_PATTERN_SELECTOR_LEFT;
   short patternSplit = 1 - (sensorRow - SEQ_PATTERN_SELECTOR_BOTTOM);
   StepSequencerState& state = seqState[patternSplit];
@@ -1145,6 +1183,8 @@ void handleSequencerPatternTouch() {
 }
 
 void handleSequencerFaderTouch(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
   state.editing = true;
 
@@ -1221,6 +1261,8 @@ void handleSequencerFaderTouch(boolean newVelocity) {
 }
 
 void handleSequencerFaderRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   boolean transfered = false;
   for (byte col = SEQ_FADER_RIGHT; col >= SEQ_FADER_LEFT; --col) {
     if (col != sensorCol && cell(col, sensorRow).touched == touchedCell) {
@@ -1252,6 +1294,8 @@ void handleSequencerFaderRelease() {
 }
 
 inline void handleStepEditingTouchNotes(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
   
   short noteNum = state.getSensorNotesNoteNum();
@@ -1264,6 +1308,8 @@ inline void handleStepEditingTouchNotes(boolean newVelocity) {
 }
 
 inline void handleStepEditingReleaseNotes() {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
 
   short noteNum = state.getSensorNotesNoteNum();
@@ -1276,26 +1322,36 @@ inline void handleStepEditingReleaseNotes() {
 }
 
 inline void handleStepEditingTouchScales(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
   state.handleStepEditingTouch(newVelocity, state.getSensorRowNoteNum(), state.getSensorSequencerPosition());
 }
 
 inline void handleStepEditingReleaseScales() {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
   state.handleStepEditingRelease(state.getSensorRowNoteNum(), state.getSensorSequencerPosition());
 }
 
 inline void handleStepEditingTouchDrums(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
   state.handleStepEditingTouch(newVelocity, state.getSensorRowNoteNum(), state.getSensorSequencerPosition());
 }
 
 inline void handleStepEditingReleaseDrums() {
+  DEBUGPRINT_FUNCNAME();
+
   StepSequencerState& state = seqState[sensorSplit];
   state.handleStepEditingRelease(state.getSensorRowNoteNum(), state.getSensorSequencerPosition());
 }
 
 inline void updateSequencerSwitchLeds() {
+  DEBUGPRINT_FUNCNAME();
+
   if (isSequencerDisplayMode()) {
     if (seqState[Global.currentPerSplit].running) {
       setLed(0, SWITCH_2_ROW, COLOR_GREEN, cellOn);
@@ -1311,6 +1367,8 @@ inline void updateSequencerSwitchLeds() {
 }
 
 inline void paintSequencerDisplay(byte split) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   startBufferedLeds();
   clearDisplay();
   seqState[split].paintSequencerUnbuffered();
@@ -1350,6 +1408,8 @@ void displaySettingsLegend(const char* str) {
 }
 
 void handleSequencerSettingsLowRowTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   static unsigned long lastLowRowTouch = 0;
 
   unsigned long nowMillis = millis();
@@ -1423,6 +1483,8 @@ inline void paintSequencerSettingsLowRow() {
 }
 
 void paintSequencerProjects() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   for (byte p = 0; p < MAX_PROJECTS; ++p) {
@@ -1430,7 +1492,7 @@ void paintSequencerProjects() {
     if (p == Device.lastLoadedProject) {
       color = COLOR_CYAN;
     }
-    setLed(6 + p%4, 5 - p/4, color, cellOn);    // projects now run top to bottom, part of the patternChaining fork
+    setLed(6 + p % 4, 5 - p / 4, color, cellOn);    // projects now run top to bottom, part of the patternChaining fork
   }
 
   paintSequencerSettingsLowRow();
@@ -1449,6 +1511,8 @@ inline boolean ensureLegendHidden() {
 }
 
 void handleSequencerProjectsNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorRow == 0) {
     handleSequencerSettingsLowRowTouch();
   }
@@ -1476,12 +1540,15 @@ void handleSequencerProjectsHold() {
   if (sensorCol >= 6 && sensorCol < 10 &&
       sensorRow >= 2 && sensorRow < 6 &&
       isCellPastEditHoldWait()) {
+    DEBUGPRINT_FUNCNAME();
+
     // store to the selected project
     sequencersTurnOff(true);
 
     byte project = sensorCol-6 + (5-sensorRow) * 4;    // projects now run top to bottom, part of the patternChaining fork
 
     writeProjectToFlash(project);
+
     sensorCell->lastTouch = 0;
 
     updateDisplay();
@@ -1493,12 +1560,15 @@ void handleSequencerProjectsRelease() {
   if (sensorCol >= 6 && sensorCol < 10 &&
       sensorRow >= 2 && sensorRow < 6 &&
       ensureCellBeforeHoldWait(globalColor, cellOn)) {
+    DEBUGPRINT_FUNCNAME();
+
     // load the selected project
     sequencersTurnOff(true);
 
     byte project = sensorCol-6 + (5-sensorRow) * 4;    // projects now run top to bottom, part of the patternChaining fork
     Device.lastLoadedProject = project;
     loadProject(project);
+
     sensorCell->lastTouch = 0;
 
     updateDisplay();
@@ -1509,6 +1579,8 @@ void handleSequencerProjectsRelease() {
 static byte sequencerDrum0107RowNum = 1;
 
 void paintSequencerDrum0107() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   for (byte r = 1; r < NUMROWS; ++r) {
@@ -1520,6 +1592,8 @@ void paintSequencerDrum0107() {
 }
 
 void handleSequencerDrum0107NewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorRow == 0) {
     handleSequencerSettingsLowRowTouch();
   }
@@ -1535,12 +1609,16 @@ void handleSequencerDrum0107NewTouch() {
 }
 
 inline void handleSequencerDrum0107Release() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(true);
 }
 
 static byte sequencerDrum0814RowNum = 1;
 
 void paintSequencerDrum0814() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   for (byte r = 1; r < NUMROWS; ++r) {
@@ -1552,6 +1630,8 @@ void paintSequencerDrum0814() {
 }
 
 void handleSequencerDrum0814NewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorRow == 0) {
     handleSequencerSettingsLowRowTouch();
   }
@@ -1567,10 +1647,14 @@ void handleSequencerDrum0814NewTouch() {
 }
 
 inline void handleSequencerDrum0814Release() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(true);
 }
 
 void paintSequencerColors() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   paintShowSplitSelection(Global.currentPerSplit);
@@ -1585,10 +1669,18 @@ void paintSequencerColors() {
   setLed(9, 3, Split[Global.currentPerSplit].colorSequencerDisabled, cellOn);
   setLed(10, 3, Split[Global.currentPerSplit].colorSequencerDisabled, cellOn);
 
+  byte playColor = Split[Global.currentPerSplit].colorPlayed;  // getCurrentPositionColor()
+  if (playColor == COLOR_OFF || playColor == COLOR_BLACK) {
+    playColor = COLOR_RED;
+  }
+  setLed(11, 3, playColor, cellOn);
+
   paintSequencerSettingsLowRow();
 }
 
 void handleSequencerColorsNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorRow == 0) {
     handleSequencerSettingsLowRowTouch();
   }
@@ -1611,6 +1703,8 @@ void handleSequencerColorsNewTouch() {
 }
 
 inline void handleSequencerColorsRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleShowSplit();
 }
 
@@ -3290,6 +3384,8 @@ inline boolean isWithinSequencerPatternChainClearArea() {           // 2 hidden 
 }
 
 inline void handleSequencerPatternChainClearTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   byte split = SEQ_PATTERN_SELECTOR_TOP - sensorRow;
   memset(&patternChain[split][0], -1, 4);
   seqState[split].nextPattern = -1;
