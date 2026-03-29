@@ -27,6 +27,9 @@ values enable more and more debugging output. Typically, level 0 is used for thi
 currently debugging. After debugging something, either remove them or move them to higher levels.
 **************************************************************************************************/
 
+#ifndef LS_DEBUG_H
+#define LS_DEBUG_H
+
 #define DEBUG_ENABLED
 
 #ifdef DEBUG_ENABLED
@@ -36,5 +39,17 @@ currently debugging. After debugging something, either remove them or move them 
 #else
 
 #define DEBUGPRINT(x)
+
+#endif
+
+
+
+#define DEBUGPRINT_FUNCNAME()        debugprint_funcname(__func__)
+#define DEBUGPRINT_FUNCNAME_L5()     debugprint_funcname_L5(__func__)
+#define DEBUGPRINT_FUNCNAME_L0()     debugprint_funcname_L0(__func__)
+
+void debugprint_funcname(const char *fname);
+void debugprint_funcname_L0(const char *fname);
+void debugprint_funcname_L5(const char *fname);
 
 #endif
