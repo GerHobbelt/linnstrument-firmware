@@ -59,6 +59,43 @@ inline void debugPrintln(int level, int val) {
   }
 }
 
+void debugprint_funcname(const char *fname) {
+  if (SWITCH_SURFACESCAN) {
+    static const char *touchInfo[] = { "untouched", "ignored", "transfer", "touched" };
+
+    DEBUGPRINT((2,fname));
+    DEBUGPRINT((2,": col="));DEBUGPRINT((2,(int)sensorCol));
+    DEBUGPRINT((2," row="));DEBUGPRINT((2,(int)sensorRow));
+    DEBUGPRINT((2," veloZ="));DEBUGPRINT((2,(int)sensorCell->velocityZ));
+    DEBUGPRINT((2," pressZ="));DEBUGPRINT((2,(int)sensorCell->pressureZ));
+    DEBUGPRINT((2," velo="));DEBUGPRINT((2,(int)sensorCell->velocity));
+    DEBUGPRINT((2," touch="));DEBUGPRINT((2,touchInfo[int(sensorCell->touched)]));
+    DEBUGPRINT((2,"\n"));
+  }
+}
+
+void debugprint_funcname_L5(const char *fname) {
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((5,fname));
+    DEBUGPRINT((5,": anim="));
+    DEBUGPRINT((5,int(animationActive)));
+    DEBUGPRINT((5," mode="));
+    DEBUGPRINT((5,int(displayMode)));
+    DEBUGPRINT((5,"\n"));
+  }
+}
+
+void debugprint_funcname_L0(const char *fname) {
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((0,fname));
+    DEBUGPRINT((0,": anim="));
+    DEBUGPRINT((0,int(animationActive)));
+    DEBUGPRINT((0," mode="));
+    DEBUGPRINT((0,int(displayMode)));
+    DEBUGPRINT((0,"\n"));
+  }
+}
+
 void displayDigitalPins() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();

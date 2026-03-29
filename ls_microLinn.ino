@@ -3500,6 +3500,8 @@ inline boolean microLinnIsDisabledConfigButton() {                // a button th
 void handleMicroLinnConfigHold() {
   if (microLinnIsConfigButton() && !microLinnConfigNowScrolling &&            // long-press bottom row (or short-press when no edo is set)
      (isCellPastSensorHoldWait() || microLinnIsDisabledConfigButton())) {     
+    DEBUGPRINT_FUNCNAME();
+
     microLinnConfigNowScrolling = true;
     paintMicroLinnConfig();                                                   // scroll the name of the button
   }
@@ -3774,6 +3776,8 @@ inline void microLinnHandlePerSplitSettingsHold() {
   if (sensorCol == 1 && sensorRow >= 3 &&                                      // long-press col 1
       isCellPastSensorHoldWait() && 
       !microLinnPerSplitSettingsNowScrolling) {     
+    DEBUGPRINT_FUNCNAME();
+
     microLinnPerSplitSettingsNowScrolling = true;
     microLinnPaintPerSplitSettings();                                          // scroll the name of the button
   }
@@ -3922,6 +3926,8 @@ void microLinnHandleGlobalSettingsHold() {
   if (sensorCol == 1 && sensorRow >= row &&                                  // long-press col 1
       isCellPastSensorHoldWait() && 
       !microLinnGlobalSettingsNowScrolling) {     
+    DEBUGPRINT_FUNCNAME();
+
     microLinnGlobalSettingsNowScrolling = true;
     microLinnPaintGlobalSettings();                                          // scroll the name of the button
   }
@@ -4056,6 +4062,8 @@ void microLinnHandleNoteLightsNewTouch() {
 
 void microLinnHandleNoteLightsHold() {
   if (!isCellPastConfirmHoldWait()) return;                                       // long-press 800 ms
+
+  DEBUGPRINT_FUNCNAME();
 
   short start = microLinnTriIndex(edo, 0);
   byte currScale = Global.activeNotes;
@@ -4289,6 +4297,8 @@ void microLinnHandlePerSplitXenSettingsHold() {
   if (sensorCol == 1 && sensorRow >= 4 &&                                         // long-press col 1
       isCellPastSensorHoldWait() && 
       !microLinnPerSplitXenSettingsNowScrolling) {     
+    DEBUGPRINT_FUNCNAME();
+
     microLinnPerSplitXenSettingsNowScrolling = true;
     microLinnPaintPerSplitXenSettings();                                          // scroll the name of the button
   }
@@ -4431,6 +4441,8 @@ void microLinnHandleGlobalXenSettingsHold() {
   if (sensorCol == 1 && sensorRow >= 3 &&        // change 3 to 1     // long-press col 1
       isCellPastSensorHoldWait() && 
       !microLinnGlobalXenSettingsNowScrolling) {     
+    DEBUGPRINT_FUNCNAME();
+
     microLinnGlobalXenSettingsNowScrolling = true;
     microLinnPaintGlobalXenSettings();                                // scroll the name of the button
   }
