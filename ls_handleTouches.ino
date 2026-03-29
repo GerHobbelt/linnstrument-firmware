@@ -23,7 +23,7 @@ inline void cellTouched(TouchState state) {
   cellTouched(sensorCol, sensorRow, state);
 };
 void cellTouched(byte col, byte row, TouchState state) {
-  // turn on the bit that correspond to the column and row of this cell,
+  // turn on the bit that corresponds to the column and row of this cell,
   // this allows us to very quickly find other touched cells and detect
   // phantom key presses without having to evaluate every cell on the board
   if (state != untouchedCell &&
