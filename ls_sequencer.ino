@@ -16,51 +16,129 @@ limitations under the License.
 These implement the polyphonic expressive step sequencer, independently for each split.
 **************************************************************************************************/
 
-constexpr const byte SEQ_FADER_TOP = 3;
-byte SEQ_FADER_LENGTH;
-byte SEQ_FADER_RIGHT;
-byte SEQ_FADER_LEFT;
+struct SequencerConstantsT {
+  constexpr static const byte FADER_TOP = 3;
+  byte FADER_LENGTH;
+  byte FADER_RIGHT;
+  byte FADER_LEFT;
 
-byte SEQ_PATTERN_SELECTOR_LEFT;
-byte SEQ_PATTERN_SELECTOR_RIGHT;
-constexpr const byte SEQ_PATTERN_SELECTOR_BOTTOM = 6;
-constexpr const byte SEQ_PATTERN_SELECTOR_TOP = 7;
+  byte PATTERN_SELECTOR_LEFT;
+  byte PATTERN_SELECTOR_RIGHT;
+  constexpr static const byte PATTERN_SELECTOR_BOTTOM = 6;
+  constexpr static const byte PATTERN_SELECTOR_TOP = 7;
 
-byte SEQ_NAVIGATION_LEFT;
-byte SEQ_NAVIGATION_RIGHT;
-byte SEQ_NAVIGATION_BOTTOM;
-byte SEQ_NAVIGATION_TOP;
+  byte NAVIGATION_LEFT;
+  byte NAVIGATION_RIGHT;
+  byte NAVIGATION_BOTTOM;
+  byte NAVIGATION_TOP;
 
-byte SEQ_MUTER_COLUMN;
-constexpr const byte SEQ_MUTER_BOTTOM = 6;
-constexpr const byte SEQ_MUTER_TOP = 7;
+  byte MUTER_COLUMN;
+  constexpr static const byte MUTER_BOTTOM = 6;
+  constexpr static const byte MUTER_TOP = 7;
 
-byte SEQ_VIEW_COLUMN;
-constexpr const byte SEQ_VIEW_BOTTOM = 4;
-constexpr const byte SEQ_VIEW_TOP = 5;
+  byte VIEW_COLUMN;
+  constexpr static const byte VIEW_BOTTOM = 4;
+  constexpr static const byte VIEW_TOP = 5;
 
-byte SEQ_STEPSIZE_LEFT;
-byte SEQ_STEPSIZE_RIGHT;
-constexpr const byte SEQ_STEPSIZE_BOTTOM = 4;
-constexpr const byte SEQ_STEPSIZE_TOP = 5;
+  byte STEPSIZE_LEFT;
+  byte STEPSIZE_RIGHT;
+  constexpr static const byte STEPSIZE_BOTTOM = 4;
+  constexpr static const byte STEPSIZE_TOP = 5;
 
-byte SEQ_LOOPSCREEN_COLUMN;
-constexpr const byte SEQ_LOOPSCREEN_ROW = 5;
+  byte LOOPSCREEN_COLUMN;
+  constexpr static const byte LOOPSCREEN_ROW = 5;
 
-byte SEQ_DIRECTION_COLUMN;
-constexpr const byte SEQ_DIRECTION_ROW = 4;
+  byte DIRECTION_COLUMN;
+  constexpr static const byte DIRECTION_ROW = 4;
 
-byte SEQ_CLEAR_COLUMN;
-constexpr const byte SEQ_CLEAR_ROW = 7;
+  byte CLEAR_COLUMN;
+  constexpr static const byte CLEAR_ROW = 7;
 
-byte SEQ_COPY_COLUMN;
-constexpr const byte SEQ_COPY_ROW = 6;
+  byte COPY_COLUMN;
+  constexpr static const byte COPY_ROW = 6;
 
-byte SEQ_EVENTS_WIDTH;
+  byte EVENTS_WIDTH;
 
-constexpr const byte SEQ_DURATION_EDIT_PANEL_COUNT = 17;
+  int32_t FXD_SEQ_DURATION_FADER_RATIO;
+};
 
-int32_t FXD_SEQ_DURATION_FADER_RATIO;
+constexpr static const byte SEQ_DURATION_EDIT_PANEL_COUNT = 17;
+
+LS_CONST SequencerConstantsT SequencerConstants[2] = {
+{
+#define NUMCOLS 26  
+
+  .FADER_LENGTH = 8,
+  .FADER_RIGHT = NUMCOLS - 1,
+  .FADER_LEFT = /* .FADER_RIGHT */ (NUMCOLS - 1) - (/* .FADER_LENGTH */ (8) - 1),
+
+  .PATTERN_SELECTOR_LEFT = /* .PATTERN_SELECTOR_RIGHT */ ((NUMCOLS - 1 - 1) - 1) - (MAX_SEQUENCER_PATTERNS - 1),
+  .PATTERN_SELECTOR_RIGHT = /* .MUTER_COLUMN */ (NUMCOLS - 1 - 1) - 1,
+
+  .NAVIGATION_LEFT = /* .PATTERN_SELECTOR_LEFT */ (((NUMCOLS - 1 - 1) - 1) - (MAX_SEQUENCER_PATTERNS - 1)), 
+  .NAVIGATION_RIGHT = /* .NAVIGATION_LEFT */ (((NUMCOLS - 1 - 1) - 1) - (MAX_SEQUENCER_PATTERNS - 1)) + 1,
+  .NAVIGATION_BOTTOM = 4,
+  .NAVIGATION_TOP = 5,
+
+  .MUTER_COLUMN = NUMCOLS - 1 - 1,
+
+  .VIEW_COLUMN = NUMCOLS - 1 - 3,
+
+  .STEPSIZE_LEFT = /* .VIEW_COLUMN */ (NUMCOLS - 1 - 3) + 1,
+  .STEPSIZE_RIGHT = /* .STEPSIZE_LEFT */ ((NUMCOLS - 1 - 3) + 1) + 1,
+
+  .LOOPSCREEN_COLUMN = NUMCOLS - 1,
+
+  .DIRECTION_COLUMN = NUMCOLS - 1,
+
+  .CLEAR_COLUMN = NUMCOLS - 1,
+
+  .COPY_COLUMN = NUMCOLS - 1,
+
+  .EVENTS_WIDTH = 16,
+
+  .FXD_SEQ_DURATION_FADER_RATIO = FXD_DIV(FXD_FROM_INT( /* .FADER_LENGTH */ (8) ), FXD_FROM_INT( SEQ_DURATION_EDIT_PANEL_COUNT )),
+
+#undef NUMCOLS
+},
+{
+#define NUMCOLS 17  
+
+  .FADER_LENGTH = 6,
+  .FADER_RIGHT = NUMCOLS - 1,
+  .FADER_LEFT = /* .FADER_RIGHT */ (NUMCOLS - 1) - (/* .FADER_LENGTH */ (6) - 1),
+
+  .PATTERN_SELECTOR_LEFT = /* .PATTERN_SELECTOR_RIGHT */ ((NUMCOLS - 1 - 1) - 1) - (MAX_SEQUENCER_PATTERNS - 1),
+  .PATTERN_SELECTOR_RIGHT = /* .MUTER_COLUMN */ (NUMCOLS - 1 - 1) - 1,
+
+  .NAVIGATION_LEFT = /* .PATTERN_SELECTOR_LEFT */ (((NUMCOLS - 1 - 1) - 1) - (MAX_SEQUENCER_PATTERNS - 1)), 
+  .NAVIGATION_RIGHT = /* .NAVIGATION_LEFT */ (((NUMCOLS - 1 - 1) - 1) - (MAX_SEQUENCER_PATTERNS - 1)) + 3,
+  .NAVIGATION_BOTTOM = 1,
+  .NAVIGATION_TOP = 2,
+
+  .MUTER_COLUMN = NUMCOLS - 1 - 1,
+
+  .VIEW_COLUMN = NUMCOLS - 1 - 3,
+
+  .STEPSIZE_LEFT = /* .VIEW_COLUMN */ (NUMCOLS - 1 - 3) + 1,
+  .STEPSIZE_RIGHT = /* .STEPSIZE_LEFT */ ((NUMCOLS - 1 - 3) + 1) + 1,
+
+  .LOOPSCREEN_COLUMN = NUMCOLS - 1,
+
+  .DIRECTION_COLUMN = NUMCOLS - 1,
+
+  .CLEAR_COLUMN = NUMCOLS - 1,
+
+  .COPY_COLUMN = NUMCOLS - 1,
+
+  .EVENTS_WIDTH = 8,
+
+  .FXD_SEQ_DURATION_FADER_RATIO = FXD_DIV(FXD_FROM_INT( /* .FADER_LENGTH */ (6) ), FXD_FROM_INT( SEQ_DURATION_EDIT_PANEL_COUNT )),
+
+#undef NUMCOLS
+},
+};
+const SequencerConstantsT* SEQ;  // reference to the actual constants record for this model
 
 static unsigned long sequencerFaderChangeTime[4];
 static int sequencerFaderLastX[4];
@@ -225,44 +303,7 @@ signed char patternChain[NUMSPLITS][MAX_SEQUENCER_PATTERNS] = {-1};          // 
 boolean firstSeqCycle[NUMSPLITS];                                            // firstSeqCycle is part of the patternChain fork
 
 void initializeSequencer() {
-  SEQ_MUTER_COLUMN = NUMCOLS - 1 - 1;  
-  SEQ_PATTERN_SELECTOR_RIGHT = SEQ_MUTER_COLUMN - 1;
-  SEQ_PATTERN_SELECTOR_LEFT = SEQ_PATTERN_SELECTOR_RIGHT - (MAX_SEQUENCER_PATTERNS - 1);
-
-  SEQ_VIEW_COLUMN = NUMCOLS - 1 - 3;
-  SEQ_STEPSIZE_LEFT = SEQ_VIEW_COLUMN + 1;
-  SEQ_STEPSIZE_RIGHT = SEQ_STEPSIZE_LEFT + 1;
-
-  SEQ_LOOPSCREEN_COLUMN = NUMCOLS - 1;
-
-  SEQ_DIRECTION_COLUMN = NUMCOLS - 1;
-
-  SEQ_CLEAR_COLUMN = NUMCOLS - 1;
-  SEQ_COPY_COLUMN = NUMCOLS - 1;
-
-  if (LINNMODEL == 200) {
-    SEQ_EVENTS_WIDTH = 16;
-    SEQ_FADER_LENGTH = 8;
-
-    SEQ_NAVIGATION_LEFT = SEQ_PATTERN_SELECTOR_LEFT;
-    SEQ_NAVIGATION_RIGHT = SEQ_NAVIGATION_LEFT + 1;
-    SEQ_NAVIGATION_BOTTOM = 4;
-    SEQ_NAVIGATION_TOP = 5;
-  }
-  else if (LINNMODEL == 128) {
-    SEQ_EVENTS_WIDTH = 8;
-    SEQ_FADER_LENGTH = 6;
-
-    SEQ_NAVIGATION_LEFT = SEQ_PATTERN_SELECTOR_LEFT;
-    SEQ_NAVIGATION_RIGHT = SEQ_NAVIGATION_LEFT + 3;
-    SEQ_NAVIGATION_BOTTOM = 1;
-    SEQ_NAVIGATION_TOP = 2;
-  }
-
-  SEQ_FADER_RIGHT = NUMCOLS - 1;
-  SEQ_FADER_LEFT = SEQ_FADER_RIGHT - (SEQ_FADER_LENGTH - 1);
-
-  FXD_SEQ_DURATION_FADER_RATIO = FXD_DIV(FXD_FROM_INT(SEQ_FADER_LENGTH), FXD_FROM_INT(SEQ_DURATION_EDIT_PANEL_COUNT));
+  SEQ = &SequencerConstants[LINNMODEL == 200 ? 0 : 1];
 
   for (byte f = 0; f < 4; ++f) {
     sequencerFaderChangeTime[f] = 0;
@@ -307,7 +348,7 @@ inline void applySequencerSettings() {
 
 inline boolean requiresSequencerSlideTracking() {
   if (isSequencerEditing()) return true;
-  if (sensorCol >= SEQ_FADER_LEFT && sensorRow <= SEQ_FADER_TOP && (!isWithinSequencerNavigationArea())) return true;
+  if (sensorCol >= SEQ->FADER_LEFT && sensorRow <= SEQ->FADER_TOP && (!isWithinSequencerNavigationArea())) return true;
   return false;
 }
 
@@ -550,7 +591,7 @@ void handleSequencerTouch(boolean newVelocity) {
       handleSequencerFaderTouch(newVelocity);
     }
     // handle sequencer gestures
-    else if (sensorCol >= 1 && sensorCol <= SEQ_EVENTS_WIDTH) {
+    else if (sensorCol >= 1 && sensorCol <= SEQ->EVENTS_WIDTH) {
       // handle low-row interaction
       if (sensorRow == 0) {
         handleSequencerLowRowTouch(newVelocity);
@@ -618,7 +659,7 @@ void handleSequencerRelease() {
     if (state.editing) {
       handleSequencerFaderRelease();
     }
-    else if (sensorCol >= 1 && sensorCol <= SEQ_EVENTS_WIDTH) {
+    else if (sensorCol >= 1 && sensorCol <= SEQ->EVENTS_WIDTH) {
       // handle low-row interaction
       if (sensorRow > 0) {
         switch (Split[sensorSplit].sequencerView) {
@@ -654,19 +695,19 @@ void handleSequencerRelease() {
 }
 
 inline boolean isWithinClearFocusArea() {
-  return sensorCol > SEQ_EVENTS_WIDTH && sensorCol < SEQ_FADER_LEFT;
+  return sensorCol > SEQ->EVENTS_WIDTH && sensorCol < SEQ->FADER_LEFT;
 }
 
 inline boolean isWithinSequencerMuterArea() {
-  return sensorCol == SEQ_MUTER_COLUMN && sensorRow >= SEQ_MUTER_BOTTOM && sensorRow <= SEQ_MUTER_TOP;
+  return sensorCol == SEQ->MUTER_COLUMN && sensorRow >= SEQ->MUTER_BOTTOM && sensorRow <= SEQ->MUTER_TOP;
 }
 
 inline boolean isOnSequencerClearAction() {
-  return sensorCol == SEQ_CLEAR_COLUMN && sensorRow == SEQ_CLEAR_ROW;
+  return sensorCol == SEQ->CLEAR_COLUMN && sensorRow == SEQ->CLEAR_ROW;
 }
 
 inline boolean isOnSequencerCopyAction() {
-  return sensorCol == SEQ_COPY_COLUMN && sensorRow == SEQ_COPY_ROW;
+  return sensorCol == SEQ->COPY_COLUMN && sensorRow == SEQ->COPY_ROW;
 }
 
 inline boolean isSequencerNavigationAreaVisible() {
@@ -678,14 +719,14 @@ boolean isWithinSequencerNavigationArea() {
     return false;
   }
 
-  if (sensorCol >= SEQ_NAVIGATION_LEFT && sensorCol <= SEQ_NAVIGATION_RIGHT) {
+  if (sensorCol >= SEQ->NAVIGATION_LEFT && sensorCol <= SEQ->NAVIGATION_RIGHT) {
     switch (Split[sensorSplit].sequencerView) {
       case sequencerNotes:
-        return sensorRow == SEQ_NAVIGATION_BOTTOM;
+        return sensorRow == SEQ->NAVIGATION_BOTTOM;
         break;
       case sequencerScales:
       case sequencerDrums:
-        return sensorRow >= SEQ_NAVIGATION_BOTTOM && sensorRow <= SEQ_NAVIGATION_TOP;
+        return sensorRow >= SEQ->NAVIGATION_BOTTOM && sensorRow <= SEQ->NAVIGATION_TOP;
     }
   }
 
@@ -693,15 +734,15 @@ boolean isWithinSequencerNavigationArea() {
 }
 
 inline boolean isWithinSequencerPatternArea() {
-  return sensorCol >= SEQ_PATTERN_SELECTOR_LEFT && sensorCol <= SEQ_PATTERN_SELECTOR_RIGHT && sensorRow >= SEQ_PATTERN_SELECTOR_BOTTOM && sensorRow <= SEQ_PATTERN_SELECTOR_TOP;
+  return sensorCol >= SEQ->PATTERN_SELECTOR_LEFT && sensorCol <= SEQ->PATTERN_SELECTOR_RIGHT && sensorRow >= SEQ->PATTERN_SELECTOR_BOTTOM && sensorRow <= SEQ->PATTERN_SELECTOR_TOP;
 }
 
 inline boolean isWithinSequencerPerformanceSettingsArea() {
-  return sensorCol >= SEQ_VIEW_COLUMN && sensorRow <= SEQ_VIEW_TOP && sensorCol <= SEQ_DIRECTION_COLUMN && sensorRow >= SEQ_VIEW_BOTTOM;
+  return sensorCol >= SEQ->VIEW_COLUMN && sensorRow <= SEQ->VIEW_TOP && sensorCol <= SEQ->DIRECTION_COLUMN && sensorRow >= SEQ->VIEW_BOTTOM;
 }
 
 inline boolean isWithinSequencerFaderArea() {
-  return seqState[Global.currentPerSplit].hasFocusEvent() && sensorCol >= SEQ_FADER_LEFT && sensorRow <= SEQ_FADER_TOP;
+  return seqState[Global.currentPerSplit].hasFocusEvent() && sensorCol >= SEQ->FADER_LEFT && sensorRow <= SEQ->FADER_TOP;
 }
 
 void handleSequencerLowRowTouch(boolean newVelocity) {
@@ -772,24 +813,24 @@ void handleSequencerLowRowTouch(boolean newVelocity) {
 inline void handleSequencerMuterTouch() {
   DEBUGPRINT_FUNCNAME();
 
-  byte mutedSplit = 1 - (sensorRow - SEQ_MUTER_BOTTOM);
+  byte mutedSplit = 1 - (sensorRow - SEQ->MUTER_BOTTOM);
   sequencerToggleMute(mutedSplit);
 }
 
 inline void handleSequencerClearTouch() {
   DEBUGPRINT_FUNCNAME();
 
-  clearLed(SEQ_COPY_COLUMN, SEQ_COPY_ROW);
-  if (cell(SEQ_COPY_COLUMN, SEQ_COPY_ROW).touched != untouchedCell) {
-    cellTouched(SEQ_COPY_COLUMN, SEQ_COPY_ROW, ignoredCell);
+  clearLed(SEQ->COPY_COLUMN, SEQ->COPY_ROW);
+  if (cell(SEQ->COPY_COLUMN, SEQ->COPY_ROW).touched != untouchedCell) {
+    cellTouched(SEQ->COPY_COLUMN, SEQ->COPY_ROW, ignoredCell);
   }
-  setLed(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW, Split[sensorSplit].colorMain, cellSlowPulse);
+  setLed(SEQ->CLEAR_COLUMN, SEQ->CLEAR_ROW, Split[sensorSplit].colorMain, cellSlowPulse);
 }
 
 inline void handleSequencerClearRelease() {
   DEBUGPRINT_FUNCNAME();
 
-  clearLed(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW);
+  clearLed(SEQ->CLEAR_COLUMN, SEQ->CLEAR_ROW);
 }
 
 inline boolean isSwitch1Pressed() {
@@ -801,23 +842,23 @@ inline boolean isSwitch2Pressed() {
 }
 
 inline boolean isSequencerClearPressed() {
-  return cell(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW).touched == touchedCell;
+  return cell(SEQ->CLEAR_COLUMN, SEQ->CLEAR_ROW).touched == touchedCell;
 }
 
 inline void handleSequencerCopyTouch() {
   DEBUGPRINT_FUNCNAME();
 
-  clearLed(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW);
-  if (cell(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW).touched != untouchedCell) {
-    cellTouched(SEQ_CLEAR_COLUMN, SEQ_CLEAR_ROW, ignoredCell);
+  clearLed(SEQ->CLEAR_COLUMN, SEQ->CLEAR_ROW);
+  if (cell(SEQ->CLEAR_COLUMN, SEQ->CLEAR_ROW).touched != untouchedCell) {
+    cellTouched(SEQ->CLEAR_COLUMN, SEQ->CLEAR_ROW, ignoredCell);
   }
-  setLed(SEQ_COPY_COLUMN, SEQ_COPY_ROW, Split[sensorSplit].colorMain, cellSlowPulse);
+  setLed(SEQ->COPY_COLUMN, SEQ->COPY_ROW, Split[sensorSplit].colorMain, cellSlowPulse);
 }
 
 inline void handleSequencerCopyRelease() {
   DEBUGPRINT_FUNCNAME();
 
-  clearLed(SEQ_COPY_COLUMN, SEQ_COPY_ROW);
+  clearLed(SEQ->COPY_COLUMN, SEQ->COPY_ROW);
   sequencerCopyPatternSource = -1;
   sequencerCopySplitSource = -1;
   sequencerCopyStepSource = -1;
@@ -827,7 +868,7 @@ inline void handleSequencerCopyRelease() {
 }
 
 inline boolean isSequencerCopyPressed() {
-  return cell(SEQ_COPY_COLUMN, SEQ_COPY_ROW).touched == touchedCell;
+  return cell(SEQ->COPY_COLUMN, SEQ->COPY_ROW).touched == touchedCell;
 }
 
 void handleSequencerViewModeRelease() {
@@ -836,16 +877,16 @@ void handleSequencerViewModeRelease() {
   StepSequencerState& state = seqState[sensorSplit];
   
   SequencerView mode = sequencerNotes;
-  if ((sensorRow == SEQ_VIEW_TOP && cell(sensorCol, SEQ_VIEW_BOTTOM).touched != untouchedCell) ||
-      (sensorRow == SEQ_VIEW_BOTTOM && cell(sensorCol, SEQ_VIEW_TOP).touched != untouchedCell)) {
-    cellTouched(sensorCol, SEQ_VIEW_TOP, ignoredCell);
-    cellTouched(sensorCol, SEQ_VIEW_BOTTOM, ignoredCell);
+  if ((sensorRow == SEQ->VIEW_TOP && cell(sensorCol, SEQ->VIEW_BOTTOM).touched != untouchedCell) ||
+      (sensorRow == SEQ->VIEW_BOTTOM && cell(sensorCol, SEQ->VIEW_TOP).touched != untouchedCell)) {
+    cellTouched(sensorCol, SEQ->VIEW_TOP, ignoredCell);
+    cellTouched(sensorCol, SEQ->VIEW_BOTTOM, ignoredCell);
     mode = sequencerScales;
   }
-  else if (sensorRow == SEQ_VIEW_TOP) {
+  else if (sensorRow == SEQ->VIEW_TOP) {
     mode = sequencerNotes;
   }
-  else if (sensorRow == SEQ_VIEW_BOTTOM) {
+  else if (sensorRow == SEQ->VIEW_BOTTOM) {
     mode = sequencerDrums;
   }
 
@@ -882,11 +923,11 @@ void handleSequencerStepSizeRelease() {
   SequencerStepSize newStepSize = currentStepSize;
   boolean newSwing = state.getCurrentPattern().swing;
 
-  if (sensorCol == SEQ_STEPSIZE_RIGHT) {
-    if ((sensorRow == SEQ_STEPSIZE_TOP && cell(sensorCol, SEQ_STEPSIZE_BOTTOM).touched != untouchedCell) ||
-        (sensorRow == SEQ_STEPSIZE_BOTTOM && cell(sensorCol, SEQ_STEPSIZE_TOP).touched != untouchedCell)) {
-      cellTouched(sensorCol, SEQ_STEPSIZE_TOP, ignoredCell);
-      cellTouched(sensorCol, SEQ_STEPSIZE_BOTTOM, ignoredCell);
+  if (sensorCol == SEQ->STEPSIZE_RIGHT) {
+    if ((sensorRow == SEQ->STEPSIZE_TOP && cell(sensorCol, SEQ->STEPSIZE_BOTTOM).touched != untouchedCell) ||
+        (sensorRow == SEQ->STEPSIZE_BOTTOM && cell(sensorCol, SEQ->STEPSIZE_TOP).touched != untouchedCell)) {
+      cellTouched(sensorCol, SEQ->STEPSIZE_TOP, ignoredCell);
+      cellTouched(sensorCol, SEQ->STEPSIZE_BOTTOM, ignoredCell);
 
       newSwing = !state.getCurrentPattern().swing;
       switch (currentStepSize) {
@@ -907,7 +948,7 @@ void handleSequencerStepSizeRelease() {
           break;
       }
     }
-    else if (sensorRow == SEQ_STEPSIZE_TOP && cell(sensorCol, SEQ_STEPSIZE_BOTTOM).touched == untouchedCell) {
+    else if (sensorRow == SEQ->STEPSIZE_TOP && cell(sensorCol, SEQ->STEPSIZE_BOTTOM).touched == untouchedCell) {
       newSwing = false;
       switch (currentStepSize) {
         case StepEighthDotted:
@@ -933,7 +974,7 @@ void handleSequencerStepSizeRelease() {
           break;
       }
     }
-    else if (sensorRow == SEQ_STEPSIZE_BOTTOM && cell(sensorCol, SEQ_STEPSIZE_TOP).touched == untouchedCell) {
+    else if (sensorRow == SEQ->STEPSIZE_BOTTOM && cell(sensorCol, SEQ->STEPSIZE_TOP).touched == untouchedCell) {
       newSwing = false;
       switch (currentStepSize) {
         case StepEighthTriplet:
@@ -960,11 +1001,11 @@ void handleSequencerStepSizeRelease() {
       }
     }
   }
-  else if (sensorCol == SEQ_STEPSIZE_LEFT) {
-    if ((sensorRow == SEQ_STEPSIZE_TOP && cell(sensorCol, SEQ_STEPSIZE_BOTTOM).touched != untouchedCell) ||
-        (sensorRow == SEQ_STEPSIZE_BOTTOM && cell(sensorCol, SEQ_STEPSIZE_TOP).touched != untouchedCell)) {
-      cellTouched(sensorCol, SEQ_STEPSIZE_TOP, ignoredCell);
-      cellTouched(sensorCol, SEQ_STEPSIZE_BOTTOM, ignoredCell);
+  else if (sensorCol == SEQ->STEPSIZE_LEFT) {
+    if ((sensorRow == SEQ->STEPSIZE_TOP && cell(sensorCol, SEQ->STEPSIZE_BOTTOM).touched != untouchedCell) ||
+        (sensorRow == SEQ->STEPSIZE_BOTTOM && cell(sensorCol, SEQ->STEPSIZE_TOP).touched != untouchedCell)) {
+      cellTouched(sensorCol, SEQ->STEPSIZE_TOP, ignoredCell);
+      cellTouched(sensorCol, SEQ->STEPSIZE_BOTTOM, ignoredCell);
 
       switch (currentStepSize) {
         case StepEighth:
@@ -984,7 +1025,7 @@ void handleSequencerStepSizeRelease() {
           break;
       }
     }
-    else if (sensorRow == SEQ_STEPSIZE_TOP && cell(sensorCol, SEQ_STEPSIZE_BOTTOM).touched == untouchedCell) {
+    else if (sensorRow == SEQ->STEPSIZE_TOP && cell(sensorCol, SEQ->STEPSIZE_BOTTOM).touched == untouchedCell) {
       switch (currentStepSize) {
         case StepEighth:
         case StepFourth:
@@ -1003,7 +1044,7 @@ void handleSequencerStepSizeRelease() {
           break;
       }
     }
-    else if (sensorRow == SEQ_STEPSIZE_BOTTOM && cell(sensorCol, SEQ_STEPSIZE_TOP).touched == untouchedCell) {
+    else if (sensorRow == SEQ->STEPSIZE_BOTTOM && cell(sensorCol, SEQ->STEPSIZE_TOP).touched == untouchedCell) {
       switch (currentStepSize) {
         case StepEighth:
         case StepFourth:
@@ -1086,10 +1127,10 @@ void handleSequencerDirectionRelease() {
 inline void handleSequencerPerformanceSettingsTouch(boolean newVelocity) {
   DEBUGPRINT_FUNCNAME();
 
-  if (sensorCol == SEQ_LOOPSCREEN_COLUMN && sensorRow == SEQ_LOOPSCREEN_ROW) {
+  if (sensorCol == SEQ->LOOPSCREEN_COLUMN && sensorRow == SEQ->LOOPSCREEN_ROW) {
     handleSequencerLoopScreenTouch(newVelocity);
   }
-  else if (sensorCol == SEQ_DIRECTION_COLUMN && sensorRow == SEQ_DIRECTION_ROW) {
+  else if (sensorCol == SEQ->DIRECTION_COLUMN && sensorRow == SEQ->DIRECTION_ROW) {
     handleSequencerDirectionTouch(newVelocity);
   }
 }
@@ -1097,13 +1138,13 @@ inline void handleSequencerPerformanceSettingsTouch(boolean newVelocity) {
 inline void handleSequencerPerformanceSettingsRelease() {
   DEBUGPRINT_FUNCNAME();
 
-  if (sensorCol == SEQ_VIEW_COLUMN) {
+  if (sensorCol == SEQ->VIEW_COLUMN) {
     handleSequencerViewModeRelease();
   }
-  else if (sensorCol >= SEQ_STEPSIZE_LEFT && sensorCol <= SEQ_STEPSIZE_RIGHT) {
+  else if (sensorCol >= SEQ->STEPSIZE_LEFT && sensorCol <= SEQ->STEPSIZE_RIGHT) {
     handleSequencerStepSizeRelease();
   }
-  else if (sensorCol == SEQ_DIRECTION_COLUMN && sensorRow == SEQ_DIRECTION_ROW) {
+  else if (sensorCol == SEQ->DIRECTION_COLUMN && sensorRow == SEQ->DIRECTION_ROW) {
     handleSequencerDirectionRelease();
   }
 }
@@ -1113,13 +1154,13 @@ void handleSequencerNavigationTouch() {
 
   StepSequencerState& state = seqState[sensorSplit];
 
-  int newPositionOffset = (sensorCol-SEQ_NAVIGATION_LEFT)*SEQ_EVENTS_WIDTH;
+  int newPositionOffset = (sensorCol - SEQ->NAVIGATION_LEFT) * SEQ->EVENTS_WIDTH;
   int newRowOffset = -1;
   if (Split[sensorSplit].sequencerView != sequencerNotes) {
-    if (sensorRow == SEQ_NAVIGATION_BOTTOM) {
+    if (sensorRow == SEQ->NAVIGATION_BOTTOM) {
       newRowOffset = 0;
     }
-    else if (sensorRow == SEQ_NAVIGATION_TOP) {
+    else if (sensorRow == SEQ->NAVIGATION_TOP) {
       newRowOffset = 7;
     }
   }
@@ -1141,8 +1182,8 @@ void handleSequencerNavigationTouch() {
 void handleSequencerPatternTouch() {
   DEBUGPRINT_FUNCNAME();
 
-  short pattern = sensorCol - SEQ_PATTERN_SELECTOR_LEFT;
-  short patternSplit = 1 - (sensorRow - SEQ_PATTERN_SELECTOR_BOTTOM);
+  short pattern = sensorCol - SEQ->PATTERN_SELECTOR_LEFT;
+  short patternSplit = 1 - (sensorRow - SEQ->PATTERN_SELECTOR_BOTTOM);
   StepSequencerState& state = seqState[patternSplit];
   if (isSequencerClearPressed()) {
     Project.sequencer[patternSplit].patterns[pattern].clear();
@@ -1194,7 +1235,7 @@ void handleSequencerFaderTouch(boolean newVelocity) {
     boolean changed = false;
     if (newVelocity) {
       // if a new touch happens on the same row, set the fader to its neutral value
-      for (byte col = SEQ_FADER_RIGHT; col > 0; --col) {
+      for (byte col = SEQ->FADER_RIGHT; col > 0; --col) {
         if (col != sensorCol && cell(col, sensorRow).velocity && cell(col, sensorRow).touched == touchedCell) {
           cellTouched(sensorCol, sensorRow, ignoredCell);
           focus->setFaderValue(sensorRow, focus->getFaderNeutral(sensorRow, sensorSplit));
@@ -1264,7 +1305,7 @@ void handleSequencerFaderRelease() {
   DEBUGPRINT_FUNCNAME();
 
   boolean transfered = false;
-  for (byte col = SEQ_FADER_RIGHT; col >= SEQ_FADER_LEFT; --col) {
+  for (byte col = SEQ->FADER_RIGHT; col >= SEQ->FADER_LEFT; --col) {
     if (col != sensorCol && cell(col, sensorRow).touched == touchedCell) {
       transferToSameRowCell(col);
       transfered = true;
@@ -1885,7 +1926,7 @@ int StepEvent::getFaderMax(byte fader) {
     case 3:
       return 127;
     case 2:
-      return SEQ_DURATION_EDIT_PANEL_COUNT-1;
+      return SEQ_DURATION_EDIT_PANEL_COUNT - 1;
     case 1:
       if (isMicroLinnOn()) return getMicroLinnSequencerBendRange();
       return 50;
@@ -2413,7 +2454,7 @@ void StepSequencerState::advanceSequencer() {
 
         if (getCurrentPattern().loopScreen) {
           start = positionOffset;
-          end = min(end, start + SEQ_EVENTS_WIDTH - 1);
+          end = min(end, start + SEQ->EVENTS_WIDTH - 1);
         }
 
         switch (getCurrentPattern().sequencerDirection) {
@@ -2458,9 +2499,9 @@ void StepSequencerState::advanceSequencer() {
         // if there's no focused event, automatically switch between
         // the sequencer pages
         if (!hasFocus()) {
-          if ((advancingForward && ((position - currentPosition == 1 && position % SEQ_EVENTS_WIDTH == 0) || (position == 0 && currentPosition == end))) ||
-              (!advancingForward && ((currentPosition - position == 1 && position % SEQ_EVENTS_WIDTH == (SEQ_EVENTS_WIDTH-1)) || (position == end && currentPosition == 0)))) {
-            positionOffset = (position / SEQ_EVENTS_WIDTH) * SEQ_EVENTS_WIDTH;
+          if ((advancingForward && ((position - currentPosition == 1 && position % SEQ->EVENTS_WIDTH == 0) || (position == 0 && currentPosition == end))) ||
+              (!advancingForward && ((currentPosition - position == 1 && position % SEQ->EVENTS_WIDTH == (SEQ->EVENTS_WIDTH - 1)) || (position == end && currentPosition == 0)))) {
+            positionOffset = (position / SEQ->EVENTS_WIDTH) * SEQ->EVENTS_WIDTH;
             repaintSequencer = true;
           }
         }
@@ -2528,7 +2569,7 @@ CellDisplay StepSequencerState::getEventCellDisplay(byte stepNum, byte eventNum)
 byte StepSequencerState::getPositionLedColor(byte stepNum) {
   byte color = Split[split].colorSequencerEmpty;
 
-  if (isVisibleSequencerForSplit(split) && stepNum >= positionOffset && stepNum < positionOffset + SEQ_EVENTS_WIDTH) {
+  if (isVisibleSequencerForSplit(split) && stepNum >= positionOffset && stepNum < positionOffset + SEQ->EVENTS_WIDTH) {
     if (getCurrentPatternStep(stepNum).events[0].hasData()) {
       color = Split[split].colorSequencerEvent;
     }
@@ -2546,7 +2587,7 @@ byte StepSequencerState::getPositionLedColor(byte stepNum) {
 }
 
 void StepSequencerState::updatePositionLed(byte stepNum) {
-  if (isVisibleSequencerForSplit(split) && stepNum >= positionOffset && stepNum < positionOffset + SEQ_EVENTS_WIDTH) {
+  if (isVisibleSequencerForSplit(split) && stepNum >= positionOffset && stepNum < positionOffset + SEQ->EVENTS_WIDTH) {
     CellDisplay display = cellOn;
 
     if (steps[stepNum].focused) {
@@ -2710,7 +2751,7 @@ boolean StepSequencerState::findNoteSequencerCoordinate(StepEvent& event, byte& 
   while (!foundMatch && abs(rowDistance) < NUMROWS) {
     short r = event.getRow() + rowDistance;
     if (r >= 0 && r < NUMROWS) {
-      for (byte c = 1; c <= SEQ_EVENTS_WIDTH; ++c) {
+      for (byte c = 1; c <= SEQ->EVENTS_WIDTH; ++c) {
         short noteNum = getNoteNumber(split, c, r);
         if (noteNum == event.getNote()) {
           event.setRow(r);
@@ -2750,7 +2791,7 @@ void StepSequencerState::paintCurrentPatternStep(byte stepNum) {
         case sequencerDrums: {
           for (byte seqRow = 0; seqRow < 7; ++seqRow) {
             short seqCol = stepNum - positionOffset;
-            if (seqCol >= 0 && seqCol < SEQ_EVENTS_WIDTH && getRowNoteNum(seqRow) == event.getNote()) {
+            if (seqCol >= 0 && seqCol < SEQ->EVENTS_WIDTH && getRowNoteNum(seqRow) == event.getNote()) {
               // determine the cell's color based on the velocity value
               byte cellColor = COLOR_OFF;
               if (event.getVelocity() > 96) {
@@ -2775,7 +2816,7 @@ void StepSequencerState::paintCurrentPatternStep(byte stepNum) {
 }
 
 void StepSequencerState::clearSequencer() {
-  for (byte col = 1; col <= SEQ_EVENTS_WIDTH; ++col) {
+  for (byte col = 1; col <= SEQ->EVENTS_WIDTH; ++col) {
     for (byte row = 1; row < 8; ++row) {
       clearLed(col, row);
     }
@@ -2793,7 +2834,7 @@ void StepSequencerState::paintSequencerUnbuffered() {
   switch (Split[split].sequencerView) {
     case sequencerNotes:
       for (byte row = 1; row < 8; ++row) {
-        for (byte col = 1; col <= SEQ_EVENTS_WIDTH; ++col) {
+        for (byte col = 1; col <= SEQ->EVENTS_WIDTH; ++col) {
           paintNormalDisplayCell(split, col, row);
         }
         performContinuousTasks();
@@ -2807,13 +2848,13 @@ void StepSequencerState::paintSequencerUnbuffered() {
     case sequencerScales:
     case sequencerDrums:
       for (byte row = 1; row < 8; ++row) {
-        for (byte col = 1; col <= SEQ_EVENTS_WIDTH; ++col) {
+        for (byte col = 1; col <= SEQ->EVENTS_WIDTH; ++col) {
           clearLed(col, row);
         }
         performContinuousTasks();
       }
 
-      for (byte seqCol = 0; seqCol < SEQ_EVENTS_WIDTH; ++seqCol) {
+      for (byte seqCol = 0; seqCol < SEQ->EVENTS_WIDTH; ++seqCol) {
         paintCurrentPatternStep(seqCol + positionOffset);
       }
       break;
@@ -2831,20 +2872,20 @@ void StepSequencerState::paintSequencerUnbuffered() {
 }
 
 void StepSequencerState::paintLowRow() {
-  for (byte seqCol = 0; seqCol < SEQ_EVENTS_WIDTH; ++seqCol) {
+  for (byte seqCol = 0; seqCol < SEQ->EVENTS_WIDTH; ++seqCol) {
     byte pos = seqCol + positionOffset;
     updatePositionLed(pos);
   }
 }
 
 void StepSequencerState::paintMuter() {
-  setLed(SEQ_MUTER_COLUMN, SEQ_MUTER_TOP, seqState[LEFT].muted ? COLOR_RED : COLOR_OFF, cellOn);
-  setLed(SEQ_MUTER_COLUMN, SEQ_MUTER_BOTTOM, seqState[RIGHT].muted ? COLOR_RED : COLOR_OFF, cellOn);
+  setLed(SEQ->MUTER_COLUMN, SEQ->MUTER_TOP, seqState[LEFT].muted ? COLOR_RED : COLOR_OFF, cellOn);
+  setLed(SEQ->MUTER_COLUMN, SEQ->MUTER_BOTTOM, seqState[RIGHT].muted ? COLOR_RED : COLOR_OFF, cellOn);
 }
 
 void StepSequencerState::paintPatternSelector() {
   for (byte pattern = 0; pattern < MAX_SEQUENCER_PATTERNS; ++pattern) {
-    int col = SEQ_PATTERN_SELECTOR_LEFT + pattern;
+    int col = SEQ->PATTERN_SELECTOR_LEFT + pattern;
     byte leftColor = (pattern == seqState[LEFT].currentPattern ? Split[LEFT].colorAccent : Split[LEFT].colorMain);
     CellDisplay leftDisplay = (pattern == seqState[LEFT].nextPattern ? cellSlowPulse : cellOn);
     if (isPatternChained(LEFT, pattern)) leftDisplay = cellSlowPulse;
@@ -2852,7 +2893,7 @@ void StepSequencerState::paintPatternSelector() {
       leftDisplay = cellFastPulse;
     }
 
-    setLed(col, SEQ_PATTERN_SELECTOR_TOP, leftColor, leftDisplay);
+    setLed(col, SEQ->PATTERN_SELECTOR_TOP, leftColor, leftDisplay);
 
     byte rightColor = (pattern == seqState[RIGHT].currentPattern ? Split[RIGHT].colorAccent : Split[RIGHT].colorMain);
     CellDisplay rightDisplay = (pattern == seqState[RIGHT].nextPattern ? cellSlowPulse : cellOn);
@@ -2861,7 +2902,7 @@ void StepSequencerState::paintPatternSelector() {
       rightDisplay = cellFastPulse;
     }
 
-    setLed(col, SEQ_PATTERN_SELECTOR_BOTTOM, rightColor, rightDisplay);
+    setLed(col, SEQ->PATTERN_SELECTOR_BOTTOM, rightColor, rightDisplay);
   }
 }
 
@@ -2880,8 +2921,8 @@ void StepSequencerState::paintPerformanceSettings() {
       modeCellDisplayBottom = cellOn;
       break;
   }
-  setLed(SEQ_VIEW_COLUMN, SEQ_VIEW_TOP, Split[split].colorMain, modeCellDisplayTop);
-  setLed(SEQ_VIEW_COLUMN, SEQ_VIEW_BOTTOM, Split[split].colorMain, modeCellDisplayBottom);
+  setLed(SEQ->VIEW_COLUMN, SEQ->VIEW_TOP, Split[split].colorMain, modeCellDisplayTop);
+  setLed(SEQ->VIEW_COLUMN, SEQ->VIEW_BOTTOM, Split[split].colorMain, modeCellDisplayBottom);
 
   CellDisplay stepSize1CellDisplayTop = cellOff;
   CellDisplay stepSize1CellDisplayBottom = cellOff;
@@ -2905,8 +2946,8 @@ void StepSequencerState::paintPerformanceSettings() {
       stepSize1CellDisplayBottom = cellOn;
       break;
   }
-  setLed(SEQ_STEPSIZE_LEFT, SEQ_STEPSIZE_TOP, Split[split].colorMain, stepSize1CellDisplayTop);
-  setLed(SEQ_STEPSIZE_LEFT, SEQ_STEPSIZE_BOTTOM, Split[split].colorMain, stepSize1CellDisplayBottom);
+  setLed(SEQ->STEPSIZE_LEFT, SEQ->STEPSIZE_TOP, Split[split].colorMain, stepSize1CellDisplayTop);
+  setLed(SEQ->STEPSIZE_LEFT, SEQ->STEPSIZE_BOTTOM, Split[split].colorMain, stepSize1CellDisplayBottom);
 
   CellDisplay stepSize2CellDisplayTop = cellOff;
   CellDisplay stepSize2CellDisplayBottom = cellOff;
@@ -2936,16 +2977,16 @@ void StepSequencerState::paintPerformanceSettings() {
         break;
     }
   }
-  setLed(SEQ_STEPSIZE_RIGHT, SEQ_STEPSIZE_TOP, Split[split].colorMain, stepSize2CellDisplayTop);
-  setLed(SEQ_STEPSIZE_RIGHT, SEQ_STEPSIZE_BOTTOM, Split[split].colorMain, stepSize2CellDisplayBottom);
+  setLed(SEQ->STEPSIZE_RIGHT, SEQ->STEPSIZE_TOP, Split[split].colorMain, stepSize2CellDisplayTop);
+  setLed(SEQ->STEPSIZE_RIGHT, SEQ->STEPSIZE_BOTTOM, Split[split].colorMain, stepSize2CellDisplayBottom);
 
-  setLed(SEQ_LOOPSCREEN_COLUMN, SEQ_LOOPSCREEN_ROW, Split[split].colorMain, getCurrentPattern().loopScreen ? cellOn : cellOff);
+  setLed(SEQ->LOOPSCREEN_COLUMN, SEQ->LOOPSCREEN_ROW, Split[split].colorMain, getCurrentPattern().loopScreen ? cellOn : cellOff);
 
   CellDisplay directionCellDisplay = cellOff;
   if (getCurrentPattern().sequencerDirection != sequencerForward) {
     directionCellDisplay = cellOn;
   }
-  setLed(SEQ_DIRECTION_COLUMN, SEQ_DIRECTION_ROW, getDirectionColor(), directionCellDisplay);
+  setLed(SEQ->DIRECTION_COLUMN, SEQ->DIRECTION_ROW, getDirectionColor(), directionCellDisplay);
 }
 
 byte StepSequencerState::getDirectionColor() {
@@ -2957,18 +2998,18 @@ byte StepSequencerState::getDirectionColor() {
 
 void StepSequencerState::paintNavigation() {
   if (isSequencerNavigationAreaVisible()) {
-    int highlightIndex = SEQ_NAVIGATION_LEFT + positionOffset/SEQ_EVENTS_WIDTH;
+    int highlightIndex = SEQ->NAVIGATION_LEFT + positionOffset / SEQ->EVENTS_WIDTH;
     boolean highlightTop = (rowOffset != 0 && Split[split].sequencerView != sequencerNotes);
 
-    for (byte c = SEQ_NAVIGATION_LEFT; c <= SEQ_NAVIGATION_RIGHT; ++c) {
-      setLed(c, SEQ_NAVIGATION_BOTTOM, (c == highlightIndex && !highlightTop ? getCurrentPositionColor(): getOtherPositionColor()), cellOn);
+    for (byte c = SEQ->NAVIGATION_LEFT; c <= SEQ->NAVIGATION_RIGHT; ++c) {
+      setLed(c, SEQ->NAVIGATION_BOTTOM, (c == highlightIndex && !highlightTop ? getCurrentPositionColor(): getOtherPositionColor()), cellOn);
       switch (Split[split].sequencerView) {
         case sequencerNotes:
-          clearLed(c, SEQ_NAVIGATION_TOP);
+          clearLed(c, SEQ->NAVIGATION_TOP);
           break;
         case sequencerScales:
         case sequencerDrums:
-          setLed(c, SEQ_NAVIGATION_TOP, (c == highlightIndex && highlightTop ? getCurrentPositionColor(): getOtherPositionColor()), cellOn);
+          setLed(c, SEQ->NAVIGATION_TOP, (c == highlightIndex && highlightTop ? getCurrentPositionColor(): getOtherPositionColor()), cellOn);
           break;
       }
     }
@@ -2993,15 +3034,15 @@ void StepSequencerState::paintFocusFaders() {
 }
 
 void StepSequencerState::clearFocusFader(byte row) {
-  for (byte col = SEQ_FADER_LEFT; col <= SEQ_FADER_RIGHT; ++col) {
+  for (byte col = SEQ->FADER_LEFT; col <= SEQ->FADER_RIGHT; ++col) {
     clearLed(col, row);
   }
 }
 
 void StepSequencerState::paintFocusFader(byte row, byte value) {
-  int32_t fxdFaderPosition = fxdCalculateFaderPosition(value, SEQ_FADER_LEFT, SEQ_FADER_LENGTH) - FXD_CALX_HALF_UNIT;
+  int32_t fxdFaderPosition = fxdCalculateFaderPosition(value, SEQ->FADER_LEFT, SEQ->FADER_LENGTH) - FXD_CALX_HALF_UNIT;
 
-  for (byte col = SEQ_FADER_RIGHT; col >= SEQ_FADER_LEFT; --col) {
+  for (byte col = SEQ->FADER_RIGHT; col >= SEQ->FADER_LEFT; --col) {
     if (Device.calRows[col][0].fxdReferenceX - FXD_CALX_HALF_UNIT > fxdFaderPosition) {
       setLed(col, row, Split[split].colorMain, cellOn);
     }
@@ -3027,8 +3068,8 @@ void StepSequencerState::paintDurationFader(byte row, unsigned short duration) {
     display = cellFocusPulse;
   }
 
-  int faderPosition = SEQ_FADER_LEFT + FXD_TO_INT(FXD_MUL(FXD_FROM_INT(index), FXD_SEQ_DURATION_FADER_RATIO));
-  for (byte col = SEQ_FADER_RIGHT; col >= SEQ_FADER_LEFT; --col) {
+  int faderPosition = SEQ->FADER_LEFT + FXD_TO_INT(FXD_MUL(FXD_FROM_INT(index), SEQ->FXD_SEQ_DURATION_FADER_RATIO));
+  for (byte col = SEQ->FADER_RIGHT; col >= SEQ->FADER_LEFT; --col) {
     if (col > faderPosition) {
       setLed(col, row, Split[split].colorMain, display);
     }
@@ -3039,10 +3080,10 @@ void StepSequencerState::paintDurationFader(byte row, unsigned short duration) {
 }
 
 void StepSequencerState::paintPitchOffsetFader(byte row, short pitchOffset) {
-  int32_t fxdFaderPosition = fxdCalculateFaderPosition(abs(pitchOffset), SEQ_FADER_LEFT, SEQ_FADER_LENGTH, FXD_CONST_50) - FXD_CALX_HALF_UNIT;
+  int32_t fxdFaderPosition = fxdCalculateFaderPosition(abs(pitchOffset), SEQ->FADER_LEFT, SEQ->FADER_LENGTH, FXD_CONST_50) - FXD_CALX_HALF_UNIT;
 
   if (pitchOffset >= 0) {
-    for (byte col = SEQ_FADER_RIGHT; col >= SEQ_FADER_LEFT; --col) {
+    for (byte col = SEQ->FADER_RIGHT; col >= SEQ->FADER_LEFT; --col) {
       if (Device.calRows[col][0].fxdReferenceX - FXD_CALX_HALF_UNIT > fxdFaderPosition) {
         clearLed(col, row);
       }
@@ -3052,8 +3093,8 @@ void StepSequencerState::paintPitchOffsetFader(byte row, short pitchOffset) {
     }
   }
   else {
-    for (byte col = SEQ_FADER_LEFT; col <= SEQ_FADER_RIGHT; ++col) {
-      if (Device.calRows[SEQ_FADER_RIGHT - col + SEQ_FADER_LEFT][0].fxdReferenceX - FXD_CALX_HALF_UNIT > fxdFaderPosition) {
+    for (byte col = SEQ->FADER_LEFT; col <= SEQ->FADER_RIGHT; ++col) {
+      if (Device.calRows[SEQ->FADER_RIGHT - col + SEQ->FADER_LEFT][0].fxdReferenceX - FXD_CALX_HALF_UNIT > fxdFaderPosition) {
         clearLed(col, row);
       }
       else {
@@ -3356,7 +3397,7 @@ void setPatternChain(byte split) {
   short firstPattern = -1;
   short lastPattern = -1;
   for (byte p = 0; p < 4; ++p) {
-    if (cell(SEQ_PATTERN_SELECTOR_LEFT + p, SEQ_PATTERN_SELECTOR_TOP - split).touched == touchedCell) {
+    if (cell(SEQ->PATTERN_SELECTOR_LEFT + p, SEQ->PATTERN_SELECTOR_TOP - split).touched == touchedCell) {
       if (firstPattern == -1) firstPattern = p;        
       lastPattern = p;
     }
@@ -3380,13 +3421,13 @@ inline void resetPatternChain() {
 }
 
 inline boolean isWithinSequencerPatternChainClearArea() {           // 2 hidden switches immediately to the left of the pattern selectors
-  return sensorCol == SEQ_PATTERN_SELECTOR_LEFT - 1 && sensorRow >= SEQ_PATTERN_SELECTOR_BOTTOM && sensorRow <= SEQ_PATTERN_SELECTOR_TOP;
+  return sensorCol == SEQ->PATTERN_SELECTOR_LEFT - 1 && sensorRow >= SEQ->PATTERN_SELECTOR_BOTTOM && sensorRow <= SEQ->PATTERN_SELECTOR_TOP;
 }
 
 inline void handleSequencerPatternChainClearTouch() {
   DEBUGPRINT_FUNCNAME();
 
-  byte split = SEQ_PATTERN_SELECTOR_TOP - sensorRow;
+  byte split = SEQ->PATTERN_SELECTOR_TOP - sensorRow;
   memset(&patternChain[split][0], -1, 4);
   seqState[split].nextPattern = -1;
   seqState[split].paintPatternSelector();                    // so that the nextPattern pad isn't blinking
@@ -3409,7 +3450,7 @@ boolean isPatternChained (byte split, byte pattern) {
 inline byte patternChainTouches(byte split) {          // count the touches on the row of 4 pattern selectors
   byte touches = 0;
   for (byte p = 0; p < 4; ++p) {
-    if (cell(SEQ_PATTERN_SELECTOR_LEFT + p, SEQ_PATTERN_SELECTOR_TOP - split).touched == touchedCell) {
+    if (cell(SEQ->PATTERN_SELECTOR_LEFT + p, SEQ->PATTERN_SELECTOR_TOP - split).touched == touchedCell) {
       ++touches;
     }
   }
