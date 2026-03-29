@@ -1727,18 +1727,24 @@ void handleSequencerColorsNewTouch() {
   }
   else if (ensureLegendHidden()) {
     if (sensorRow == 3) {
-      if (sensorCol == 5 || sensorCol == 6) {
+      switch (sensorCol) {
+      case 5:
+      case 6:
         Split[Global.currentPerSplit].colorSequencerEmpty = colorCycle(Split[Global.currentPerSplit].colorSequencerEmpty, false);
-        updateDisplay();
-      }
-      else if (sensorCol == 7 || sensorCol == 8) {
+        break;
+      case 7:
+      case 8:
         Split[Global.currentPerSplit].colorSequencerEvent = colorCycle(Split[Global.currentPerSplit].colorSequencerEvent, false);
-        updateDisplay();
-      }
-      else if (sensorCol == 9 || sensorCol == 10) {
+        break;
+      case 9:
+      case 10:
         Split[Global.currentPerSplit].colorSequencerDisabled = colorCycle(Split[Global.currentPerSplit].colorSequencerDisabled, false);
-        updateDisplay();
+        break;
+      case 11:
+        Split[Global.currentPerSplit].colorPlayed = colorCycle(Split[Global.currentPerSplit].colorPlayed, false);
+        break;
       }
+      updateDisplay();
     }
   }
 }
@@ -2407,6 +2413,8 @@ boolean StepSequencerState::isRunning() {
 }
 
 void StepSequencerState::advanceSequencer() {
+  DEBUGPRINT_FUNCNAME();
+
   // handle the preview event's duration
   if (previewEvent.isActive()) {
     previewEvent.tick();
