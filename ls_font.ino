@@ -34,9 +34,6 @@ surface.
 // so we succumb to desparate measures in our attempt to get rid of the RAM/ROM data mix idea that's causing all those 
 // relocate MAP slots and RAM consumption in our final product:
 //
-#if 0
-#pragma arm section rwdata = "foo", rodata = "bar"
-#endif
 
 struct LS_PACKED Character {
   byte width;
@@ -2226,12 +2223,6 @@ LS_CONST Character* const condChars[] = {
   &cond_b
 };
 LS_CONST struct Font condFont = { 8, " +-./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZb", condChars };
-
-
-// reset to default sections:
-#if 0
-#pragma arm section rwdata, rodata
-#endif
 
 
 unsigned font_width_string(const char* str, const struct Font* const font) {

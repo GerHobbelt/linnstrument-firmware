@@ -1933,13 +1933,6 @@ inline void paintGlobalSettingsFlashTempo() {
 }
 
 void paintGlobalSettingsFlashTempo(byte color) {
-#if 0
-  if (displayMode == displayGlobal || displayMode == displayGlobalWithTempo) {
-    paintGlobalSettingsFlashTempo(now, 14, 3);
-    setLed(14, 3, globalColor, cellTempoPulse);
-  }
-  else 
-#endif
   if (controlButton != GLOBAL_SETTINGS_ROW &&
 #if 0
            !isSyncedToMidiClock() &&
@@ -1951,45 +1944,7 @@ void paintGlobalSettingsFlashTempo(byte color) {
     //paintGlobalSettingsFlashTempo(now, 0, 0);
     setLed(0, GLOBAL_SETTINGS_ROW, color, cellTempoPulse);
   }
-#if 0
-  // handle turning off the MIDI clock led after minimum 30ms
-  if (isSyncedToMidiClock() &&
-      controlButton != GLOBAL_SETTINGS_ROW &&
-      tempoLedOn != 0 &&
-      calcTimeDelta(nowMicros, tempoLedOn) > LED_FLASH_DELAY()) {
-    tempoLedOn = 0;
-    clearLed(0, GLOBAL_SETTINGS_ROW);
-  }
-#endif
 }
-
-#if 0
-void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
-  if (!animationActive && !userFirmwareActive) {
-    bool flash_on = false;
-    if (isVisibleSequencer())
-    {
-      flash_on = sequencerFlashTempoOn();
-    }
-    else
-    {
-      flash_on = (clock24PPQ == 0);
-    }
-
-    // flash the tap tempo cell at the beginning of the beat
-    if (flash_on) {
-      lightLed(col, row);
-      tempoLedOn = now;
-    }
-
-    // handle turning off the tap tempo led after minimum 30ms
-    if (tempoLedOn != 0 && calcTimeDelta(now, tempoLedOn) > LED_FLASH_DELAY()) {
-      tempoLedOn = 0;
-      clearLed(col, row);
-    }
-  }
-}
-#endif
 
 // paintGlobalSettingsDisplay:
 // Paints LEDs with state of all global settings

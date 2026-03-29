@@ -104,19 +104,6 @@ void startHFLEDpaintTimer(uint32_t frequency) {
   auto tc = TC1;
   tc->TC_WPMR = (0x54494D << 8) | 0; // WPEN=0
 
-#if 0
-		if (!TCChanEnabled[interfaceID]) {
-			pmc_enable_periph_clk(ID_TC3);  // TC1, channel 0 --> #TC3 !
-			TC_Configure(chTC, chNo,
-				TC_CMR_TCCLKS_TIMER_CLOCK1 |
-				TC_CMR_WAVE |         // Waveform mode
-				TC_CMR_WAVSEL_UP_RC | // Counter running up and reset when equals to RC
-				TC_CMR_EEVT_XC0 |     // Set external events from XC0 (this setup TIOB as output)
-				TC_CMR_ACPA_CLEAR | TC_CMR_ACPC_CLEAR |
-				TC_CMR_BCPB_CLEAR | TC_CMR_BCPC_CLEAR);
-			TC_SetRC(chTC, chNo, TC);
-		}
-#endif  
   pmc_set_writeprotect(false);
   /*
      DIV must not be changed while peripheral is in use or when the peripheral clock is enabled.To change the clock
@@ -131,16 +118,11 @@ void startHFLEDpaintTimer(uint32_t frequency) {
   pmc_enable_periph_clk(ID_TC3);
 
   constexpr const auto channel = 0;
-#if 0
-  TC_Configure(tc, channel, TC_CMR_WAVE | TC_CMR_WAVSEL_UP_RC | TC_CMR_TCCLKS_TIMER_CLOCK4);
-  uint32_t rc = VARIANT_MCK/128/frequency; //128 because we selected TIMER_CLOCK4 above
-#else
   TC_Configure(tc, channel, TC_CMR_WAVE | TC_CMR_WAVSEL_UP_RC | TC_CMR_TCCLKS_TIMER_CLOCK1 |
         TC_CMR_EEVT_XC0 |      // see note about TIOB vs no IRQ further below: EEVT must not be kept 0 if we want RB Compare IRQ.
 				TC_CMR_ACPA_CLEAR | TC_CMR_ACPC_SET | TC_CMR_ASWTRG_SET |
 				TC_CMR_BCPB_CLEAR | TC_CMR_BCPC_SET | TC_CMR_BSWTRG_SET);
   uint32_t rc = VARIANT_MCK/2/frequency; //2 because we selected TIMER_CLOCK1 above; see also "Table 36-1. Timer Counter Clock Assignment"
-#endif
   TC_SetRA(tc, channel, rc/4); //50% high, 50% low
   TC_SetRB(tc, channel, rc/2);
   TC_SetRC(tc, channel, rc);
