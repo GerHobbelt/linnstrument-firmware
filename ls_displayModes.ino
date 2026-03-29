@@ -1739,9 +1739,7 @@ void paintGlobalSettingsFlashTempo(byte color) {
 #endif
            (isArpeggiatorEnabled(Global.currentPerSplit) ||
             isVisibleSequencer() ||
-#if 0
             sequencerIsRunning() ||
-#endif
             isStandaloneMidiClockRunning())) {
     //paintGlobalSettingsFlashTempo(now, 0, 0);
     setLed(0, GLOBAL_SETTINGS_ROW, color, cellTempoPulse);
