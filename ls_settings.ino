@@ -265,15 +265,57 @@ void writeInitialProjectSettings() {
   DEBUGPRINT((2," bytes"));
   DEBUGPRINT((2,"\n"));
 
-  dueFlashStorage.write(PROJECTS_OFFSET, 0);
+  // read the marker to know which configuration version was last written successfully, if any
+  byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
+  DEBUGPRINT((2,"MARKER="));
+  DEBUGPRINT((2,marker));
+  DEBUGPRINT((2,"\n"));
 
-  for (byte i = 0; i < PROJECT_INDEXES_COUNT; ++i) {
-    dueFlashStorage.write(PROJECT_INDEX_OFFSET(0, i), i);
-    dueFlashStorage.write(PROJECT_INDEX_OFFSET(1, i), i);
+  boolean has_diff = (marker == 0 || marker == 1) ? false : true;
+  
+  if (!has_diff) {
+    // read the location of the temporary project storage
+    byte previousIndexes[PROJECT_INDEXES_COUNT];
+    memcpy(&previousIndexes, dueFlashStorage.readAddress(PROJECT_INDEX_OFFSET(marker, 0)), PROJECT_INDEXES_COUNT);
+    //byte tmpIndex = previousIndexes[MAX_PROJECTS];
+    for (byte i = 0; i < PROJECT_INDEXES_COUNT; ++i) {
+      byte prjIndex = previousIndexes[i];
+
+      if (prjIndex >= MAX_PROJECTS) {
+        has_diff = true;
+      }
+    
+      if (!has_diff) {
+        uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + prjIndex * SINGLE_PROJECT_SIZE;
+        auto diff = memcmp(&Project, dueFlashStorage.readAddress(projectOffset), sizeof(SequencerProject));
+        if (diff == 0) {
+          DEBUGPRINT((2,"writeInitialProjectSettings project#="));
+          DEBUGPRINT((2,i));
+          DEBUGPRINT((2,", prjIndex="));
+          DEBUGPRINT((2,prjIndex));
+          DEBUGPRINT((2," --> no changes when compared to the active Project!\n"));
+        }
+        else {
+          has_diff = true;
+        }
+      }
+    }
   }
 
-  for (byte p = 0; p <= MAX_PROJECTS; ++p) {
-    writeProjectToFlashRaw(p);
+  if (!has_diff) {
+    DEBUGPRINT((2,"writeInitialProjectSettings: nothing to write: nothing differs when compared to the active Project!\n"));
+  }
+  else {
+    dueFlashStorage.write(PROJECTS_OFFSET, 0);
+
+    for (byte i = 0; i < PROJECT_INDEXES_COUNT; ++i) {
+      dueFlashStorage.write(PROJECT_INDEX_OFFSET(0, i), i);
+      dueFlashStorage.write(PROJECT_INDEX_OFFSET(1, i), i);
+    }
+
+    for (byte p = 0; p <= MAX_PROJECTS; ++p) {
+      writeProjectToFlashRaw(p);
+    }
   }
 }
 
@@ -303,15 +345,33 @@ void writeProjectToFlash(byte project) {
   byte tmpIndex = previousIndexes[MAX_PROJECTS];
   byte prjIndex = previousIndexes[project];
 
-  writeProjectToFlashRaw(tmpIndex);
+  boolean has_diff = false;
+  
+  uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + prjIndex * SINGLE_PROJECT_SIZE;
+  auto diff = memcmp(&Project, dueFlashStorage.readAddress(projectOffset), sizeof(SequencerProject));
+  if (diff == 0) {
+    DEBUGPRINT((2,"writeProjectToFlash prjIndex="));
+    DEBUGPRINT((2,prjIndex));
+    DEBUGPRINT((2," --> no changes when compared to the active Project!\n"));
+  }
+  else {
+    has_diff = true;
+  }
 
-  // write the marker after the project data so that this version becomes to latest coherent one
-  byte newMarker = 1 - marker;
-  previousIndexes[project] = tmpIndex;
-  previousIndexes[MAX_PROJECTS] = prjIndex;
-  dueFlashStorage.write(PROJECT_INDEX_OFFSET(newMarker, 0), previousIndexes, PROJECT_INDEXES_COUNT);
-  dueFlashStorage.write(PROJECTS_OFFSET, newMarker);
+  if (!has_diff) {
+    DEBUGPRINT((2,"writeProjectToFlash: nothing to write: nothing differs when compared to the active Project!\n"));
+  }
+  else {
+    writeProjectToFlashRaw(tmpIndex);
 
+    // write the marker after the project data so that this version becomes the latest coherent one
+    byte newMarker = 1 - marker;
+    previousIndexes[project] = tmpIndex;
+    previousIndexes[MAX_PROJECTS] = prjIndex;
+    dueFlashStorage.write(PROJECT_INDEX_OFFSET(newMarker, 0), previousIndexes, PROJECT_INDEXES_COUNT);
+    dueFlashStorage.write(PROJECTS_OFFSET, newMarker);
+  }
+  
   updateDisplay();
 }
 
