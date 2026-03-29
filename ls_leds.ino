@@ -127,17 +127,10 @@ void clearStoredCustomLedLayer(int pattern)
 }
 
 inline void startBufferedLeds() {
-#if 0
-  bufferedLeds = 1;
-  memcpy(ledsGrid[bufferedLeds], ledsGrid[visibleLeds], LED_ARRAY_SIZE);
-#endif
 }
 
 inline void finishBufferedLeds() {
   memcpy(ledsVisibleGrid, &ledsBufferedGrid[LED_LAYER_COMBINED * LED_LAYER_SIZE], LED_LAYER_SIZE);
-#if 0
-  bufferedLeds = 0;
-#endif
   // updateLedLayerCombined();
 }
 
@@ -248,16 +241,7 @@ inline void clearRow(byte row) {
 inline void completelyRefreshLeds() {
   // the LED_LAYER_COMBINED is always up to date, thanks to all LED grid changes going through the setLed() function.
   // Hence this activity is superfluous.
-#if 0  
-  for (byte row = 0; row < NUMROWS; ++row) {
-    for (byte col = 0; col < NUMCOLS; ++col) {
-      ledBuffered(LED_LAYER_COMBINED, col, row) = getCombinedLedData(col, row);
-    }
-    performContinuousTasks();
-  }
-#else
   performContinuousTasks();
-#endif
 }
 
 inline void updateLedLayerCombined() {
