@@ -76,12 +76,12 @@ void debugprint_funcname(const char *fname) {
 
 void debugprint_funcname_L5(const char *fname) {
   if (SWITCH_SURFACESCAN) {
-    DEBUGPRINT((5,fname));
-    DEBUGPRINT((5,": anim="));
-    DEBUGPRINT((5,int(animationActive)));
-    DEBUGPRINT((5," mode="));
-    DEBUGPRINT((5,int(displayMode)));
-    DEBUGPRINT((5,"\n"));
+    DEBUGPRINT((4,fname));
+    DEBUGPRINT((4,": anim="));
+    DEBUGPRINT((4,int(animationActive)));
+    DEBUGPRINT((4," mode="));
+    DEBUGPRINT((4,int(displayMode)));
+    DEBUGPRINT((4,"\n"));
   }
 }
 
