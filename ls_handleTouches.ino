@@ -402,11 +402,15 @@ boolean handleNewTouch() {
     return false;
   }
 
-  // any touch will wake up LinnStrument again, and should be ignored
+  // any touch (of any of the switches) will wake up LinnStrument again, and should be ignored
+  //
+  // Note: we ignore any touch on the pad grid: only touching the switches will awaken your Linn!
   if (displayMode == displaySleep) {
-    cellTouched(ignoredCell);
-    setDisplayMode(displayNormal);
-    updateDisplay();
+    if (sensorCol == 0) {
+      cellTouched(ignoredCell);
+      setDisplayMode(displayNormal);
+      updateDisplay();
+    }
     return false;
   }
 
