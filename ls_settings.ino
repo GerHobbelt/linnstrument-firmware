@@ -166,7 +166,9 @@ void initializeStorage() {
 inline void storeSettings() {
   if (!sequencerIsRunning()) {
     Project.tempo = FXD4_TO_INT(fxd4CurrentTempo);
+#if 0
     writeSettingsToFlash();
+#endif
   }
 }
 
@@ -3289,6 +3291,7 @@ void handleGlobalSettingRelease() {
         if (ensureCellBeforeHoldWait(resetColor, resetDisplay)) {
           switchSerialMode(!Device.serialMode);
           storeSettings();
+          writeSettingsToFlash();
         }
       }
       // Enter calibration mode

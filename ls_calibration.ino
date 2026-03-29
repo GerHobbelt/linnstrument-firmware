@@ -593,6 +593,7 @@ boolean handleCalibrationRelease() {
           delayUsec(500000);
 
           storeSettings();
+          writeSettingsToFlash();
                     
           initializeCalibrationSamples();
           initializeTouchInfo();
