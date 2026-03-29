@@ -166,7 +166,9 @@ void initializeStorage() {
 inline void storeSettings() {
   if (!sequencerIsRunning()) {
     Project.tempo = FXD4_TO_INT(fxd4CurrentTempo);
+#if 0
     writeSettingsToFlash();
+#endif
   }
 }
 
@@ -3466,12 +3468,14 @@ void handleGlobalSettingRelease() {
             Device.microLinn.uninstall = false;
             switchSerialMode(true);
             storeSettings();
+            writeSettingsToFlash();
           } else if (!Device.microLinn.uninstall) {
             Device.microLinn.uninstall = true;
           } else {
             Device.microLinn.uninstall = false;
             switchSerialMode(false);          
             storeSettings();
+            writeSettingsToFlash();
           }
         }
       }
