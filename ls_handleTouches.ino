@@ -809,6 +809,8 @@ boolean handleXYZupdate() {
       break;
   }
 
+  DEBUGPRINT_FUNCNAME();
+
   // only continue if the active display modes require finger tracking
   if (displayMode != displayNormal &&
       displayMode != displayVolume &&
@@ -820,8 +822,6 @@ boolean handleXYZupdate() {
     }
     return false;
   }
-
-  DEBUGPRINT_FUNCNAME();
 
   lastTouchMoment = millis();
     
