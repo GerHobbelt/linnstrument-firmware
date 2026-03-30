@@ -64,7 +64,7 @@ struct SequencerConstantsT {
 
 constexpr static const byte SEQ_DURATION_EDIT_PANEL_COUNT = 17;
 
-LS_CONST SequencerConstantsT SequencerConstants[2] = {
+static const SequencerConstantsT SequencerConstants[2] = {
 {
 #define NUMCOLS 26  
 
@@ -2375,8 +2375,6 @@ boolean StepSequencerState::isRunning() {
 }
 
 void StepSequencerState::advanceSequencer() {
-  DEBUGPRINT_FUNCNAME();
-
   // handle the preview event's duration
   if (previewEvent.isActive()) {
     previewEvent.tick();
@@ -2388,6 +2386,7 @@ void StepSequencerState::advanceSequencer() {
 
   // step sequencer advancement logic
   if (isRunning()) {
+    DEBUGPRINT_FUNCNAME_L5();
 
     // count down all active step events
     for (byte s = 0; s < MAX_SEQUENCER_STEPS; ++s) {
