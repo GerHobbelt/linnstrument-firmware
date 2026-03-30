@@ -42,67 +42,67 @@ struct LS_PACKED Character {
 
 /******************************************* Tiny Font *******************************************/
 
-LS_CONST Character tiny_blank = { 2,
+static const Character tiny_blank = { 2,
   "  "
   "  "
   "  "
   "  "  };
 
-LS_CONST Character tiny_0 = { 3,
+static const Character tiny_0 = { 3,
   "000"
   "0 0"
   "0 0"
   "000" };
 
-LS_CONST Character tiny_1 = { 2,
+static const Character tiny_1 = { 2,
   " 0"
   "00"
   " 0"
   " 0" };
 
-LS_CONST Character tiny_2 = { 3,
+static const Character tiny_2 = { 3,
   "000"
   "  0"
   "00 "
   "000" };
 
-LS_CONST Character tiny_3 = { 3,
+static const Character tiny_3 = { 3,
   "000"
   " 0 "
   "  0"
   "00 " };
 
-LS_CONST Character tiny_4 = { 3,
+static const Character tiny_4 = { 3,
   "0 0"
   "0 0"
   "000"
   "  0" };
 
-LS_CONST Character tiny_5 = { 3,
+static const Character tiny_5 = { 3,
   "000"
   "00 "
   "  0"
   "00 " };
 
-LS_CONST Character tiny_6 = { 3,
+static const Character tiny_6 = { 3,
   "0  "
   "000"
   "0 0"
   "000" };
 
-LS_CONST Character tiny_7 = { 3,
+static const Character tiny_7 = { 3,
   "000"
   "  0"
   " 0 "
   "0  " };
 
-LS_CONST Character tiny_8 = { 3,
+static const Character tiny_8 = { 3,
   "000"
   "000"
   "0 0"
   "000" };
 
-LS_CONST Character tiny_9 = { 3,
+static const Character tiny_9 = { 3,
   "000"
   "0 0"
   "000"
@@ -110,7 +110,7 @@ LS_CONST Character tiny_9 = { 3,
 
 /******************************************* Small Font ******************************************/
 
-LS_CONST Character small_blank = { 2,
+static const Character small_blank = { 2,
   "  "
   "  "
   "  "
@@ -120,7 +120,7 @@ LS_CONST Character small_blank = { 2,
   "  "
   "  "  };
 
-LS_CONST Character small_excl = { 3,
+static const Character small_excl = { 3,
   "   "
   "   "
   " 0 "
@@ -130,7 +130,7 @@ LS_CONST Character small_excl = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character small_quot = { 2,
+static const Character small_quot = { 2,
   "  "
   "  "
   "00"
@@ -140,7 +140,7 @@ LS_CONST Character small_quot = { 2,
   "  "
   "  " };
 
-LS_CONST Character small_hash = { 5,
+static const Character small_hash = { 5,
   "     "
   "     "
   " 0 0 "
@@ -150,7 +150,7 @@ LS_CONST Character small_hash = { 5,
   " 0 0 "
   "     " };
 
-LS_CONST Character small_dollar = { 5,
+static const Character small_dollar = { 5,
   "     "
   "     "
   " 000 "
@@ -160,7 +160,7 @@ LS_CONST Character small_dollar = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character small_perc = { 5,
+static const Character small_perc = { 5,
   "     "
   "     "
   " 0   "
@@ -170,7 +170,7 @@ LS_CONST Character small_perc = { 5,
   "   0 "
   "     " };
 
-LS_CONST Character small_amp = { 5,
+static const Character small_amp = { 5,
   "     "
   "     "
   " 00  "
@@ -180,7 +180,7 @@ LS_CONST Character small_amp = { 5,
   " 00 0"
   "     " };
 
-LS_CONST Character small_squot = { 3,
+static const Character small_squot = { 3,
   "   "
   "   "
   " 0 "
@@ -190,7 +190,7 @@ LS_CONST Character small_squot = { 3,
   "   "
   "   " };
 
-LS_CONST Character small_lparen = { 2,
+static const Character small_lparen = { 2,
   "  "
   "  "
   " 0"
@@ -200,7 +200,7 @@ LS_CONST Character small_lparen = { 2,
   " 0"
   "  " };
 
-LS_CONST Character small_rparen = { 2,
+static const Character small_rparen = { 2,
   "  "
   "  "
   "0 "
@@ -210,7 +210,7 @@ LS_CONST Character small_rparen = { 2,
   "0 "
   "  " };
 
-LS_CONST Character small_mult = { 5,
+static const Character small_mult = { 5,
   "     "
   "     "
   "0 0 0"
@@ -220,7 +220,7 @@ LS_CONST Character small_mult = { 5,
   "0 0 0"
   "     " };
 
-LS_CONST Character small_plus = { 3,
+static const Character small_plus = { 3,
   "   "
   "   "
   "   "
@@ -230,7 +230,7 @@ LS_CONST Character small_plus = { 3,
   "   "
   "   " };
 
-LS_CONST Character small_comma = { 2,
+static const Character small_comma = { 2,
   "  "
   "  "
   "  "
@@ -240,7 +240,7 @@ LS_CONST Character small_comma = { 2,
   " 0"
   "0 " };
 
-LS_CONST Character small_minus = { 3,
+static const Character small_minus = { 3,
   "   "
   "   "
   "   "
@@ -250,7 +250,7 @@ LS_CONST Character small_minus = { 3,
   "   "
   "   " };
 
-LS_CONST Character small_dot = { 1,
+static const Character small_dot = { 1,
   " "
   " "
   " "
@@ -260,7 +260,7 @@ LS_CONST Character small_dot = { 1,
   "0"
   " " };
 
-LS_CONST Character small_div = { 3,
+static const Character small_div = { 3,
   "   "
   "   "
   "   "
@@ -270,7 +270,7 @@ LS_CONST Character small_div = { 3,
   "   "
   "   " };
 
-LS_CONST Character small_0 = { 4,
+static const Character small_0 = { 4,
   "    "
   " 00 "
   "0  0"
@@ -280,7 +280,7 @@ LS_CONST Character small_0 = { 4,
   " 00 "
   "    " };
 
-LS_CONST Character small_1 = { 2,
+static const Character small_1 = { 2,
   "  "
   " 0"
   "00"
@@ -290,7 +290,7 @@ LS_CONST Character small_1 = { 2,
   " 0"
   "  " };
 
-LS_CONST Character small_2 = { 4,
+static const Character small_2 = { 4,
   "    "
   " 00 "
   "0  0"
@@ -300,7 +300,7 @@ LS_CONST Character small_2 = { 4,
   "0000"
   "    " };
 
-LS_CONST Character small_3 = { 4,
+static const Character small_3 = { 4,
   "    "
   "000 "
   "   0"
@@ -310,7 +310,7 @@ LS_CONST Character small_3 = { 4,
   "000 "
   "    " };
 
-LS_CONST Character small_4 = { 4,
+static const Character small_4 = { 4,
   "    "
   "  00"
   " 0 0"
@@ -320,7 +320,7 @@ LS_CONST Character small_4 = { 4,
   "   0"
   "    " };
 
-LS_CONST Character small_5 = { 4,
+static const Character small_5 = { 4,
   "    "
   "0000"
   "0   "
@@ -330,7 +330,7 @@ LS_CONST Character small_5 = { 4,
   " 00 "
   "    " };
 
-LS_CONST Character small_6 = { 4,
+static const Character small_6 = { 4,
   "    "
   " 000"
   "0   "
@@ -340,7 +340,7 @@ LS_CONST Character small_6 = { 4,
   " 00 "
   "    " };
 
-LS_CONST Character small_7 = { 4,
+static const Character small_7 = { 4,
   "    "
   "0000"
   "   0"
@@ -350,7 +350,7 @@ LS_CONST Character small_7 = { 4,
   "0   "
   "    " };
 
-LS_CONST Character small_8 = { 4,
+static const Character small_8 = { 4,
   "    "
   " 00 "
   "0  0"
@@ -360,7 +360,7 @@ LS_CONST Character small_8 = { 4,
   " 00 "
   "    " };
 
-LS_CONST Character small_9 = { 4,
+static const Character small_9 = { 4,
   "    "
   " 00 "
   "0  0"
@@ -370,7 +370,7 @@ LS_CONST Character small_9 = { 4,
   " 0  "
   "    " };
 
-LS_CONST Character small_colon = { 2,
+static const Character small_colon = { 2,
   "  "
   "  "
   "  "
@@ -380,7 +380,7 @@ LS_CONST Character small_colon = { 2,
   "  "
   "  " };
 
-LS_CONST Character small_semi = { 2,
+static const Character small_semi = { 2,
   "  "
   "  "
   "  "
@@ -390,7 +390,7 @@ LS_CONST Character small_semi = { 2,
   " 0"
   "0 " };
 
-LS_CONST Character small_lt = { 3,
+static const Character small_lt = { 3,
   "   "
   "   "
   "  0"
@@ -400,7 +400,7 @@ LS_CONST Character small_lt = { 3,
   "  0"
   "   " };
 
-LS_CONST Character small_eq = { 3,
+static const Character small_eq = { 3,
   "   "
   "   "
   "   "
@@ -410,7 +410,7 @@ LS_CONST Character small_eq = { 3,
   "   "
   "   " };
 
-LS_CONST Character small_gt = { 3,
+static const Character small_gt = { 3,
   "   "
   "   "
   "0  "
@@ -420,7 +420,7 @@ LS_CONST Character small_gt = { 3,
   "0  "
   "   " };
 
-LS_CONST Character small_quest = { 3,
+static const Character small_quest = { 3,
   "   "
   "   "
   "00 "
@@ -430,7 +430,7 @@ LS_CONST Character small_quest = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character small_at = { 5,
+static const Character small_at = { 5,
   "     "
   "     "
   " 000 "
@@ -440,7 +440,7 @@ LS_CONST Character small_at = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character small_A = { 4,
+static const Character small_A = { 4,
   "    "
   "    "
   " 00 "
@@ -450,7 +450,7 @@ LS_CONST Character small_A = { 4,
   "0  0"
   "    " };
 
-LS_CONST Character small_B = { 4,
+static const Character small_B = { 4,
   "    "
   "    "
   "000 "
@@ -460,7 +460,7 @@ LS_CONST Character small_B = { 4,
   "000 "
   "    " };
 
-LS_CONST Character small_C = { 4,
+static const Character small_C = { 4,
   "    "
   "    "
   " 000"
@@ -470,7 +470,7 @@ LS_CONST Character small_C = { 4,
   " 000"
   "    " };
 
-LS_CONST Character small_D = { 4,
+static const Character small_D = { 4,
   "    "
   "    "
   "000 "
@@ -480,7 +480,7 @@ LS_CONST Character small_D = { 4,
   "000 "
   "    " };
 
-LS_CONST Character small_E = { 3,
+static const Character small_E = { 3,
   "   "
   "   "
   "000"
@@ -490,7 +490,7 @@ LS_CONST Character small_E = { 3,
   "000"
   "   " };
 
-LS_CONST Character small_F = { 3,
+static const Character small_F = { 3,
   "   "
   "   "
   "000"
@@ -500,7 +500,7 @@ LS_CONST Character small_F = { 3,
   "0  "
   "   " };
 
-LS_CONST Character small_G = { 4,
+static const Character small_G = { 4,
   "    "
   "    "
   " 00 "
@@ -510,7 +510,7 @@ LS_CONST Character small_G = { 4,
   " 00 "
   "    " };
 
-LS_CONST Character small_H = { 4,
+static const Character small_H = { 4,
   "    "
   "    "
   "0  0"
@@ -520,7 +520,7 @@ LS_CONST Character small_H = { 4,
   "0  0"
   "    " };
 
-LS_CONST Character small_I = { 3,
+static const Character small_I = { 3,
   "   "
   "   "
   "000"
@@ -530,7 +530,7 @@ LS_CONST Character small_I = { 3,
   "000"
   "   " };
 
-LS_CONST Character small_J = { 3,
+static const Character small_J = { 3,
   "   "
   "   "
   "000"
@@ -540,7 +540,7 @@ LS_CONST Character small_J = { 3,
   "00 "
   "   " };
 
-LS_CONST Character small_K = { 4,
+static const Character small_K = { 4,
   "    "
   "    "
   "0  0"
@@ -550,7 +550,7 @@ LS_CONST Character small_K = { 4,
   "0  0"
   "    " };
 
-LS_CONST Character small_L = { 3,
+static const Character small_L = { 3,
   "   "
   "   "
   "0  "
@@ -560,7 +560,7 @@ LS_CONST Character small_L = { 3,
   "000"
   "   " };
 
-LS_CONST Character small_M = { 5,
+static const Character small_M = { 5,
   "     "
   "     "
   "0   0"
@@ -570,7 +570,7 @@ LS_CONST Character small_M = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character small_N = { 4,
+static const Character small_N = { 4,
   "    "
   "    "
   "0  0"
@@ -580,7 +580,7 @@ LS_CONST Character small_N = { 4,
   "0  0"
   "    " };
 
-LS_CONST Character small_O = { 4,
+static const Character small_O = { 4,
   "    "
   "    "
   " 00 "
@@ -590,7 +590,7 @@ LS_CONST Character small_O = { 4,
   " 00 "
   "    " };
 
-LS_CONST Character small_P = { 4,
+static const Character small_P = { 4,
   "    "
   "    "
   "000 "
@@ -600,7 +600,7 @@ LS_CONST Character small_P = { 4,
   "0   "
   "    " };
 
-LS_CONST Character small_Q = { 5,
+static const Character small_Q = { 5,
   "     "
   "     "
   " 00  "
@@ -610,7 +610,7 @@ LS_CONST Character small_Q = { 5,
   " 00 0"
   "     " };
 
-LS_CONST Character small_R = { 4,
+static const Character small_R = { 4,
   "    "
   "    "
   "000 "
@@ -620,7 +620,7 @@ LS_CONST Character small_R = { 4,
   "0  0"
   "    " };
 
-LS_CONST Character small_S = { 4,
+static const Character small_S = { 4,
   "    "
   "    "
   " 000"
@@ -630,7 +630,7 @@ LS_CONST Character small_S = { 4,
   "000 "
   "    " };
 
-LS_CONST Character small_T = { 3,
+static const Character small_T = { 3,
   "   "
   "   "
   "000"
@@ -640,7 +640,7 @@ LS_CONST Character small_T = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character small_t = { 3,
+static const Character small_t = { 3,
   "   "
   "   "
   "0  "
@@ -650,7 +650,7 @@ LS_CONST Character small_t = { 3,
   " 00"
   "   " };
 
-LS_CONST Character small_U = { 4,
+static const Character small_U = { 4,
   "    "
   "    "
   "0  0"
@@ -660,7 +660,7 @@ LS_CONST Character small_U = { 4,
   " 00 "
   "    " };
 
-LS_CONST Character small_V = { 5,
+static const Character small_V = { 5,
   "     "
   "     "
   "0   0"
@@ -670,7 +670,7 @@ LS_CONST Character small_V = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character small_W = { 5,
+static const Character small_W = { 5,
   "     "
   "     "
   "0   0"
@@ -680,7 +680,7 @@ LS_CONST Character small_W = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character small_X = { 5,
+static const Character small_X = { 5,
   "     "
   "     "
   "0   0"
@@ -690,7 +690,7 @@ LS_CONST Character small_X = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character small_Y = { 5,
+static const Character small_Y = { 5,
   "     "
   "     "
   "0   0"
@@ -700,7 +700,7 @@ LS_CONST Character small_Y = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character small_Z = { 4,
+static const Character small_Z = { 4,
   "    "
   "    "
   "0000"
@@ -710,7 +710,7 @@ LS_CONST Character small_Z = { 4,
   "0000"
   "    " };
 
-LS_CONST Character small_lsqbrack = { 2,
+static const Character small_lsqbrack = { 2,
   "  "
   "  "
   "00"
@@ -720,7 +720,7 @@ LS_CONST Character small_lsqbrack = { 2,
   "00"
   "  " };
 
-LS_CONST Character small_backslash = { 3,
+static const Character small_backslash = { 3,
   "   "
   "   "
   "   "
@@ -730,7 +730,7 @@ LS_CONST Character small_backslash = { 3,
   "   "
   "   " };
 
-LS_CONST Character small_rsqbrack =  { 3,
+static const Character small_rsqbrack =  { 3,
   "  "
   "  "
   "00"
@@ -740,7 +740,7 @@ LS_CONST Character small_rsqbrack =  { 3,
   "00"
   "  " };
 
-LS_CONST Character small_pow = { 3,
+static const Character small_pow = { 3,
   "   "
   "   "
   " 0 "
@@ -750,7 +750,7 @@ LS_CONST Character small_pow = { 3,
   "   "
   "   " };
 
-LS_CONST Character small_under = { 3,
+static const Character small_under = { 3,
   "   "
   "   "
   "   "
@@ -760,7 +760,7 @@ LS_CONST Character small_under = { 3,
   "000"
   "   " };
 
-LS_CONST Character small_backtick = { 3,
+static const Character small_backtick = { 3,
   "  "
   "  "
   "0 "
@@ -770,7 +770,7 @@ LS_CONST Character small_backtick = { 3,
   "  "
   "  " };
 
-LS_CONST Character small_lbrace = { 3,
+static const Character small_lbrace = { 3,
   "   "
   "   "
   " 00"
@@ -780,7 +780,7 @@ LS_CONST Character small_lbrace = { 3,
   " 00"
   "   " };
 
-LS_CONST Character small_pipe = { 1,
+static const Character small_pipe = { 1,
   " "
   " "
   "0"
@@ -790,7 +790,7 @@ LS_CONST Character small_pipe = { 1,
   "0"
   " " };
 
-LS_CONST Character small_rbrace = { 3,
+static const Character small_rbrace = { 3,
   "   "
   "   "
   "00 "
@@ -800,7 +800,7 @@ LS_CONST Character small_rbrace = { 3,
   "00 "
   "   " };
 
-LS_CONST Character small_tilde = { 5,
+static const Character small_tilde = { 5,
   "     "
   "     "
   "     "
@@ -812,7 +812,7 @@ LS_CONST Character small_tilde = { 5,
 
 /******************************************** Big Font *******************************************/
 
-LS_CONST Character big_blank = { 5,
+static const Character big_blank = { 5,
   "     "
   "     "
   "     "
@@ -822,7 +822,7 @@ LS_CONST Character big_blank = { 5,
   "     "
   "     " };
 
-LS_CONST Character big_excl = { 5,
+static const Character big_excl = { 5,
   "     "
   "  0  "
   "  0  "
@@ -832,7 +832,7 @@ LS_CONST Character big_excl = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character big_quot = { 5,
+static const Character big_quot = { 5,
   "     "
   " 00  "
   " 00  "
@@ -842,7 +842,7 @@ LS_CONST Character big_quot = { 5,
   "     "
   "     " };
 
-LS_CONST Character big_hash = { 5,
+static const Character big_hash = { 5,
   "     "
   "     "
   " 0 0 "
@@ -852,7 +852,7 @@ LS_CONST Character big_hash = { 5,
   " 0 0 "
   "     " };
 
-LS_CONST Character big_dollar = { 5,
+static const Character big_dollar = { 5,
   "     "
   "  0  "
   " 0000"
@@ -862,7 +862,7 @@ LS_CONST Character big_dollar = { 5,
   "0000 "
   "  0  " };
 
-LS_CONST Character big_perc = { 5,
+static const Character big_perc = { 5,
   "     "
   "     "
   " 0  0"
@@ -872,7 +872,7 @@ LS_CONST Character big_perc = { 5,
   "0  0 "
   "     " };
 
-LS_CONST Character big_amp = { 5,
+static const Character big_amp = { 5,
   "     "
   "     "
   " 00  "
@@ -882,7 +882,7 @@ LS_CONST Character big_amp = { 5,
   " 00 0"
   "     " };
 
-LS_CONST Character big_squot = { 5,
+static const Character big_squot = { 5,
   "     "
   "  0  "
   "  0  "
@@ -892,7 +892,7 @@ LS_CONST Character big_squot = { 5,
   "     "
   "     " };
 
-LS_CONST Character big_lparen = { 5,
+static const Character big_lparen = { 5,
   "     "
   "  00 "
   " 0   "
@@ -902,7 +902,7 @@ LS_CONST Character big_lparen = { 5,
   "  00 "
   "     " };
 
-LS_CONST Character big_rparen = { 5,
+static const Character big_rparen = { 5,
   "     "
   " 00  "
   "   0 "
@@ -912,7 +912,7 @@ LS_CONST Character big_rparen = { 5,
   " 00  "
   "     " };
 
-LS_CONST Character big_mult = { 5,
+static const Character big_mult = { 5,
   "     "
   "     "
   "0 0 0"
@@ -922,7 +922,7 @@ LS_CONST Character big_mult = { 5,
   "0 0 0"
   "     " };
 
-LS_CONST Character big_plus = { 5,
+static const Character big_plus = { 5,
   "     "
   "     "
   "  0  "
@@ -932,7 +932,7 @@ LS_CONST Character big_plus = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character big_comma = { 5,
+static const Character big_comma = { 5,
   "     "
   "     "
   "     "
@@ -942,7 +942,7 @@ LS_CONST Character big_comma = { 5,
   "  0  "
   " 0   " };
 
-LS_CONST Character big_minus = { 5,
+static const Character big_minus = { 5,
   "     "
   "     "
   "     "
@@ -952,7 +952,7 @@ LS_CONST Character big_minus = { 5,
   "     "
   "     " };
 
-LS_CONST Character big_dot = { 5,
+static const Character big_dot = { 5,
   "     "
   "     "
   "     "
@@ -962,7 +962,7 @@ LS_CONST Character big_dot = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character big_div = { 5,
+static const Character big_div = { 5,
   "     "
   "     "
   "    0"
@@ -972,7 +972,7 @@ LS_CONST Character big_div = { 5,
   "0    "
   "     " };
 
-LS_CONST Character big_0 = { 5,
+static const Character big_0 = { 5,
   "     "
   " 000 "
   "0   0"
@@ -982,7 +982,7 @@ LS_CONST Character big_0 = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_1 = { 5,
+static const Character big_1 = { 5,
   "     "
   "  0  "
   " 00  "
@@ -992,7 +992,7 @@ LS_CONST Character big_1 = { 5,
   "00000"
   "     " };
 
-LS_CONST Character big_2 = { 5,
+static const Character big_2 = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1002,7 +1002,7 @@ LS_CONST Character big_2 = { 5,
   "00000"
   "     " };
 
-LS_CONST Character big_3 = { 5,
+static const Character big_3 = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1012,7 +1012,7 @@ LS_CONST Character big_3 = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_4 = { 5,
+static const Character big_4 = { 5,
   "     "
   "   00"
   "  0 0"
@@ -1022,7 +1022,7 @@ LS_CONST Character big_4 = { 5,
   "    0"
   "     " };
 
-LS_CONST Character big_5 = { 5,
+static const Character big_5 = { 5,
   "     "
   "00000"
   "0    "
@@ -1032,7 +1032,7 @@ LS_CONST Character big_5 = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_6 = { 5,
+static const Character big_6 = { 5,
   "     "
   " 000 "
   "0    "
@@ -1042,7 +1042,7 @@ LS_CONST Character big_6 = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_7 = { 5,
+static const Character big_7 = { 5,
   "     "
   "00000"
   "    0"
@@ -1052,7 +1052,7 @@ LS_CONST Character big_7 = { 5,
   "0    "
   "     " };
 
-LS_CONST Character big_8 = { 5,
+static const Character big_8 = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1062,7 +1062,7 @@ LS_CONST Character big_8 = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_9 = { 5,
+static const Character big_9 = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1072,7 +1072,7 @@ LS_CONST Character big_9 = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_colon = { 5,
+static const Character big_colon = { 5,
   "     "
   "     "
   "     "
@@ -1082,7 +1082,7 @@ LS_CONST Character big_colon = { 5,
   "     "
   "     " };
 
-LS_CONST Character big_semi = { 5,
+static const Character big_semi = { 5,
   "     "
   "     "
   "     "
@@ -1092,7 +1092,7 @@ LS_CONST Character big_semi = { 5,
   "  0  "
   " 0   " };
 
-LS_CONST Character big_lt = { 5,
+static const Character big_lt = { 5,
   "     "
   "     "
   "   0 "
@@ -1102,7 +1102,7 @@ LS_CONST Character big_lt = { 5,
   "   0 "
   "     " };
 
-LS_CONST Character big_eq = { 5,
+static const Character big_eq = { 5,
   "     "
   "     "
   "     "
@@ -1112,7 +1112,7 @@ LS_CONST Character big_eq = { 5,
   "     "
   "     " };
 
-LS_CONST Character big_gt = { 5,
+static const Character big_gt = { 5,
   "     "
   "     "
   " 0   "
@@ -1122,7 +1122,7 @@ LS_CONST Character big_gt = { 5,
   " 0   "
   "     " };
 
-LS_CONST Character big_quest = { 5,
+static const Character big_quest = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1132,7 +1132,7 @@ LS_CONST Character big_quest = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character big_at = { 5,
+static const Character big_at = { 5,
   "     "
   "     "
   " 000 "
@@ -1142,7 +1142,7 @@ LS_CONST Character big_at = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_A = { 5,
+static const Character big_A = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1152,7 +1152,7 @@ LS_CONST Character big_A = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character big_B = { 5,
+static const Character big_B = { 5,
   "     "
   "0000 "
   "0   0"
@@ -1162,7 +1162,7 @@ LS_CONST Character big_B = { 5,
   "0000 "
   "     " };
 
-LS_CONST Character big_C = { 5,
+static const Character big_C = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1172,7 +1172,7 @@ LS_CONST Character big_C = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_D = { 5,
+static const Character big_D = { 5,
   "     "
   "0000 "
   "0   0"
@@ -1182,7 +1182,7 @@ LS_CONST Character big_D = { 5,
   "0000 "
   "     " };
 
-LS_CONST Character big_E = { 5,
+static const Character big_E = { 5,
   "     "
   "00000"
   "0    "
@@ -1192,7 +1192,7 @@ LS_CONST Character big_E = { 5,
   "00000"
   "     " };
 
-LS_CONST Character big_F = { 5,
+static const Character big_F = { 5,
   "     "
   "00000"
   "0    "
@@ -1202,7 +1202,7 @@ LS_CONST Character big_F = { 5,
   "0    "
   "     " };
 
-LS_CONST Character big_G = { 5,
+static const Character big_G = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1212,7 +1212,7 @@ LS_CONST Character big_G = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_H = { 5,
+static const Character big_H = { 5,
   "     "
   "0   0"
   "0   0"
@@ -1222,7 +1222,7 @@ LS_CONST Character big_H = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character big_I = { 5,
+static const Character big_I = { 5,
   "     "
   "00000"
   "  0  "
@@ -1232,7 +1232,7 @@ LS_CONST Character big_I = { 5,
   "00000"
   "     " };
 
-LS_CONST Character big_J = { 5,
+static const Character big_J = { 5,
   "     "
   "    0"
   "    0"
@@ -1242,7 +1242,7 @@ LS_CONST Character big_J = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_K = { 5,
+static const Character big_K = { 5,
   "     "
   "0   0"
   "0  0 "
@@ -1252,7 +1252,7 @@ LS_CONST Character big_K = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character big_L = { 5,
+static const Character big_L = { 5,
   "     "
   "0    "
   "0    "
@@ -1262,7 +1262,7 @@ LS_CONST Character big_L = { 5,
   "00000"
   "     " };
 
-LS_CONST Character big_M = { 5,
+static const Character big_M = { 5,
   "     "
   "0   0"
   "00 00"
@@ -1272,7 +1272,7 @@ LS_CONST Character big_M = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character big_N = { 5,
+static const Character big_N = { 5,
   "     "
   "0   0"
   "00  0"
@@ -1282,7 +1282,7 @@ LS_CONST Character big_N = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character big_O = { 5,
+static const Character big_O = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1292,7 +1292,7 @@ LS_CONST Character big_O = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_P = { 5,
+static const Character big_P = { 5,
   "     "
   "0000 "
   "0   0"
@@ -1302,7 +1302,7 @@ LS_CONST Character big_P = { 5,
   "0    "
   "     " };
 
-LS_CONST Character big_Q = { 5,
+static const Character big_Q = { 5,
   "     "
   " 000 "
   "0   0"
@@ -1312,7 +1312,7 @@ LS_CONST Character big_Q = { 5,
   " 00 0"
   "     " };
 
-LS_CONST Character big_R = { 5,
+static const Character big_R = { 5,
   "     "
   "0000 "
   "0   0"
@@ -1322,7 +1322,7 @@ LS_CONST Character big_R = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character big_S = { 5,
+static const Character big_S = { 5,
   "     "
   " 0000"
   "0    "
@@ -1332,7 +1332,7 @@ LS_CONST Character big_S = { 5,
   "0000 "
   "     " };
 
-LS_CONST Character big_T = { 5,
+static const Character big_T = { 5,
   "     "
   "00000"
   "  0  "
@@ -1342,7 +1342,7 @@ LS_CONST Character big_T = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character big_U = { 5,
+static const Character big_U = { 5,
   "     "
   "0   0"
   "0   0"
@@ -1352,7 +1352,7 @@ LS_CONST Character big_U = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_V = { 5,
+static const Character big_V = { 5,
   "     "
   "0   0"
   "0   0"
@@ -1362,7 +1362,7 @@ LS_CONST Character big_V = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character big_W = { 5,
+static const Character big_W = { 5,
   "     "
   "0   0"
   "0   0"
@@ -1372,7 +1372,7 @@ LS_CONST Character big_W = { 5,
   " 0 0 "
   "     " };
 
-LS_CONST Character big_X = { 5,
+static const Character big_X = { 5,
   "     "
   "0   0"
   " 0 0 "
@@ -1382,7 +1382,7 @@ LS_CONST Character big_X = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character big_Y = { 5,
+static const Character big_Y = { 5,
   "     "
   "0   0"
   " 0 0 "
@@ -1392,7 +1392,7 @@ LS_CONST Character big_Y = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character big_Z = { 5,
+static const Character big_Z = { 5,
   "     "
   "00000"
   "   0 "
@@ -1402,7 +1402,7 @@ LS_CONST Character big_Z = { 5,
   "00000"
   "     " };
 
-LS_CONST Character big_lsqbrack = { 5,
+static const Character big_lsqbrack = { 5,
   "     "
   " 000 "
   " 0   "
@@ -1412,7 +1412,7 @@ LS_CONST Character big_lsqbrack = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_backslash = { 5,
+static const Character big_backslash = { 5,
   "     "
   "     "
   "0    "
@@ -1422,7 +1422,7 @@ LS_CONST Character big_backslash = { 5,
   "    0"
   "     " };
 
-LS_CONST Character big_rsqbrack =  { 5,
+static const Character big_rsqbrack =  { 5,
   "     "
   " 000 "
   "   0 "
@@ -1432,7 +1432,7 @@ LS_CONST Character big_rsqbrack =  { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_pow = { 5,
+static const Character big_pow = { 5,
   "     "
   "  0  "
   " 0 0 "
@@ -1442,7 +1442,7 @@ LS_CONST Character big_pow = { 5,
   "     "
   "     " };
 
-LS_CONST Character big_under = { 5,
+static const Character big_under = { 5,
   "     "
   "     "
   "     "
@@ -1452,7 +1452,7 @@ LS_CONST Character big_under = { 5,
   "     "
   "00000" };
 
-LS_CONST Character big_backtick = { 5,
+static const Character big_backtick = { 5,
   "     "
   " 0   "
   "  0  "
@@ -1462,7 +1462,7 @@ LS_CONST Character big_backtick = { 5,
   "     "
   "     " };
 
-LS_CONST Character big_a = { 5,
+static const Character big_a = { 5,
   "     "
   "     "
   "     "
@@ -1472,7 +1472,7 @@ LS_CONST Character big_a = { 5,
   " 0000"
   "     " };
 
-LS_CONST Character big_b = { 5,
+static const Character big_b = { 5,
   "     "
   "0    "
   "0    "
@@ -1482,7 +1482,7 @@ LS_CONST Character big_b = { 5,
   "0000 "
   "     " };
 
-LS_CONST Character big_c = { 5,
+static const Character big_c = { 5,
   "     "
   "     "
   "     "
@@ -1492,7 +1492,7 @@ LS_CONST Character big_c = { 5,
   " 0000"
   "     " };
 
-LS_CONST Character big_d = { 5,
+static const Character big_d = { 5,
   "     "
   "    0"
   "    0"
@@ -1502,7 +1502,7 @@ LS_CONST Character big_d = { 5,
   " 0000"
   "     " };
 
-LS_CONST Character big_e = { 5,
+static const Character big_e = { 5,
   "     "
   "     "
   "     "
@@ -1512,7 +1512,7 @@ LS_CONST Character big_e = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_f = { 5,
+static const Character big_f = { 5,
   "     "
   "  00 "
   " 0  0"
@@ -1522,7 +1522,7 @@ LS_CONST Character big_f = { 5,
   " 0   "
   "     " };
 
-LS_CONST Character big_g = { 5,
+static const Character big_g = { 5,
   "     "
   "     "
   " 0000"
@@ -1532,7 +1532,7 @@ LS_CONST Character big_g = { 5,
   "    0"
   " 000 " };
 
-LS_CONST Character big_h = { 5,
+static const Character big_h = { 5,
   "     "
   "0    "
   "0    "
@@ -1542,7 +1542,7 @@ LS_CONST Character big_h = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character big_i = { 5,
+static const Character big_i = { 5,
   "     "
   "  0  "
   "     "
@@ -1552,7 +1552,7 @@ LS_CONST Character big_i = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_j = { 5,
+static const Character big_j = { 5,
   "     "
   "   0 "
   "     "
@@ -1562,7 +1562,7 @@ LS_CONST Character big_j = { 5,
   "0  0 "
   " 00  " };
 
-LS_CONST Character big_k = { 5,
+static const Character big_k = { 5,
   "     "
   "0    "
   "0    "
@@ -1572,7 +1572,7 @@ LS_CONST Character big_k = { 5,
   "0  0 "
   "     " };
 
-LS_CONST Character big_l = { 5,
+static const Character big_l = { 5,
   "     "
   "00   "
   " 0   "
@@ -1582,7 +1582,7 @@ LS_CONST Character big_l = { 5,
   "  000"
   "     " };
 
-LS_CONST Character big_m = { 5,
+static const Character big_m = { 5,
   "     "
   "     "
   "     "
@@ -1592,7 +1592,7 @@ LS_CONST Character big_m = { 5,
   "0 0 0"
   "     " };
 
-LS_CONST Character big_n = { 5,
+static const Character big_n = { 5,
   "     "
   "     "
   "     "
@@ -1602,7 +1602,7 @@ LS_CONST Character big_n = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character big_o = { 5,
+static const Character big_o = { 5,
   "     "
   "     "
   "     "
@@ -1612,7 +1612,7 @@ LS_CONST Character big_o = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_p = { 5,
+static const Character big_p = { 5,
   "     "
   "     "
   "     "
@@ -1622,7 +1622,7 @@ LS_CONST Character big_p = { 5,
   "0000 "
   "0    " };
 
-LS_CONST Character big_q = { 5,
+static const Character big_q = { 5,
   "     "
   "     "
   "     "
@@ -1632,7 +1632,7 @@ LS_CONST Character big_q = { 5,
   " 0000"
   "    0" };
 
-LS_CONST Character big_r = { 5,
+static const Character big_r = { 5,
   "     "
   "     "
   "     "
@@ -1642,7 +1642,7 @@ LS_CONST Character big_r = { 5,
   "0    "
   "     " };
 
-LS_CONST Character big_s = { 5,
+static const Character big_s = { 5,
   "     "
   "     "
   " 000 "
@@ -1652,7 +1652,7 @@ LS_CONST Character big_s = { 5,
   "0000 "
   "     " };
 
-LS_CONST Character big_t = { 5,
+static const Character big_t = { 5,
   "     "
   " 0   "
   " 0   "
@@ -1662,7 +1662,7 @@ LS_CONST Character big_t = { 5,
   "  00 "
   "     " };
 
-LS_CONST Character big_u = { 5,
+static const Character big_u = { 5,
   "     "
   "     "
   "     "
@@ -1672,7 +1672,7 @@ LS_CONST Character big_u = { 5,
   " 000 "
   "     " };
 
-LS_CONST Character big_v = { 5,
+static const Character big_v = { 5,
   "     "
   "     "
   "     "
@@ -1682,7 +1682,7 @@ LS_CONST Character big_v = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character big_w = { 5,
+static const Character big_w = { 5,
   "     "
   "     "
   "     "
@@ -1692,7 +1692,7 @@ LS_CONST Character big_w = { 5,
   " 0 0 "
   "     " };
 
-LS_CONST Character big_x = { 5,
+static const Character big_x = { 5,
   "     "
   "     "
   "     "
@@ -1702,7 +1702,7 @@ LS_CONST Character big_x = { 5,
   "0  0 "
   "     " };
 
-LS_CONST Character big_y = { 5,
+static const Character big_y = { 5,
   "     "
   "     "
   "     "
@@ -1711,7 +1711,7 @@ LS_CONST Character big_y = { 5,
   "  0  "
   " 0   " };
 
-LS_CONST Character big_z = { 5,
+static const Character big_z = { 5,
   "     "
   "     "
   "     "
@@ -1721,7 +1721,7 @@ LS_CONST Character big_z = { 5,
   "0000 "
   "     " };
 
-LS_CONST Character big_lbrace = { 5,
+static const Character big_lbrace = { 5,
   "   00"
   "  0  "
   "  0  "
@@ -1731,7 +1731,7 @@ LS_CONST Character big_lbrace = { 5,
   "   00"
   "     " };
 
-LS_CONST Character big_pipe = { 5,
+static const Character big_pipe = { 5,
   "     "
   "  0  "
   "  0  "
@@ -1741,7 +1741,7 @@ LS_CONST Character big_pipe = { 5,
   "  0  "
   "     " };
 
-LS_CONST Character big_rbrace = { 5,
+static const Character big_rbrace = { 5,
   "00   "
   "  0  "
   "  0  "
@@ -1751,7 +1751,7 @@ LS_CONST Character big_rbrace = { 5,
   "00   "
   "     " };
 
-LS_CONST Character big_tilde = { 5,
+static const Character big_tilde = { 5,
   "     "
   "     "
   "     "
@@ -1763,7 +1763,7 @@ LS_CONST Character big_tilde = { 5,
 
 /***************************************** Condensed Font ****************************************/
 
-LS_CONST Character cond_blank = { 3,
+static const Character cond_blank = { 3,
   "   "
   "   "
   "   "
@@ -1773,7 +1773,7 @@ LS_CONST Character cond_blank = { 3,
   "   "
   "   " };
 
-LS_CONST Character cond_plus = { 3,
+static const Character cond_plus = { 3,
   "   "
   "   "
   "   "
@@ -1783,7 +1783,7 @@ LS_CONST Character cond_plus = { 3,
   "   "
   "   " };
 
-LS_CONST Character cond_minus = { 2,
+static const Character cond_minus = { 2,
   "  "
   "  "
   "  "
@@ -1793,7 +1793,7 @@ LS_CONST Character cond_minus = { 2,
   "  "
   "  " };
 
-LS_CONST Character cond_dot = { 1,
+static const Character cond_dot = { 1,
   " "
   " "
   " "
@@ -1803,7 +1803,7 @@ LS_CONST Character cond_dot = { 1,
   "0"
   " " };
 
-LS_CONST Character cond_div = { 3,
+static const Character cond_div = { 3,
   "   "
   "   "
   "   "
@@ -1813,7 +1813,7 @@ LS_CONST Character cond_div = { 3,
   "   "
   "   " };
 
-LS_CONST Character cond_0 = { 3,
+static const Character cond_0 = { 3,
   "   "
   " 0 "
   "0 0"
@@ -1823,7 +1823,7 @@ LS_CONST Character cond_0 = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character cond_1 = { 2,
+static const Character cond_1 = { 2,
   "  "
   " 0"
   "00"
@@ -1833,7 +1833,7 @@ LS_CONST Character cond_1 = { 2,
   " 0"
   "  " };
 
-LS_CONST Character cond_2 = { 3,
+static const Character cond_2 = { 3,
   "   "
   " 0 "
   "0 0"
@@ -1843,7 +1843,7 @@ LS_CONST Character cond_2 = { 3,
   "000"
   "   " };
 
-LS_CONST Character cond_3 = { 3,
+static const Character cond_3 = { 3,
   "   "
   "00 "
   "  0"
@@ -1853,7 +1853,7 @@ LS_CONST Character cond_3 = { 3,
   "00 "
   "    " };
 
-LS_CONST Character cond_4 = { 3,
+static const Character cond_4 = { 3,
   "   "
   "0 0"
   "0 0"
@@ -1863,7 +1863,7 @@ LS_CONST Character cond_4 = { 3,
   "  0"
   "   " };
 
-LS_CONST Character cond_5 = { 3,
+static const Character cond_5 = { 3,
   "   "
   "000"
   "0  "
@@ -1873,7 +1873,7 @@ LS_CONST Character cond_5 = { 3,
   " 0 "
   "     " };
 
-LS_CONST Character cond_6 = { 3,
+static const Character cond_6 = { 3,
   "   "
   " 0 "
   "0  "
@@ -1883,7 +1883,7 @@ LS_CONST Character cond_6 = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character cond_7 = { 3,
+static const Character cond_7 = { 3,
   "   "
   "000"
   "  0"
@@ -1893,7 +1893,7 @@ LS_CONST Character cond_7 = { 3,
   "0  "
   "   " };
 
-LS_CONST Character cond_8 = { 3,
+static const Character cond_8 = { 3,
   "   "
   " 0 "
   "0 0"
@@ -1903,7 +1903,7 @@ LS_CONST Character cond_8 = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character cond_9 = { 3,
+static const Character cond_9 = { 3,
   "   "
   " 0 "
   "0 0"
@@ -1913,7 +1913,7 @@ LS_CONST Character cond_9 = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character cond_A = { 3,
+static const Character cond_A = { 3,
   "   "
   " 0 "
   "0 0"
@@ -1923,7 +1923,7 @@ LS_CONST Character cond_A = { 3,
   "0 0"
   "   " };
 
-LS_CONST Character cond_B = { 3,
+static const Character cond_B = { 3,
   "   "
   "00 "
   "0 0"
@@ -1933,7 +1933,7 @@ LS_CONST Character cond_B = { 3,
   "00 "
   "   " };
 
-LS_CONST Character cond_C = { 3,
+static const Character cond_C = { 3,
   "   "
   " 00"
   "0  "
@@ -1943,7 +1943,7 @@ LS_CONST Character cond_C = { 3,
   " 00"
   "   " };
 
-LS_CONST Character cond_D = { 3,
+static const Character cond_D = { 3,
   "   "
   "00 "
   "0 0"
@@ -1953,7 +1953,7 @@ LS_CONST Character cond_D = { 3,
   "00 "
   "   " };
 
-LS_CONST Character cond_E = { 3,
+static const Character cond_E = { 3,
   "   "
   "000"
   "0  "
@@ -1963,7 +1963,7 @@ LS_CONST Character cond_E = { 3,
   "000"
   "   " };
 
-LS_CONST Character cond_F = { 3,
+static const Character cond_F = { 3,
   "   "
   "000"
   "0  "
@@ -1973,7 +1973,7 @@ LS_CONST Character cond_F = { 3,
   "0  "
   "   " };
 
-LS_CONST Character cond_G = { 4,
+static const Character cond_G = { 4,
   "    "
   " 00 "
   "0  0"
@@ -1983,7 +1983,7 @@ LS_CONST Character cond_G = { 4,
   " 00 "
   "    " };
 
-LS_CONST Character cond_H = { 3,
+static const Character cond_H = { 3,
   "   "
   "0 0"
   "0 0"
@@ -1993,7 +1993,7 @@ LS_CONST Character cond_H = { 3,
   "0 0"
   "   " };
 
-LS_CONST Character cond_I = { 3,
+static const Character cond_I = { 3,
   "   "
   "000"
   " 0 "
@@ -2003,7 +2003,7 @@ LS_CONST Character cond_I = { 3,
   "000"
   "   " };
 
-LS_CONST Character cond_J = { 3,
+static const Character cond_J = { 3,
   "   "
   "  0"
   "  0"
@@ -2013,7 +2013,7 @@ LS_CONST Character cond_J = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character cond_K = { 4,
+static const Character cond_K = { 4,
   "    "
   "0  0"
   "0 0 "
@@ -2024,7 +2024,7 @@ LS_CONST Character cond_K = { 4,
   "    " };
 
 
-LS_CONST Character cond_L = { 3,
+static const Character cond_L = { 3,
   "   "
   "0  "
   "0  "
@@ -2034,7 +2034,7 @@ LS_CONST Character cond_L = { 3,
   "000"
   "   " };
 
-LS_CONST Character cond_M = { 5,
+static const Character cond_M = { 5,
   "     "
   "0   0"
   "00 00"
@@ -2044,7 +2044,7 @@ LS_CONST Character cond_M = { 5,
   "0   0"
   "     " };
 
-LS_CONST Character cond_N = { 4,
+static const Character cond_N = { 4,
   "    "
   "0  0"
   "00 0"
@@ -2054,7 +2054,7 @@ LS_CONST Character cond_N = { 4,
   "0  0"
   "    " };
 
-LS_CONST Character cond_O = { 3,
+static const Character cond_O = { 3,
   "   "
   " 0 "
   "0 0"
@@ -2064,7 +2064,7 @@ LS_CONST Character cond_O = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character cond_P = { 3,
+static const Character cond_P = { 3,
   "   "
   "00 "
   "0 0"
@@ -2074,7 +2074,7 @@ LS_CONST Character cond_P = { 3,
   "0  "
   "   " };
 
-LS_CONST Character cond_Q = { 4,
+static const Character cond_Q = { 4,
   "    "
   " 00 "
   "0  0"
@@ -2084,7 +2084,7 @@ LS_CONST Character cond_Q = { 4,
   " 0 0"
   "    " };
 
-LS_CONST Character cond_R = { 3,
+static const Character cond_R = { 3,
   "   "
   "00 "
   "0 0"
@@ -2094,7 +2094,7 @@ LS_CONST Character cond_R = { 3,
   "0 0"
   "   " };
 
-LS_CONST Character cond_S = { 3,
+static const Character cond_S = { 3,
   "   "
   " 00"
   "0  "
@@ -2104,7 +2104,7 @@ LS_CONST Character cond_S = { 3,
   "00 "
   "   " };
 
-LS_CONST Character cond_T = { 3,
+static const Character cond_T = { 3,
   "   "
   "000"
   " 0 "
@@ -2114,7 +2114,7 @@ LS_CONST Character cond_T = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character cond_U = { 3,
+static const Character cond_U = { 3,
   "   "
   "0 0"
   "0 0"
@@ -2124,7 +2124,7 @@ LS_CONST Character cond_U = { 3,
   "000"
   "   " };
 
-LS_CONST Character cond_V = { 3,
+static const Character cond_V = { 3,
   "   "
   "0 0"
   "0 0"
@@ -2134,7 +2134,7 @@ LS_CONST Character cond_V = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character cond_W = { 5,
+static const Character cond_W = { 5,
   "     "
   "0   0"
   "0   0"
@@ -2144,7 +2144,7 @@ LS_CONST Character cond_W = { 5,
   " 0 0 "
   "     " };
 
-LS_CONST Character cond_X = { 3,
+static const Character cond_X = { 3,
   "   "
   "0 0"
   "0 0"
@@ -2154,7 +2154,7 @@ LS_CONST Character cond_X = { 3,
   "0 0"
   "   " };
 
-LS_CONST Character cond_Y = { 3,
+static const Character cond_Y = { 3,
   "   "
   "0 0"
   "0 0"
@@ -2164,7 +2164,7 @@ LS_CONST Character cond_Y = { 3,
   " 0 "
   "   " };
 
-LS_CONST Character cond_Z = { 3,
+static const Character cond_Z = { 3,
   "   "
   "000"
   "  0"
@@ -2174,7 +2174,7 @@ LS_CONST Character cond_Z = { 3,
   "000"
   "   " };
 
-LS_CONST Character cond_b = { 3,
+static const Character cond_b = { 3,
   "   "
   "   "
   "0  "
@@ -2190,12 +2190,12 @@ struct LS_PACKED Font {
   const Character* const * data;
 };
 
-LS_CONST Character* const tinyChars[] = {
+static const Character* const tinyChars[] = {
   &tiny_blank, &tiny_0, &tiny_1, &tiny_2, &tiny_3, &tiny_4, &tiny_5, &tiny_6, &tiny_7, &tiny_8, &tiny_9
 };
-LS_CONST struct Font tinyFont = { 4, " 0123456789", tinyChars };
+static const struct Font tinyFont = { 4, " 0123456789", tinyChars };
 
-LS_CONST Character* const smallChars[] = {
+static const Character* const smallChars[] = {
   &small_blank, &small_excl, &small_quot, &small_hash, &small_dollar, &small_perc, &small_amp, &small_squot, &small_lparen, &small_rparen, &small_mult, &small_plus, &small_comma, &small_minus, &small_dot, &small_div,
   &small_0, &small_1, &small_2, &small_3, &small_4, &small_5, &small_6, &small_7, &small_8, &small_9,
   &small_colon, &small_semi, &small_lt, &small_eq, &small_gt, &small_quest, &small_at,
@@ -2204,9 +2204,9 @@ LS_CONST Character* const smallChars[] = {
   &small_lsqbrack, &small_backslash, &small_rsqbrack, &small_pow, &small_under, &small_backtick,
   &small_lbrace, &small_pipe, &small_rbrace, &small_tilde
 };
-LS_CONST struct Font smallFont = { 8, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZt[\\]^_`{|}~", smallChars };
+static const struct Font smallFont = { 8, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZt[\\]^_`{|}~", smallChars };
 
-LS_CONST Character* const bigChars[] = {
+static const Character* const bigChars[] = {
   &big_blank, &big_excl, &big_quot, &big_hash, &big_dollar, &big_perc, &big_amp, &big_squot, &big_lparen, &big_rparen, &big_mult, &big_plus, &big_comma, &big_minus, &big_dot, &big_div,
   &big_0, &big_1, &big_2, &big_3, &big_4, &big_5, &big_6, &big_7, &big_8, &big_9,
   &big_colon, &big_semi, &big_lt, &big_eq, &big_gt, &big_quest, &big_at,
@@ -2215,14 +2215,14 @@ LS_CONST Character* const bigChars[] = {
   &big_a, &big_b, &big_c, &big_d, &big_e, &big_f, &big_g, &big_h, &big_i, &big_j, &big_k, &big_l, &big_m, &big_n, &big_o, &big_p, &big_q, &big_r, &big_s, &big_t, &big_u, &big_v, &big_w, &big_x, &big_y, &big_z,
   &big_lbrace, &big_pipe, &big_rbrace, &big_tilde
 };
-LS_CONST struct Font bigFont = { 8, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", bigChars };
+static const struct Font bigFont = { 8, " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~", bigChars };
 
-LS_CONST Character* const condChars[] = {
+static const Character* const condChars[] = {
   &cond_blank, &cond_plus, &cond_minus, &cond_dot, &cond_div, &cond_0, &cond_1, &cond_2, &cond_3, &cond_4, &cond_5, &cond_6, &cond_7, &cond_8, &cond_9,
   &cond_A, &cond_B, &cond_C, &cond_D, &cond_E, &cond_F, &cond_G, &cond_H, &cond_I, &cond_J, &cond_K, &cond_L, &cond_M, &cond_N, &cond_O, &cond_P, &cond_Q, &cond_R, &cond_S, &cond_T, &cond_U, &cond_V, &cond_W, &cond_X, &cond_Y, &cond_Z,
   &cond_b
 };
-LS_CONST struct Font condFont = { 8, " +-./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZb", condChars };
+static const struct Font condFont = { 8, " +-./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZb", condChars };
 
 
 unsigned font_width_string(const char* str, const struct Font* const font) {

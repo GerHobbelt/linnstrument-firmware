@@ -134,7 +134,7 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 
 /******************************************** CONSTANTS ******************************************/
 
-LS_CONST struct OSinfo {
+static const struct OSinfo {
   const char* OSVersion;
   const char* OSVersionBuild;
   const char* microLinnOSVersion;
@@ -345,7 +345,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 #define TEMPO_ARP_SIXTEENTH_SWING 0xff
 
-LS_CONST unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+static const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
 constexpr const int LED_PATTERNS = 3;
 

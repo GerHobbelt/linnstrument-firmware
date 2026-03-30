@@ -39,8 +39,8 @@ int32_t FXD_CALX_DEFAULT_RIGHT_EDGE;
 // the leftmost and rightmost cells don't reach as far on the edges as other cells, this compensates for that
 int32_t FXD_CALX_BORDER_OFFSET;
 
-LS_CONST short CALY_DEFAULT_MIN[MAXROWS] = {243, 781, 1299, 1810, 2281, 2718, 3187, 3599};
-LS_CONST short CALY_DEFAULT_MAX[MAXROWS] = {473, 991, 1486, 1965, 2449, 2925, 3401, 3851};
+static const short CALY_DEFAULT_MIN[MAXROWS] = {243, 781, 1299, 1810, 2281, 2718, 3187, 3599};
+static const short CALY_DEFAULT_MAX[MAXROWS] = {473, 991, 1486, 1965, 2449, 2925, 3401, 3851};
 
 // only use a portion of the Y distance, since the fingers can't comfortably reach until the real edges
 constexpr const byte CALY_MARGIN_FRACTION = 4;
