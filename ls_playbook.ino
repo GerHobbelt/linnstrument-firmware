@@ -19,7 +19,7 @@ This cycles through a series of images to creation an animated playbook.
 #include "ls_compiler_tweaks.h"
 
 const int CHRISTMAS_FRAME_COUNT = 7;
-LS_CONST char* const CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
+static const char* const CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
     " W    W       W    W  W   "
     "  W W  G    W  W    W    W"
     "      GGRW    W      G    "
@@ -83,7 +83,7 @@ LS_CONST char* const CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
     " W  GGRGGGG   WGRGGGGGGRG "
     " WWWWWWYWWWWWWWWWYWWWYWWWW"
   };
-LS_CONST char* const CHRISTMAS_FRAMES_128[CHRISTMAS_FRAME_COUNT] = {
+static const char* const CHRISTMAS_FRAMES_128[CHRISTMAS_FRAME_COUNT] = {
     "  W    W       W          "
     " W W W  G    W  W         "
     "       GGRW    W          "
