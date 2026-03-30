@@ -29,6 +29,10 @@ Rewritten and modified by Sebastian Nilsson
 //  FLASH_DEBUG can be enabled to get debugging information displayed.
 #define FLASH_DEBUG
 
+#ifndef DEBUGPRINT
+#error "DueFlashStorage lib is patched: it MUST be manually loaded via INO file in your project..."
+#endif
+
 #ifdef FLASH_DEBUG
 #define _FLASH_DEBUG(x) DEBUGPRINT((-1, x))
 #else
