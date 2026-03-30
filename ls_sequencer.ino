@@ -149,7 +149,7 @@ static short sequencerCopyStepSource = -1;
 
 static boolean sequencerSwitch1WasUsed = false;
 
-LS_CONST byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
+static const byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
    1,  // StepSixtyfourthTriplet
    2,  // StepThirtysecondTriplet
    3,  // StepThirtysecond
@@ -169,7 +169,7 @@ LS_CONST byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
    96  // StepWhole
 };
 
-LS_CONST struct seqDurationEditPanelLabels {
+static const struct seqDurationEditPanelLabels {
   const char* labels[SEQ_DURATION_EDIT_PANEL_COUNT];
 } seqDurationEditPanelLabels = { {
   "64t",

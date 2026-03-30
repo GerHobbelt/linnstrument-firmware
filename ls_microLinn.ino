@@ -647,7 +647,7 @@ const short MICROLINN_MAX_GUITAR_RANGE = 196; // 320;      // 512 - 192, 192 = m
 
 /**************** not yet used
 const byte MICROLINN_NUM_LARGE_EDOS = 54;
-LS_CONST short MICROLINN_LARGE_EDO[MICROLINN_NUM_LARGE_EDOS] = {
+static const short MICROLINN_LARGE_EDO[MICROLINN_NUM_LARGE_EDOS] = {
   0,  56,  58,  60,  63,    65,  68,  72,  77,  80,        // extended list of absolute zeta peak edos, for Global.microLinn.largeEDO
  84,  87,  89,  94,  96,    99, 103, 106, 111, 113,        // en.xen.wiki/w/The_Riemann_zeta_function_and_tuning#Extended_list_of_absolute_zeta_peak_edos
 118, 121, 125, 130, 137,   140, 145, 149, 152, 159,   
@@ -657,7 +657,7 @@ LS_CONST short MICROLINN_LARGE_EDO[MICROLINN_NUM_LARGE_EDOS] = {
 };
 ***********************************/
 
-LS_CONST byte MICROLINN_MIN_2ND[MICROLINN_MAX_EDO+1] = {      // used for Bosanquet 2 layout
+static const byte MICROLINN_MIN_2ND[MICROLINN_MAX_EDO+1] = {      // used for Bosanquet 2 layout
   0,  0,  0,  0,  1,   0,  0,  0,  1,  2,    // 0-9        // to ensure coprime-ness, divide by GCD(M2,m2)
   1,  3,  1,  2,  1,   1,  3,  1,  3,  2,    // 10-19
   1,  1,  1,  4,  1,   1,  3,  1,  1,  2,    // 20-29
@@ -666,7 +666,7 @@ LS_CONST byte MICROLINN_MIN_2ND[MICROLINN_MAX_EDO+1] = {      // used for Bosanq
   5,  1,  3,  4,  1,   5                     // 50-55
 };
 
-LS_CONST byte MICROLINN_MAJ_2ND[MICROLINN_MAX_EDO+1] = {      // defined not as best 9/8 but as best 3/2 minus best 4/3
+static const byte MICROLINN_MAJ_2ND[MICROLINN_MAX_EDO+1] = {      // defined not as best 9/8 but as best 3/2 minus best 4/3
   0,  0,  0,  0,  2,   1,  1,  1,  2,  1,    // 0-9        // used for Bosanquet & Wicki-Hayden layouts
   2,  1,  2,  3,  2,   3,  2,  3,  4,  3,    // 10-19      // 13 and 18, not 13b and 18b
   4,  3,  4,  3,  4,   5,  4,  5,  4,  5,    // 20-29 
@@ -675,7 +675,7 @@ LS_CONST byte MICROLINN_MAJ_2ND[MICROLINN_MAX_EDO+1] = {      // defined not as 
   8,  9,  8,  9, 10,   9                     // 50-55
 };
 
-LS_CONST byte MICROLINN_MAJ_2ND_TR[MICROLINN_MAX_EDO+1] = {   // defined not as best 9/8 but as best 3/2 minus best 4/3
+static const byte MICROLINN_MAJ_2ND_TR[MICROLINN_MAX_EDO+1] = {   // defined not as best 9/8 but as best 3/2 minus best 4/3
   0,  0,  0,  0,  1,   1,  1,  1,  1,  1,    // 0-9        // but it's actually just a single edostep for edos 6, 8, 10 & 12
   1,  1,  1,  3,  2,   3,  2,  3,  4,  3,    // 10-19      // 13 and 18, not 13b and 18b
   4,  3,  4,  3,  4,   5,  4,  5,  4,  5,    // 20-29      // used for transposePitch
@@ -684,7 +684,7 @@ LS_CONST byte MICROLINN_MAJ_2ND_TR[MICROLINN_MAX_EDO+1] = {   // defined not as 
   8,  9,  8,  9, 10,   9                     // 50-55
 };
 
-LS_CONST byte MICROLINN_PERF_4TH[MICROLINN_MAX_EDO+1] = {     // defined as best 4/3
+static const byte MICROLINN_PERF_4TH[MICROLINN_MAX_EDO+1] = {     // defined as best 4/3
   0,  0,  0,  0,  5,   2,  2,  3,  3,  4,    // 0-9        // used to test if microLinn.guitarTuning is F#BEADGBE
   4,  5,  5,  5,  6,   6,  7,  7,  7,  8,    // 10-19      // if it isn't, the guitar tuning light is light blue
   8,  9,  9, 10, 10,  10, 11, 11, 12, 12,    // 20-29      // 13b = 6666626 and 18b = 8888848 are also allowed
@@ -718,7 +718,7 @@ LS_CONST byte MICROLINN_PERF_4TH[MICROLINN_MAX_EDO+1] = {     // defined as best
   // *** supersharp edos 8, 13, and 18 and superflat edos 9, 11 and 23 must be manually adjusted
   ***************************/
 
-LS_CONST byte MICROLINN_SCALEROWS[MICROLINN_MAX_EDO+1][8] = { 
+static const byte MICROLINN_SCALEROWS[MICROLINN_MAX_EDO+1][8] = { 
   0,  0,  0,  0,  0,  0,  0,  0, 
   0,  0,  0,  0,  0,  0,  0,  0, 
   0,  0,  0,  0,  0,  0,  0,  0, 
@@ -777,7 +777,7 @@ LS_CONST byte MICROLINN_SCALEROWS[MICROLINN_MAX_EDO+1][8] = {
   2, 11, 20, 25, 34, 43, 52, 57   // 55
 };
 
-LS_CONST byte MICROLINN_RAINBOWS[MICROLINN_ARRAY_SIZE] = {
+static const byte MICROLINN_RAINBOWS[MICROLINN_ARRAY_SIZE] = {
 //  lime (10) is used for yellow because the official yellow (2) is too orangish
 //  8     = white         = 12-edo-ish           = 3-limit
 //  10/3  = yellow/green  = submajor/superminor  = 5-over/5-under
@@ -896,7 +896,7 @@ LS_CONST byte MICROLINN_RAINBOWS[MICROLINN_ARRAY_SIZE] = {
   8, 1, 4, 5, 8, 3, 9, 6, 9,10, 8, 1, 5, 8, 3, 9, 6, 9,10, 8, 1, 4, 5, 8, 9, 6, 9,10, 3, 9, 6, 9, 8, 1, 4, 5, 8, 3, 9, 6, 9,10, 8, 1, 5, 8, 3, 9, 6, 9,10, 8, 1, 4, 5  // 55
 };
 
-LS_CONST byte MICROLINN_SCALES[MICROLINN_ARRAY_SIZE] = {
+static const byte MICROLINN_SCALES[MICROLINN_ARRAY_SIZE] = {
   // 5edo    1L1s(3:2), 2L1s(2:1)
   B1111111,  // P1
   B0000000,  // M2/m3
@@ -1269,7 +1269,7 @@ LS_CONST byte MICROLINN_SCALES[MICROLINN_ARRAY_SIZE] = {
   127, 0, 0,64, 0,64, 0,64, 0,67, 0,64,64, 0,66, 0, 0, 0,65, 0,64, 0, 0,67, 0,64, 0,64,64, 0,64, 0,67, 0, 0,64, 0,66, 0, 0, 0,65, 0,64,64, 0,66, 0, 0, 0,65, 0,64, 0, 0  // 55
 };
 
-LS_CONST byte MICROLINN_FRETBOARDS [6 * (MICROLINN_MAX_EDO - 4)] = { 
+static const byte MICROLINN_FRETBOARDS [6 * (MICROLINN_MAX_EDO - 4)] = { 
 // for each edo, this array gives the location in edosteps of each fret marker, 0 means none
 // all are single dots except the 5th column is the double dot for the 4th/5th, only doubled if there are more than 5 dots per octave
 // all this is for the lower half of the octave only, the upper half gets filled in by symmetry
@@ -6341,7 +6341,7 @@ void paintPatternChainDebug() {
 
 
 // old way with scales #2 = zo, #3 = ru and #4 = ila/tha
-LS_CONST byte MICROLINN_SCALES[MICROLINN_ARRAY_SIZE] = {
+static const byte MICROLINN_SCALES[MICROLINN_ARRAY_SIZE] = {
   // scale 0 = yo, 1 is gu, 2 = zo, 3 = ru, 4 = ila/tha, 5 = blank but for the tonic, 6 = yaza rainbow, 7 = full rainbow, bit 7 is unused
   //  1 y   2 g   4 z   8 r   16 l   32   64 ygzr
   127,12,76,76,12, // 5edo
