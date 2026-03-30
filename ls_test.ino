@@ -100,6 +100,12 @@ void debugprint_funcname(const char *fname) {
     static const char *touchInfo[] = { "untouched", "ignored", "transfer", "touched" };
 
     DEBUGPRINT((2,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((2, align_ws - l));
+    }
     DEBUGPRINT((2,": col="));DEBUGPRINT((2,(int)sensorCol));
     DEBUGPRINT((2," row="));DEBUGPRINT((2,(int)sensorRow));
     DEBUGPRINT((2," veloZ="));DEBUGPRINT((2,(int)sensorCell->velocityZ));
@@ -113,6 +119,12 @@ void debugprint_funcname(const char *fname) {
 void debugprint_funcname_L5(const char *fname) {
   if (SWITCH_SURFACESCAN) {
     DEBUGPRINT((4,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((2, align_ws - l));
+    }
     DEBUGPRINT((4,": anim="));
     DEBUGPRINT((4,int(animationActive)));
     DEBUGPRINT((4," mode="));
@@ -124,6 +136,12 @@ void debugprint_funcname_L5(const char *fname) {
 void debugprint_funcname_L0(const char *fname) {
   if (SWITCH_SURFACESCAN) {
     DEBUGPRINT((0,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((2, align_ws - l));
+    }
     DEBUGPRINT((0,": anim="));
     DEBUGPRINT((0,int(animationActive)));
     DEBUGPRINT((0," mode="));
