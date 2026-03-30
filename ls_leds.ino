@@ -46,8 +46,8 @@ These functions handle the low-level communication with LinnStrument's 208 RGB L
 */
 
 byte COL_INDEX[MAXCOLS];
-LS_CONST byte COL_INDEX_200[MAXCOLS] = {0, 1, 6, 11, 16, 21, 2, 7, 12, 17, 22, 3, 8, 13, 18, 23, 4, 9, 14, 19, 24, 5, 10, 15, 20, 25};
-LS_CONST byte COL_INDEX_128[MAXCOLS] = {0, 1, 6, 11, 16, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+static const byte COL_INDEX_200[MAXCOLS] = {0, 1, 6, 11, 16, 21, 2, 7, 12, 17, 22, 3, 8, 13, 18, 23, 4, 9, 14, 19, 24, 5, 10, 15, 20, 25};
+static const byte COL_INDEX_128[MAXCOLS] = {0, 1, 6, 11, 16, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // array holding contents of display
 byte leds[2][LED_ARRAY_SIZE];
