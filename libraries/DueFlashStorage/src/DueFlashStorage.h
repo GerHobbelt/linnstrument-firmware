@@ -18,8 +18,6 @@ Rewritten and modified by Sebastian Nilsson
 #include "flash_efc.h"
 #include "efc.h"
 
-//#include "ls_debug.h"
-
 // 1Kb of data
 #define DATA_LENGTH   ((IFLASH1_PAGE_SIZE/sizeof(byte))*4)
 
@@ -34,7 +32,11 @@ Rewritten and modified by Sebastian Nilsson
 #endif
 
 #ifdef FLASH_DEBUG
+#ifndef DEBUGPRINT
 #define _FLASH_DEBUG(x) DEBUGPRINT((-1, x))
+#else
+#define _FLASH_DEBUG(x) Serial.print(x)
+#endif
 #else
 #define _FLASH_DEBUG(x)
 #endif
