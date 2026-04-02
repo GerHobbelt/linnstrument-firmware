@@ -19,50 +19,70 @@ Rewritten and modified by Sebastian Nilsson
 #include "efc.h"
 
 // 1Kb of data
-#define DATA_LENGTH   ((IFLASH1_PAGE_SIZE/sizeof(byte))*4)
+#define DATA_LENGTH ((IFLASH1_PAGE_SIZE / sizeof(byte)) * 4)
 
 // choose a start address that's offset to show that it doesn't have to be on a page boundary
-#define  FLASH_START  ((byte *)IFLASH1_ADDR)
-
-//  FLASH_DEBUG can be enabled to get debugging information displayed.
-#define FLASH_DEBUG
-
-#ifndef DEBUGPRINT
-#error "DueFlashStorage lib is patched: it MUST be manually loaded via INO file in your project..."
-#endif
-
-#ifdef FLASH_DEBUG
-#ifndef DEBUGPRINT
-#define _FLASH_DEBUG(x) DEBUGPRINT((-1, x))
-#else
-#define _FLASH_DEBUG(x) Serial.print(x)
-#endif
-#else
-#define _FLASH_DEBUG(x)
-#endif
+#define FLASH_START ((byte*)IFLASH0_ADDR)
 
 //  DueFlash is the main class for flash functions
 class DueFlashStorage {
 public:
-  DueFlashStorage();
-  
-  // write() writes the specified amount of data into flash.
-  // flashStart is the address in memory where the write should start
-  // data is a pointer to the data to be written
-  // dataLength is length of data in bytes
-  
+	DueFlashStorage();
+
+	// write() writes the specified amount of data into flash.
+	// address is the offset from the flash start where the write should start
+	// data is a pointer to the data to be written
+	// dataLength is length of data in bytes
+
 	byte read(uint32_t address);
+
+	// This returns the physical address of the given flash offset. 0 returns the start of the flash (which is 0x80000 on the Due)
 	byte* readAddress(uint32_t address);
-	
-	uint32_t getFlashSize() const
-	{
-		return IFLASH1_SIZE;
+
+	// Return the flash offset for the given physical address.
+	uint32_t getOffset(byte* address);
+
+	// This returns the physical address of the free flash memory after the program. It is retrieved from the linker map.
+	// Writing to any address below the value returned by this function is likely going to corrupt the program memory and
+	// then crash the CPU.
+	static byte* getFirstFreeBlock();
+
+	static inline uint32_t getAvailableFlashSize() {
+		return IFLASH0_SIZE + IFLASH1_SIZE - (getFirstFreeBlock() - FLASH_START);
 	}
-	
-	boolean write(uint32_t address, byte value);
-	boolean write(uint32_t address, byte *data, uint32_t dataLength);
-	boolean write_unlocked(uint32_t address, byte value);
-	boolean write_unlocked(uint32_t address, byte *data, uint32_t dataLength);
+
+	// Test if the given offset is within the freely available space in the Flash.
+	//
+	// We DO NOT permit overwriting any application code or data, so the first available 
+	// address offset would be (getFirstFreeBlock() - FLASH_START).
+	inline bool validateAddress(uint32_t address) const {
+    return validateAddress(address, 1);
+	}
+	// As the above, but also takes the given size/amount (to be written) into account.
+	bool validateAddress(uint32_t address, uint32_t dataLength) const;
+
+	// These write methods write a byte or a block to the given offset.
+	inline boolean write(uint32_t address, byte value) {
+		return write(address, &value, 1);
+	}
+	inline boolean write(uint32_t address, byte* data, uint32_t dataLength) {
+		return write(address, data, dataLength, true);
+	}
+
+	boolean write(uint32_t address, byte* data, uint32_t dataLength, bool with_locking);
+
+	inline boolean write_unlocked(uint32_t address, byte value) {
+		return write_unlocked(address, &value, 1);
+	}
+	inline boolean write_unlocked(uint32_t address, byte* data, uint32_t dataLength) {
+		return write(address, data, dataLength, false);
+	}
+
+	// This writes directly to the given address. It must be in flash.
+	inline boolean write(byte* address, byte* data, uint32_t dataLength) {
+    uint32_t offset = getOffset(address);
+    return write(offset, data, dataLength);
+  }
 };
 
 #endif
