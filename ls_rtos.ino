@@ -118,6 +118,15 @@ inline void performContinuousTasks(unsigned long nowMicros) {
       continuousFootSwitches = false;
     }
 
+#if 0 // TODO [GHo]
+    static boolean continuousRefreshGlobalSettingsDisplay = false;
+    if (!continuousRefreshGlobalSettingsDisplay) {
+      continuousRefreshGlobalSettingsDisplay = true;
+      checkRefreshGlobalSettingsDisplay(nowMicros);
+      continuousRefreshGlobalSettingsDisplay = false;
+    }
+#endif
+
     static boolean continuousSleep = false;
     if (!continuousSleep) {
       continuousSleep = true;

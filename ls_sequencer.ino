@@ -16,6 +16,8 @@ limitations under the License.
 These implement the polyphonic expressive step sequencer, independently for each split.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 struct SequencerConstantsT {
   constexpr static const byte FADER_TOP = 3;
   byte FADER_LENGTH;
@@ -202,7 +204,7 @@ struct __attribute__ ((packed)) StepEventState {
   void highlightCell(StepSequencerState& state, StepEvent& event);
   void unhighlightCell();
 
-  short note:16;                // short not byte for microLinn, adds 256 bytes to seqState
+  short note:16;                // short note word for microLinn, adds 256 bytes to seqState
   byte remainingDuration:8;
   byte channel:5;
   byte highlightedRow:3;
@@ -1574,7 +1576,7 @@ inline void startProjectLEDBlink(byte p, byte color) {
   }
   projectBlinkStart[p] = now;
 
-  setLed(6 + p%4, 5 - p/4, color, cellFastPulse);       // projects now run top to bottom, part of the patternChaining fork
+  setLed(6 + p % 4, 5 - p / 4, color, cellFastPulse);       // projects now run top to bottom, part of the patternChaining fork
 }
 
 void handleSequencerProjectsHold() {
@@ -1586,7 +1588,7 @@ void handleSequencerProjectsHold() {
     // store to the selected project
     sequencersTurnOff(true);
 
-    byte project = sensorCol-6 + (5-sensorRow) * 4;    // projects now run top to bottom, part of the patternChaining fork
+    byte project = sensorCol - 6 + (5 - sensorRow) * 4;    // projects now run top to bottom, part of the patternChaining fork
 
     writeProjectToFlash(project);
 
@@ -1606,7 +1608,7 @@ void handleSequencerProjectsRelease() {
     // load the selected project
     sequencersTurnOff(true);
 
-    byte project = sensorCol-6 + (5-sensorRow) * 4;    // projects now run top to bottom, part of the patternChaining fork
+    byte project = sensorCol - 6 + (5 - sensorRow) * 4;    // projects now run top to bottom, part of the patternChaining fork
     Device.lastLoadedProject = project;
     loadProject(project);
 
@@ -2089,7 +2091,10 @@ void StepEventState::sendNoteOff() {
     newNote = getMicroLinnMidiNote(split, note);
     newChannel = rechannelMicroLinnGroup(split, channel, note >> 7);
   }
-  if (newNote < 0) return;
+  
+  if (newNote < 0) {
+    return;
+  }
 
   midiSendNoteOff(split, newNote, newChannel);        // send to new channel but release old channel
   releaseChannel(split, channel);
@@ -2526,7 +2531,8 @@ void StepSequencerState::advanceSequencer() {
       if (nextPattern != -1 && (position == 0 || switchPatternOnBeat)) {
         position = 0;
         // avoid skipping the current pattern when first running a patternchain
-        if (!(patternChain[split][currentPattern] >= 0 && firstSeqCycle[split])) currentPattern = nextPattern;
+        if (!(patternChain[split][currentPattern] >= 0 && firstSeqCycle[split])) 
+          currentPattern = nextPattern;
         firstSeqCycle[split] = false;
         nextPattern = patternChain[split][currentPattern];
         switchPatternOnBeat = false;
@@ -3391,7 +3397,7 @@ void StepSequencerState::selectPattern(byte pattern) {
     else {
       // a double tap on an already scheduled next pattern, schedules it at the beginning of the next beat
       if (nextPattern == pattern) {
-        switchPatternOnBeat = patternChainTouches(split) < 2;   // don't switch early if the double-tap is part of a chaining touch
+        switchPatternOnBeat = (patternChainTouches(split) < 2);   // don't switch early if the double-tap is part of a chaining touch
       }
       // schedule the pattern as the next one
       else {

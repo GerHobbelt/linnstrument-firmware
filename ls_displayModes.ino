@@ -1021,7 +1021,8 @@ void paintOSVersionDisplay() {
 
   clearDisplay();
 
-  smallfont_draw_string(0, 0, OSinfo.OSVersion, COLOR_GREEN);
+  byte color = Split[LEFT].colorMain;
+  smallfont_draw_string(0, 0, OSinfo.OSVersion, color);
 
   // extended menu at bottom row:
   if (Device.serialMode) {
@@ -1043,7 +1044,8 @@ void paintOSVersionBuildDisplay() {
 
   clearDisplay();
 
-  smallfont_draw_string(0, 0, OSinfo.OSVersionBuild, COLOR_LIME);
+  byte color = Split[LEFT].colorAccent;
+  smallfont_draw_string(0, 0, OSinfo.OSVersionBuild, color);
 }
 
 void paintMicroLinnOSVersionDisplay() {
@@ -1064,7 +1066,7 @@ void paintDevelopmentTestMenu() {
 
 // paint the current preset number for a particular side, in large block characters
 inline byte getPresetDisplayColumn() {
-  return isLinn200() ? NUMCOLS-2 : 16;
+  return isLinn200() ? NUMCOLS-2 : NUMCOLS-1;
 }
 
 void paintPresetDisplay(byte side) {
@@ -1087,7 +1089,7 @@ void paintPresetDisplay(byte side) {
     paintSplitNumericDataDisplay(side, midiPreset[side]+1, 0, false);
   } else {
     paintShowSplitSelection(side);
-    paintNumericDataDisplay(Split[side].colorAccent, midiBank[side]+1, 0, false);
+    paintNumericDataDisplay(Split[side].colorAccent, midiBank[side] + 1, 0, false);
   }
   paintMicroLinnClipLauncher();
 }

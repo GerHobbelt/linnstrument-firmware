@@ -562,7 +562,6 @@ void refreshLedColumn(unsigned long now) {
     // clean the pulsar cache so there's plenty room for new ones.
     pulsars.clear(actualCol);
   }
-        
 
   if (++ledCol >= NUMCOLS) ledCol = 0;
 

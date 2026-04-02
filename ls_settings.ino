@@ -84,7 +84,7 @@ void switchSerialMode(boolean flag) {
     updateDisplay();
   }
 
-  if (Device.operatingLowPower == 1 && flag) {
+  if (flag && Device.operatingLowPower == 1) {
     DEBUGPRINT((-1,"Turn LOW POWER mode OFF when switching to SerialMode.\n"));
     Device.operatingLowPower = 0;
     applyLedInterval();
@@ -600,7 +600,7 @@ void initializeNoteLights(GlobalSettings& g) {
     g.mainNotes[8] |= 1 << 8;
     g.mainNotes[8] |= 1 << 10;
 
-/******* no longer needed since the 3 custom light patterns replace these 3 scales
+#if 0   // no longer needed since the 3 custom light patterns replace these 3 scales
     // Spanish (Phrygian Dominant)
     g.mainNotes[9] |= 1 << 0;
     g.mainNotes[9] |= 1 << 1;
@@ -627,7 +627,7 @@ void initializeNoteLights(GlobalSettings& g) {
     g.mainNotes[11] |= 1 << 6;
     g.mainNotes[11] |= 1 << 8;
     g.mainNotes[11] |= 1 << 10;
-***************************************/
+#endif
 }
 
 void initializeGuitarTuning(GlobalSettings& g) {
