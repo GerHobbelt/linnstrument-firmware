@@ -61,7 +61,7 @@ inline void debugPrintln(int level, int val) {
 
 void debugprint_funcname(const char *fname) {
   if (SWITCH_SURFACESCAN) {
-    static const char *touchInfo[] = { "untouched", "ignored", "transfer", "touched" };
+    static const char *touchInfoStr[] = { "untouched", "ignored", "transfer", "touched" };
 
     DEBUGPRINT((2,fname));
     auto l = strlen(fname);
@@ -75,7 +75,7 @@ void debugprint_funcname(const char *fname) {
     DEBUGPRINT((2," veloZ="));DEBUGPRINT((2,(int)sensorCell->velocityZ));
     DEBUGPRINT((2," pressZ="));DEBUGPRINT((2,(int)sensorCell->pressureZ));
     DEBUGPRINT((2," velo="));DEBUGPRINT((2,(int)sensorCell->velocity));
-    DEBUGPRINT((2," touch="));DEBUGPRINT((2,touchInfo[int(sensorCell->touched)]));
+    DEBUGPRINT((2," touch="));DEBUGPRINT((2,touchInfoStr[int(sensorCell->touched)]));
     DEBUGPRINT((2,"\n"));
   }
 }
