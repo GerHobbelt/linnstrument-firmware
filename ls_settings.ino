@@ -20,7 +20,7 @@ These functions handle the changing of any of LinnStrument's panel settings.
 
 // These messages correspond to the scrolling texts that will be displayed by default when pressing
 // the top-most row in global settings. Only the first 30 characters will be used.
-LS_CONST char* const defaultAudienceMessages[16] = {
+static const char* const defaultAudienceMessages[16] = {
   "LINNSTRUMENT",
   "APPLAUSE",
   "HA HA HA",
@@ -40,7 +40,7 @@ LS_CONST char* const defaultAudienceMessages[16] = {
 };
 
 // These arrays use the setLed encoding scheme where the color is bitshifted << 3 and ORed with the CellDisplay value
-LS_CONST byte CUSTOM_LEDS_PATTERN1[LED_LAYER_SIZE] = {
+static const byte CUSTOM_LEDS_PATTERN1[LED_LAYER_SIZE] = {
    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,
    0, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 25,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0, 25,
@@ -51,7 +51,7 @@ LS_CONST byte CUSTOM_LEDS_PATTERN1[LED_LAYER_SIZE] = {
    0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0,  0
 };
 
-LS_CONST byte CUSTOM_LEDS_PATTERN2[LED_LAYER_SIZE] = {
+static const byte CUSTOM_LEDS_PATTERN2[LED_LAYER_SIZE] = {
    0,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0,
    0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17,
    0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73, 25,  0, 41,  0,  9,  0, 17, 33,  0, 49,  0, 73,
@@ -166,7 +166,9 @@ void initializeStorage() {
 inline void storeSettings() {
   if (!sequencerIsRunning()) {
     Project.tempo = FXD4_TO_INT(fxd4CurrentTempo);
+#if 0
     writeSettingsToFlash();
+#endif
   }
 }
 
@@ -213,23 +215,34 @@ void writeSettingsToFlash() {
 
   // read the marker to know which configuration version was last written successfully
   byte marker = dueFlashStorage.read(SETTINGS_OFFSET);
-  // update the marker and the flash memory offset to now write to the other configuration version
-  // ensuring that the previous one remains coherent
-  uint32_t configOffset;
-  if (marker == 0) {
-    marker = 1;
+
+  uint32_t configOffset = 0;
+  if (marker != 0) {
     configOffset = sizeof(Configuration);
   }
-  else {
-    marker = 0;
-    configOffset = 0;
+  auto diff = memcmp(&config, dueFlashStorage.readAddress(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset), sizeof(Configuration));
+  if (diff == 0) {
+    DEBUGPRINT((0,"writeSettingsToFlash: no changes to store.\n"));
   }
+  else {
+    // update the marker and the flash memory offset to now write to the other configuration version
+    // ensuring that the previous one remains coherent
+    uint32_t configOffset;
+    if (marker == 0) {
+      marker = 1;
+      configOffset = sizeof(Configuration);
+    }
+    else {
+      marker = 0;
+      configOffset = 0;
+    }
 
-  // write to flash, taking low power mode into account
-  writeAdaptivelyToFlash(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset, (byte*)&config, sizeof(Configuration));
+    // write to flash, taking low power mode into account
+    writeAdaptivelyToFlash(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset, (byte*)&config, sizeof(Configuration));
 
-  // write the marker after the configuration data so that this version becomes the latest coherent one
-  dueFlashStorage.write(SETTINGS_OFFSET, marker);
+    // write the marker after the configuration data so that this version becomes the latest coherent one
+    dueFlashStorage.write(SETTINGS_OFFSET, marker);
+  }
 
   clearFullDisplay();
   completelyRefreshLeds();
@@ -249,19 +262,66 @@ inline void loadSettings() {
 }
 
 void writeInitialProjectSettings() {
-  dueFlashStorage.write(PROJECTS_OFFSET, 0);
+  DEBUGPRINT((2,"writeInitialProjectSettings size="));
+  DEBUGPRINT((2,PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + MAX_PROJECTS * SINGLE_PROJECT_SIZE));
+  DEBUGPRINT((2," bytes"));
+  DEBUGPRINT((2,"\n"));
 
-  for (byte i = 0; i < PROJECT_INDEXES_COUNT; ++i) {
-    dueFlashStorage.write(PROJECT_INDEX_OFFSET(0, i), i);
-    dueFlashStorage.write(PROJECT_INDEX_OFFSET(1, i), i);
+  // read the marker to know which configuration version was last written successfully, if any
+  byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
+  DEBUGPRINT((2,"MARKER="));
+  DEBUGPRINT((2,marker));
+  DEBUGPRINT((2,"\n"));
+
+  boolean has_diff = (marker == 0 || marker == 1) ? false : true;
+  
+  if (!has_diff) {
+    // read the location of the temporary project storage
+    byte previousIndexes[PROJECT_INDEXES_COUNT];
+    memcpy(&previousIndexes, dueFlashStorage.readAddress(PROJECT_INDEX_OFFSET(marker, 0)), PROJECT_INDEXES_COUNT);
+    //byte tmpIndex = previousIndexes[MAX_PROJECTS];
+    for (byte i = 0; i < PROJECT_INDEXES_COUNT; ++i) {
+      byte prjIndex = previousIndexes[i];
+
+      if (prjIndex >= MAX_PROJECTS) {
+        has_diff = true;
+      }
+    
+      if (!has_diff) {
+        uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + prjIndex * SINGLE_PROJECT_SIZE;
+        auto diff = memcmp(&Project, dueFlashStorage.readAddress(projectOffset), sizeof(SequencerProject));
+        if (diff == 0) {
+          DEBUGPRINT((2,"writeInitialProjectSettings project#="));
+          DEBUGPRINT((2,i));
+          DEBUGPRINT((2,", prjIndex="));
+          DEBUGPRINT((2,prjIndex));
+          DEBUGPRINT((2," --> no changes when compared to the active Project!\n"));
+        }
+        else {
+          has_diff = true;
+        }
+      }
+    }
   }
 
-  for (byte p = 0; p <= MAX_PROJECTS; ++p) {
-    writeProjectToFlashRaw(p);
+  if (!has_diff) {
+    DEBUGPRINT((2,"writeInitialProjectSettings: nothing to write: nothing differs when compared to the active Project!\n"));
+  }
+  else {
+    dueFlashStorage.write(PROJECTS_OFFSET, 0);
+
+    for (byte i = 0; i < PROJECT_INDEXES_COUNT; ++i) {
+      dueFlashStorage.write(PROJECT_INDEX_OFFSET(0, i), i);
+      dueFlashStorage.write(PROJECT_INDEX_OFFSET(1, i), i);
+    }
+
+    for (byte p = 0; p <= MAX_PROJECTS; ++p) {
+      writeProjectToFlashRaw(p);
+    }
   }
 }
 
-void writeProjectToFlashRaw(byte project) {
+inline void writeProjectToFlashRaw(byte project) {
   // write to flash, taking low power mode into account
   uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + project * SINGLE_PROJECT_SIZE;
   Project.tempo = FXD4_TO_INT(fxd4CurrentTempo);
@@ -287,19 +347,42 @@ void writeProjectToFlash(byte project) {
   byte tmpIndex = previousIndexes[MAX_PROJECTS];
   byte prjIndex = previousIndexes[project];
 
-  writeProjectToFlashRaw(tmpIndex);
+  boolean has_diff = false;
+  
+  uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + prjIndex * SINGLE_PROJECT_SIZE;
+  auto diff = memcmp(&Project, dueFlashStorage.readAddress(projectOffset), sizeof(SequencerProject));
+  if (diff == 0) {
+    DEBUGPRINT((2,"writeProjectToFlash prjIndex="));
+    DEBUGPRINT((2,prjIndex));
+    DEBUGPRINT((2," --> no changes when compared to the active Project!\n"));
+  }
+  else {
+    has_diff = true;
+  }
 
-  // write the marker after the project data so that this version becomes to latest coherent one
-  byte newMarker = 1 - marker;
-  previousIndexes[project] = tmpIndex;
-  previousIndexes[MAX_PROJECTS] = prjIndex;
-  dueFlashStorage.write(PROJECT_INDEX_OFFSET(newMarker, 0), previousIndexes, PROJECT_INDEXES_COUNT);
-  dueFlashStorage.write(PROJECTS_OFFSET, newMarker);
+  if (!has_diff) {
+    DEBUGPRINT((2,"writeProjectToFlash: nothing to write: nothing differs when compared to the active Project!\n"));
+  }
+  else {
+    writeProjectToFlashRaw(tmpIndex);
 
+    // write the marker after the project data so that this version becomes the latest coherent one
+    byte newMarker = 1 - marker;
+    previousIndexes[project] = tmpIndex;
+    previousIndexes[MAX_PROJECTS] = prjIndex;
+    dueFlashStorage.write(PROJECT_INDEX_OFFSET(newMarker, 0), previousIndexes, PROJECT_INDEXES_COUNT);
+    dueFlashStorage.write(PROJECTS_OFFSET, newMarker);
+  }
+  
   updateDisplay();
 }
 
 void loadProject(byte project) {
+  DEBUGPRINT((2,"loadProject size="));
+  DEBUGPRINT((2,sizeof(SequencerProject)));
+  DEBUGPRINT((2," bytes"));
+  DEBUGPRINT((2,"\n"));
+
   // read the marker to know which configuration version was last written successfully
   byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
   byte prjIndex = dueFlashStorage.read(PROJECT_INDEX_OFFSET(marker, project));
@@ -806,6 +889,8 @@ void applyLimitsForVelocity() {
 
 // Called to handle press events of the 8 control buttons
 void handleControlButtonNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   // if we're in the startup phase after a global reset
   // a new press on a control button terminates the global reset state
   // and makes sure that startup control button combination is reset
@@ -948,6 +1033,8 @@ void handleControlButtonRelease() {
   if (handleSequencerControlButtonRelease()) {
     return;
   }
+
+  DEBUGPRINT_FUNCNAME();
 
   if (sensorRow != SWITCH_1_ROW &&
       sensorRow != SWITCH_2_ROW) {                                          // don't allow simultaneous control buttons except for the switches
@@ -1245,6 +1332,8 @@ inline void applyTimbreCC74(byte split) {
 }
 
 void handlePerSplitSettingNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   // start tracking the touch duration to be able to enable hold functionality
   sensorCell->lastTouch = millis();
 
@@ -1573,15 +1662,9 @@ void handlePerSplitSettingNewTouch() {
 }
 
 void handlePerSplitSettingHold() {
-  DEBUGPRINT((3,"handlePerSplitSettingHold: col="));
-  DEBUGPRINT((3,sensorCol));
-  DEBUGPRINT((3,",row="));
-  DEBUGPRINT((3,sensorRow));
-  DEBUGPRINT((3,",holdTime="));
-  DEBUGPRINT((3,getCellSensorHoldWait()));
-  DEBUGPRINT((3,"\n"));
-
   if (isCellPastEditHoldWait()) {
+    DEBUGPRINT_FUNCNAME();
+
     sensorCell->lastTouch = 0;
 
     switch (sensorCol) {
@@ -1699,6 +1782,8 @@ void handlePerSplitSettingHold() {
 }
 
 void handlePerSplitSettingRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   switch (sensorCol) {
     case 1:
       switch (sensorRow) {
@@ -1806,6 +1891,8 @@ void handlePerSplitSettingRelease() {
 // This function handles use of the "Show Split" cells,
 // and returns true if one of them was hit.
 boolean handleShowSplit() {
+  DEBUGPRINT_FUNCNAME();
+
   // Two cells in the top row (col 15 and 16) lets you change which side you're controlling
   if (sensorRow == 7) {
     boolean hit = false;
@@ -1846,6 +1933,8 @@ boolean handleShowSplit() {
 }
 
 void handlePresetNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if ((sensorCol == 1 && sensorRow == 7 && midiPreset[Global.currentPerSplit] < 127) ||
       (sensorCol == 1 && sensorRow == 6 && midiPreset[Global.currentPerSplit] > 0)) {
     midiPreset[Global.currentPerSplit] += (sensorRow == 7 ? 1 : -1);
@@ -1890,8 +1979,10 @@ void handlePresetHold() {
   if (sensorCol == getPresetDisplayColumn() &&
       sensorRow < NUMPRESETS &&
       isCellPastEditHoldWait()) {
+    DEBUGPRINT_FUNCNAME();
+
     // store to the selected preset
-    int preset = sensorRow-2;
+    int preset = sensorRow - 2;
     if (preset < 0) preset += 6;
     storeSettingsToPreset(preset);
     sensorCell->lastTouch = 0;
@@ -1906,6 +1997,8 @@ inline void applyMidiPreset() {
 }
 
 void handlePresetRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol > getPresetDisplayColumn()) {
     return;
   }
@@ -1931,15 +2024,21 @@ void handlePresetRelease() {
 }
 
 inline void handleBendRangeNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Split[Global.currentPerSplit].customBendRange, 1, 96, false);
 }
 
 inline void handleBendRangeRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(true);
   midiSendMpePitchBendRange(Global.currentPerSplit);
 }
 
 void handleLimitsForYNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   switch (limitsForYConfigState) {
     case 1:
       handleNumericDataNewTouchCol(Split[Global.currentPerSplit].minForY, 0, 127, false);
@@ -1952,12 +2051,16 @@ void handleLimitsForYNewTouch() {
 }
 
 inline void handleLimitsForYRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
   handleNumericDataReleaseRow(true);
   applyLimitsForY();
 }
 
 inline void handleCCForYNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Split[Global.currentPerSplit].customCCForY, 0, 129, false);
   applyCustomCCForY(Global.currentPerSplit);
 }
@@ -1975,18 +2078,26 @@ inline void applyCustomCCForY(byte split) {
 }
 
 inline void handleCCForYRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(true);
 }
 
 inline void handleInitialForRelativeYNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Split[Global.currentPerSplit].initialRelativeY, 0, 127, false);
 }
 
 inline void handleInitialForRelativeYRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(true);
 }
 
 void handleLimitsForZNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   switch (limitsForZConfigState) {
     case 2:
       handleNumericDataNewTouchCol(Split[Global.currentPerSplit].minForZ, 0, 127, false);
@@ -2002,28 +2113,40 @@ void handleLimitsForZNewTouch() {
 }
 
 inline void handleLimitsForZRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
   handleNumericDataReleaseRow(true);
   applyLimitsForZ();
 }
 
 inline void handleCCForZNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Split[Global.currentPerSplit].customCCForZ, 0, 127, false);
 }
 
 inline void handleCCForZRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(true);
 }
 
 inline void handlePlayedTouchModeNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Split[Global.currentPerSplit].playedTouchMode, playedCell, playedOrbits, false);
 }
 
 inline void handlePlayedTouchModeRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(true);
 }
 
 void handleCCForFaderNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol == NUMCOLS-1) {
     currentEditedCCFader[Global.currentPerSplit] = sensorRow;
     updateDisplay();
@@ -2035,20 +2158,28 @@ void handleCCForFaderNewTouch() {
 }
 
 inline void handleCCForFaderRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol < NUMCOLS-1) {
     handleNumericDataReleaseCol(true);
   }
 }
 
 inline void handleLowRowBendConfigNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Split[Global.currentPerSplit].lowRowBendBehavior, 0, 1, false);
 }
 
 inline void handleLowRowBendConfigRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(true);
 }
 
 void handleLowRowCCXConfigNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   switch (lowRowCCXConfigState) {
     case 1:
       handleNumericDataNewTouchCol(Split[Global.currentPerSplit].lowRowCCXBehavior, 0, 1, false);
@@ -2061,11 +2192,15 @@ void handleLowRowCCXConfigNewTouch() {
 }
 
 inline void handleLowRowCCXConfigRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
   handleNumericDataReleaseRow(true);
 }
 
 void handleLowRowCCXYZConfigNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   switch (lowRowCCXYZConfigState) {
     case 3:
       handleNumericDataNewTouchCol(Split[Global.currentPerSplit].lowRowCCXYZBehavior, 0, 1, false);
@@ -2084,36 +2219,52 @@ void handleLowRowCCXYZConfigNewTouch() {
 }
 
 inline void handleLowRowCCXYZConfigRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
   handleNumericDataReleaseRow(true);
 }
 
 inline void handleCCForSwitchCC65ConfigNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Global.ccForSwitchCC65[switchSelect], 0, 127, false);
 }
 
 inline void handleCCForSwitchCC65ConfigRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
 }
 
 inline void handleCCForSwitchSustainConfigNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Global.ccForSwitchSustain[switchSelect], 0, 127, false);
 }
 
 inline void handleCCForSwitchSustainConfigRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
 }
 
 inline void handleCustomSwitchAssignmentConfigNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Global.customSwitchAssignment[switchSelect], ASSIGNED_TAP_TEMPO, MAX_ASSIGNED, false);
 }
 
 inline void handleCustomSwitchAssignmentConfigRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
   Global.setSwitchAssignment(switchSelect, Global.customSwitchAssignment[switchSelect], false);
 }
 
 void handleLimitsForVelocityNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   switch (limitsForVelocityConfigState) {
     case 1:
       handleNumericDataNewTouchCol(Global.minForVelocity, 1, 127, false);
@@ -2126,20 +2277,28 @@ void handleLimitsForVelocityNewTouch() {
 }
 
 inline void handleLimitsForVelocityRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
   handleNumericDataReleaseRow(false);
   applyLimitsForVelocity();
 }
 
 inline void handleValueForFixedVelocityNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Global.valueForFixedVelocity, 1, 127, false);
 }
 
 inline void handleValueForFixedVelocityRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
 }
 
 void handleSleepConfigNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   switch (sleepConfigState) {
     case 1:
       handleNumericDataNewTouchCol(Device.sleepAnimationType, animationNone, animationChristmas, true);
@@ -2152,23 +2311,33 @@ void handleSleepConfigNewTouch() {
 }
 
 inline void handleSleepConfigRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
   handleNumericDataReleaseRow(false);
 }
 
 inline void handleSplitHandednessNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Device.splitHandedness, 0, 2, true);
 }
 
 inline void handleSplitHandednessRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
 }
 
 inline void handleRowOffsetNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Global.customRowOffset, -17, 16, true);
 }
 
 inline void handleRowOffsetRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
 }
 
@@ -2183,6 +2352,8 @@ void ensureGuitarTuningPreviewNoteRelease() {
 }
 
 void handleGuitarTuningNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol == 1) {
     guitarTuningRowNum = sensorRow;
     updateDisplay();
@@ -2198,6 +2369,8 @@ void handleGuitarTuningNewTouch() {
 }
 
 inline void handleGuitarTuningRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(true);
   if (cellsTouched == 0) {
     ensureGuitarTuningPreviewNoteRelease();
@@ -2205,25 +2378,35 @@ inline void handleGuitarTuningRelease() {
 }
 
 inline void handleMinUSBMIDIIntervalNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Device.minUSBMIDIInterval, 0, 512, false);
 }
 
 inline void handleMinUSBMIDIIntervalRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
   applyMidiInterval();
 }
 
 inline void handleMIDIThroughNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Device.midiThrough);
 }
 
 inline void handleMIDIThroughRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
 }
 
 static unsigned short lastAutoSensorSensitivityZ = 0;
 
 void handleSensorSensitivityZNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol == NUMCOLS-1 && sensorRow == NUMROWS-1) {
     Device.sensorSensitivityZ = lastAutoSensorSensitivityZ;
     updateDisplay();
@@ -2234,6 +2417,8 @@ void handleSensorSensitivityZNewTouch() {
 }
 
 void handleSensorSensitivityZHold() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol != 0 && sensorRow != 0 && !(sensorCol == NUMCOLS-1 && sensorRow == NUMROWS-1)) {
     // store the sensitivity setting that would be needed to make the current pressure value reach to the maximum
     lastAutoSensorSensitivityZ = constrain((calculatePreferredPressureRange(calculateSensorRangeZ() + Device.sensorLoZ) * 100) / applyRawZBias(lastReadSensorRawZ), 50, 100);
@@ -2243,6 +2428,8 @@ void handleSensorSensitivityZHold() {
 }
 
 void handleSensorSensitivityZRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorRow == 0) {
     handleNumericDataReleaseCol(false);
   }
@@ -2252,30 +2439,44 @@ void handleSensorSensitivityZRelease() {
 }
 
 inline void handleSensorLoZNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Device.sensorLoZ, max(100, Device.sensorFeatherZ), 1024, false);
 }
 
 inline void handleSensorLoZRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
 }
 
 inline void handleSensorFeatherZNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Device.sensorFeatherZ, 65, min(1024, Device.sensorLoZ), false);
 }
 
 inline void handleSensorFeatherZRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
 }
 
 inline void handleSensorRangeZNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataNewTouchCol(Device.sensorRangeZ, 3 * 127, MAX_SENSOR_RANGE_Z - 127, false);
 }
 
 inline void handleSensorRangeZRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
 }
 
 void handleVolumeNewTouch(boolean newVelocity) {
+  DEBUGPRINT_FUNCNAME();
+
   // don't change volume on the row that has the split selection
   if (sensorRow == 7) {
     return;
@@ -2321,6 +2522,8 @@ void handleVolumeNewTouch(boolean newVelocity) {
 }
 
 void handleVolumeRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   // see if one of the "Show Split" cells have been hit
   if (handleShowSplit()) {
     return;
@@ -2338,6 +2541,8 @@ void handleVolumeRelease() {
 }
 
 void handleOctaveTransposeNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   // handle double per split selection
   if (sensorRow == 7 && (sensorCol == 15 || sensorCol == 16)) {
     doublePerSplit = cell(15, 7).touched == touchedCell && cell(16, 7).touched == touchedCell;
@@ -2357,6 +2562,8 @@ void handleOctaveTransposeNewTouch() {
 }
 
 void handleOctaveTransposeNewTouchSplit(byte side) {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorRow == OCTAVE_ROW) {
     switch (sensorCol) {
       case 3: Split[side].transposeOctave = -60; break;
@@ -2386,10 +2593,14 @@ void handleOctaveTransposeNewTouchSplit(byte side) {
 }
 
 inline void handleOctaveTransposeRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleShowSplit();  // see if one of the "Show Split" cells have been hit
 }
 
 inline void handleSplitPointNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol < 2) return;
   changedSplitPoint = true;
   Global.splitPoint = sensorCol;
@@ -2411,6 +2622,8 @@ inline boolean isArpeggiatorTempoTriplet() {
 }
 
 void handleTempoNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   // keep track of how many cells are currently down
   numericActiveColDown++;
 
@@ -2484,6 +2697,7 @@ inline boolean isCalibrationCellHeld() {
 // Called to handle a change in one of the Global Settings,
 // meaning that user is holding global settings and touching one of global settings cells
 void handleGlobalSettingNewTouch() {
+  DEBUGPRINT_FUNCNAME();
 
 #ifdef DEBUG_ENABLED
   // Column 17 is for controlling debug levels
@@ -3030,6 +3244,8 @@ inline void changeMidiIO(byte where) {
 
 void handleGlobalSettingHold() {
   if (isCellPastEditHoldWait()) {
+    DEBUGPRINT_FUNCNAME();
+
     sensorCell->lastTouch = 0;
 
     switch (sensorCol) {
@@ -3187,6 +3403,8 @@ void handleGlobalSettingHold() {
 }
 
 void handleGlobalSettingRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol == 1 && sensorRow == 3 &&
       ensureCellBeforeHoldWait(getSplitHandednessColor(), Device.otherHanded ? cellOn : cellOff)) {
     Device.otherHanded = !Device.otherHanded;
@@ -3255,25 +3473,26 @@ void handleGlobalSettingRelease() {
     }
   }
   else if (sensorCol == 16) {
-      // Toggle UPDATE OS value
-      if (sensorRow == 2) {
-        byte resetColor = COLOR_BLACK;
-        CellDisplay resetDisplay = cellOff;
-        if (Device.serialMode) {
-          resetColor = globalColor;
-          resetDisplay = cellOn;
-        }
+    // Toggle UPDATE OS value
+    if (sensorRow == 2) {
+      byte resetColor = COLOR_BLACK;
+      CellDisplay resetDisplay = cellOff;
+      if (Device.serialMode) {
+        resetColor = globalColor;
+        resetDisplay = cellOn;
+      }
 
-        if (ensureCellBeforeHoldWait(resetColor, resetDisplay)) {
-          switchSerialMode(!Device.serialMode);
-          storeSettings();
-        }
+      if (ensureCellBeforeHoldWait(resetColor, resetDisplay)) {
+        switchSerialMode(!Device.serialMode);
+        storeSettings();
+        writeSettingsToFlash();
       }
-      // Enter calibration mode
-      else if (sensorRow == 3 && ensureCellBeforeHoldWait(getCalibrationColor(), cellOn)) {
-        initializeCalibrationSamples();
-        setDisplayMode(displayCalibration);
-      }
+    }
+    // Enter calibration mode
+    else if (sensorRow == 3 && ensureCellBeforeHoldWait(getCalibrationColor(), cellOn)) {
+      initializeCalibrationSamples();
+      setDisplayMode(displayCalibration);
+    }
   }
 
   if (!userFirmwareActive) {
@@ -3303,6 +3522,8 @@ void handleGlobalSettingRelease() {
 }
 
 void handleEditAudienceMessageNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   // handle horizontal slides over the columns to scroll the text
   handleNumericDataNewTouchCol(audienceMessageOffset, -audienceMessageLength, 0, false);
 
@@ -3316,11 +3537,15 @@ void handleEditAudienceMessageNewTouch() {
 }
 
 inline void handleEditAudienceMessageRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   handleNumericDataReleaseCol(false);
   handleNumericDataReleaseRow(false);
 }
 
 void trimEditedAudienceMessage() {
+  DEBUGPRINT_FUNCNAME();
+
   if (audienceMessageToEdit != -1) {
     // strip away the trailing space characters
     for (short ch = strlen(Device.audienceMessages[audienceMessageToEdit]) - 1; ch >= 0; --ch) {
@@ -3352,6 +3577,8 @@ bool findOtherCustomLedsEditorTouch(int& otherCol, int& otherRow) {
 }
 
 void handleCustomLedsEditorNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol > 0) {
     // start tracking the touch duration to be able to enable hold functionality
     sensorCell->lastTouch = millis();
@@ -3388,12 +3615,16 @@ void handleCustomLedsEditorNewTouch() {
 
 inline void handleCustomLedsEditorHold() {
   if (sensorCol > 0 && isCellPastSensorHoldWait()) {
+    DEBUGPRINT_FUNCNAME();
+
     setLed(sensorCol, sensorRow, COLOR_OFF, cellOff, LED_LAYER_CUSTOM1);
     cellTouched(ignoredCell);
   }
 }
 
 inline void handleCustomLedsEditorRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCol > 0) {
     if (!isCellPastSensorHoldWait()) {
       setLed(sensorCol, sensorRow, customLedColor, cellOn, LED_LAYER_CUSTOM1);

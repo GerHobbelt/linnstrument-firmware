@@ -22,7 +22,7 @@ These functions handle the sensing of touches on the LinnStrument's touch surfac
 // CAREFUL, contrary to all the other arrays these are rows first and columns second since it makes it much easier to visualize and edit the
 // actual values in a spreadsheet
 short Z_BIAS[MAXROWS][MAXCOLS];
-LS_CONST short Z_BIAS_200_SEPTEMBER2014[MAXROWS][MAXCOLS] =  {
+static const short Z_BIAS_200_SEPTEMBER2014[MAXROWS][MAXCOLS] =  {
     {350, 1506, 1497, 1417, 1357, 1297, 1241, 1205, 1177, 1153, 1129, 1109, 1093, 1087, 1087, 1089, 1095, 1093, 1109, 1121, 1157, 1209, 1277, 1361, 1441, 1256},
     {350, 1506, 1418, 1350, 1282, 1222, 1178, 1150, 1126, 1101, 1086, 1070, 1062, 1054, 1050, 1050, 1054, 1062, 1074, 1086, 1114, 1150, 1214, 1290, 1386, 1256},
     {350, 1443, 1359, 1295, 1227, 1175, 1143, 1119, 1095, 1067, 1051, 1039, 1031, 1019, 1016, 1018, 1023, 1029, 1039, 1051, 1079, 1111, 1171, 1243, 1331, 1193},
@@ -32,7 +32,7 @@ LS_CONST short Z_BIAS_200_SEPTEMBER2014[MAXROWS][MAXCOLS] =  {
     {350, 1506, 1418, 1350, 1282, 1222, 1178, 1150, 1126, 1101, 1086, 1070, 1062, 1054, 1050, 1050, 1054, 1062, 1074, 1086, 1114, 1150, 1214, 1290, 1386, 1256},
     {350, 1506, 1497, 1417, 1357, 1297, 1241, 1205, 1177, 1153, 1129, 1109, 1093, 1087, 1087, 1089, 1095, 1093, 1109, 1121, 1157, 1209, 1277, 1361, 1441, 1256}
   };
-LS_CONST short Z_BIAS_128_SEPTEMBER2016[MAXROWS][MAXCOLS] =  {
+static const short Z_BIAS_128_SEPTEMBER2016[MAXROWS][MAXCOLS] =  {
     {500, 2560, 2320, 2150, 2020, 1920, 1840, 1780, 1720, 1700, 1730, 1790, 1860, 1940, 2020, 2100, 2160, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {500, 2220, 2040, 1900, 1780, 1680, 1600, 1560, 1520, 1500, 1530, 1570, 1640, 1720, 1800, 1900, 2000, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {500, 2200, 1980, 1860, 1720, 1600, 1510, 1470, 1440, 1440, 1460, 1470, 1500, 1580, 1680, 1780, 1900, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -44,7 +44,7 @@ LS_CONST short Z_BIAS_128_SEPTEMBER2016[MAXROWS][MAXCOLS] =  {
   };
 // Make LS128 feel more like LS200, here is the LS200 bias array but with the center 9 columns removed: 
 //                                      delete from here ^                                             to here ^
-LS_CONST short Z_BIAS_128_SEPTEMBER2019[MAXROWS][MAXCOLS] =  {   
+static const short Z_BIAS_128_SEPTEMBER2019[MAXROWS][MAXCOLS] =  {   
     {350, 1506, 1497, 1417, 1357, 1297, 1241, 1205, 1177, 1109, 1121, 1157, 1209, 1277, 1361, 1441, 1256, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {350, 1506, 1418, 1350, 1282, 1222, 1178, 1150, 1126, 1074, 1086, 1114, 1150, 1214, 1290, 1386, 1256, 0, 0, 0, 0, 0, 0, 0, 0, 0},
     {350, 1443, 1359, 1295, 1227, 1175, 1143, 1119, 1095, 1039, 1051, 1079, 1111, 1171, 1243, 1331, 1193, 0, 0, 0, 0, 0, 0, 0, 0, 0},
@@ -199,7 +199,11 @@ inline unsigned short readZ() {                       // returns the raw Z value
   short rawZ;
   short d = 0;
 
-  if (controlModeActive) {
+  rawZ = 4095 - spiAnalogRead();
+
+  if (rawZ < 10) {
+    // just proceed - a very low value rarely settles high
+  } else if (controlModeActive) {
     delayUsec(d = READZ_DELAY_CONTROLMODE);
 
     // read raw Z value and invert it from (4095 - 0) to (0-4095)
@@ -258,12 +262,8 @@ inline unsigned short readZ() {                       // returns the raw Z value
 // spiAnalogRead:
 // returns raw ADC output at current cell
 inline short spiAnalogRead() {
-  byte msb = SPI.transfer(SPI_ADC, 0, SPI_CONTINUE);         // read byte MSB
-  byte lsb = SPI.transfer(SPI_ADC, 0);                       // read byte LSB
+  short raw = SPI.transfer16(SPI_ADC, 0);         // read 16-bit byte pair
 
-  // assemble the 2 transfered bytes into an int
-  short raw = short(msb) << 8;
-  raw |= lsb;
   // shift the 14-bit value from bits 16-2 to bits 14-0:
   //
   // as the ADS7883 datasheet says:
@@ -338,6 +338,6 @@ inline void selectSensorCell(byte col, byte row, byte switchCode) {
     break;
   }
 
-  SPI.transfer(SPI_SENSOR, lsb, SPI_CONTINUE);    // to daisy-chained 595 (LSB)
-  SPI.transfer(SPI_SENSOR, msb);                  // to first 595 at MOSI (MSB, for both sensor columns and LED columns)
+  SPI.transfer16(SPI_SENSOR, (short)lsb<<8 | msb);    // to daisy-chained 595 (LSB)
+                                                      // to first 595 at MOSI (MSB, for both sensor columns and LED columns)
 }

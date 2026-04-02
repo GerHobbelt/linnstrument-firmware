@@ -7,3 +7,5 @@ stino.settings
 .theia/**
 .vscode/**
 .DS_Store
+
+/Arduino.Core.1.6.12/

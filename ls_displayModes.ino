@@ -79,10 +79,7 @@ struct ColorAndDisplayOverride (*displayNoteFilter)(byte, byte, byte) = NULL;
 
 // changes the active display mode
 void setDisplayMode(DisplayMode mode) {
-  DEBUGPRINT((0, "setDisplayMode"));
-  DEBUGPRINT((0, " mode="));
-  DEBUGPRINT((0, (int)mode));
-  DEBUGPRINT((0, "\n"));
+  DEBUGPRINT_FUNCNAME_L0();
 
   boolean refresh = (displayMode != mode);
   if (refresh || displayModeStart == 0) {
@@ -100,6 +97,8 @@ void setDisplayMode(DisplayMode mode) {
 // updates columns 1=25 of the LED display based on the current displayMode setting:
 // 0:normal, 1:perSplit, 2:preset, 3:volume, 4:transpose, 5:split, 6:global
 void updateDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   if (animationActive) {
     return;
   }
@@ -256,13 +255,15 @@ void updateDisplay() {
 
 // handle logic tied to entering specific display mode, like clearing
 void enterDisplayMode(DisplayMode mode) {
-  DEBUGPRINT((0,"enterDisplayMode\n"));
+  DEBUGPRINT((0,"enterDisplayMode:"));
+  DEBUGPRINT((0,int(mode)));
+  DEBUGPRINT((0,"\n"));
   switch (mode) {
     case displaySleep:
       disableLedDisplay();
-#if 0
-      [[fallthrough]];
-#endif
+      clearDisplay();
+      clearSwitches();
+      break;
     // ensure that in non settings displays, the control buttons are cleared out
     case displayNormal:
     case displayAnimation:
@@ -289,7 +290,9 @@ void enterDisplayMode(DisplayMode mode) {
 
 // handle logic tied to exiting specific display mode, like post-processing or saving
 void exitDisplayMode(DisplayMode mode) {
-  DEBUGPRINT((0,"exitDisplayMode\n"));
+  DEBUGPRINT((0,"exitDisplayMode:"));
+  DEBUGPRINT((0,int(mode)));
+  DEBUGPRINT((0,"\n"));
   switch (mode) {
     case displaySleep:
       enableLedDisplay();
@@ -389,6 +392,8 @@ void paintNormalDisplay() {
     paintSequencerDisplay(Global.currentPerSplit);
     return;
   }
+
+  DEBUGPRINT_FUNCNAME_L5();
 
   // determine the splits and divider
   byte split = Global.currentPerSplit;
@@ -729,6 +734,8 @@ void paintNormalDisplayCellWithColorScales(byte split, byte col, byte row) {
 // paintPerSplitDisplay:
 // paints all cells with per-split settings for a given split
 void paintPerSplitDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   doublePerSplit = false;
@@ -1037,6 +1044,8 @@ inline void paintShowSplitSelection(byte side) {
 }
 
 void paintOSVersionDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   byte color = getPrimaryColor(LEFT);
@@ -1044,6 +1053,8 @@ void paintOSVersionDisplay() {
 }
 
 void paintOSVersionBuildDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   byte color = getSecondaryColor(LEFT);
@@ -1056,6 +1067,8 @@ inline byte getPresetDisplayColumn() {
 }
 
 void paintPresetDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   setLed(1, 7, COLOR_GREEN, cellOn);
   setLed(1, 6, COLOR_RED, cellOn);
@@ -1072,11 +1085,15 @@ void paintPresetDisplay(byte side) {
 }
 
 void paintBendRangeDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintSplitNumericDataDisplay(side, Split[side].customBendRange, 0, false);
 }
 
 void paintLimitsForYDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   switch (limitsForYConfigState) {
@@ -1092,6 +1109,8 @@ void paintLimitsForYDisplay(byte side) {
 }
 
 void paintCCForYDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   if (Split[side].customCCForY == 128) {
     condfont_draw_string(0, 0, "POPRS", getPrimaryColor(side), false);
@@ -1105,11 +1124,15 @@ void paintCCForYDisplay(byte side) {
 }
 
 void paintInitialForRelativeYDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintSplitNumericDataDisplay(side, Split[side].initialRelativeY, 0, false);
 }
 
 void paintLimitsForZDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   switch (limitsForZConfigState) {
@@ -1133,6 +1156,8 @@ void paintLimitsForZDisplay(byte side) {
 }
 
 void paintCCForZDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   if (Split[side].expressionForZ != loudnessCC11) {
     setDisplayMode(displayPerSplit);
@@ -1143,6 +1168,8 @@ void paintCCForZDisplay(byte side) {
 }
 
 void paintCCForFaderDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   for (byte r = 0; r < NUMROWS; ++r) {
     setLed(NUMCOLS - 1, r, globalColor, cellOn);
@@ -1158,6 +1185,8 @@ void paintCCForFaderDisplay(byte side) {
 }
 
 void paintPlayedTouchModeDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   switch (Split[side].playedTouchMode) {
     case playedCell:
@@ -1225,6 +1254,8 @@ void paintLowRowBendConfigDisplay(byte side) {
 }
 
 void paintLowRowCCXConfigDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   switch (lowRowCCXConfigState) {
     case 1:
@@ -1250,6 +1281,8 @@ void paintLowRowCCXConfigDisplay(byte side) {
 }
 
 void paintLowRowCCXYZConfigDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   switch (lowRowCCXYZConfigState) {
     case 3:
@@ -1294,16 +1327,22 @@ void paintLowRowCCXYZConfigDisplay(byte side) {
 }
 
 void paintCCForSwitchCC65ConfigDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintNumericDataDisplay(globalColor, Global.ccForSwitchCC65[switchSelect], 0, false);
 }
 
 void paintCCForSwitchSustainConfigDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintNumericDataDisplay(globalColor, Global.ccForSwitchSustain[switchSelect], 0, false);
 }
 
 void paintCustomSwitchAssignmentConfigDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   switch (Global.customSwitchAssignment[switchSelect]) {
     case ASSIGNED_TAP_TEMPO:
@@ -1349,6 +1388,8 @@ void paintCustomSwitchAssignmentConfigDisplay() {
 }
 
 void paintLimitsForVelocityDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   switch (limitsForVelocityConfigState) {
@@ -1364,11 +1405,15 @@ void paintLimitsForVelocityDisplay() {
 }
 
 void paintValueForFixedVelocityDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintNumericDataDisplay(globalColor, Global.valueForFixedVelocity, 0, true);
 }
 
 void paintSleepConfig() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   switch (sleepConfigState) {
@@ -1397,6 +1442,8 @@ void paintSleepConfig() {
 }
 
 void paintSplitHandedness() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   switch (Device.splitHandedness) {
     case reversedBoth:
@@ -1412,6 +1459,8 @@ void paintSplitHandedness() {
 }
 
 void paintRowOffset() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   if (Global.customRowOffset == -17) {
     condfont_draw_string(0, 0, "-GUI", globalColor, false);
@@ -1421,6 +1470,8 @@ void paintRowOffset() {
 }
 
 void paintGuitarTuning() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   for (byte r = 0; r < NUMROWS; ++r) {
@@ -1431,6 +1482,8 @@ void paintGuitarTuning() {
 }
 
 void paintMIDIThrough() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   if (Device.midiThrough) {
     adaptfont_draw_string(0, 0, "THRU", globalColor, true);
@@ -1440,6 +1493,8 @@ void paintMIDIThrough() {
 }
 
 void paintMinUSBMIDIIntervalDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintNumericDataDisplay(globalColor, Device.minUSBMIDIInterval, 0, true);
 }
@@ -1452,21 +1507,29 @@ void paintSensorSensitivityZDisplay() {
 }
 
 void paintSensorLoZDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintNumericDataDisplay(globalColor, Device.sensorLoZ, 0, false);
 }
 
 void paintSensorFeatherZDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintNumericDataDisplay(globalColor, Device.sensorFeatherZ, 0, false);
 }
 
 void paintSensorRangeZDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintNumericDataDisplay(globalColor, Device.sensorRangeZ, 0, false);
 }
 
 void paintSplitNumericDataDisplay(byte side, unsigned short value, byte offset, boolean condensed) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   paintShowSplitSelection(side);
   paintNumericDataDisplay(getPrimaryColor(side), value, offset, condensed);
 }
@@ -1528,6 +1591,8 @@ void paintNoteDataDisplay(byte color, short noteNumber, short offset) {
 
 // draw a horizontal line to indicate volume for a particular side
 void paintVolumeDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   paintVolumeDisplayRow(side);
   paintShowSplitSelection(side);
@@ -1538,6 +1603,8 @@ void paintVolumeDisplayRow(byte side) {
 }
 
 void paintOctaveTransposeDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
   blinkMiddleRootNote = true;
 
@@ -1748,6 +1815,8 @@ void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
 // paintGlobalSettingsDisplay:
 // Paints LEDs with state of all global settings
 void paintGlobalSettingsDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   // This code assumes the velocitySensitivity and pressureSensitivity
@@ -2025,6 +2094,8 @@ inline byte getSleepColor() {
 }
 
 void paintCalibrationDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   clearDisplay();
 
   switch (calibrationPhase) {
