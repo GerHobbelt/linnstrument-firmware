@@ -72,22 +72,47 @@ inline boolean isMidiUsingDIN() {
   return Global.midiIO == 0;
 }
 
+signed char lastMidiIO = 0;
+
+// MIDI and the debug channel share a single `Serial` buffer, unfortunately...
+//
+//                           There can be only one!
+signed char getMidiSerialMode() {
+  if (Device.serialMode) {
+    return 3;
+  }
+  return isMidiUsingDIN() + 1;
+}
+
 void applyMidiIo() {
+  DEBUGPRINT_FUNCNAME_L0();
+
+  boolean modeChange = (lastMidiIO != getMidiSerialMode());
+  DEBUGPRINT((0, "MidiIO:mode="));
+  DEBUGPRINT((0, int(modeChange)));
+  DEBUGPRINT((0, "\n"));
+
   // do not reconfigure the serial speeds when device update mode is active
   // the MIDI IO settings will be applied when OS update mode is turned off
   if (Device.serialMode) {
+    //lastMidiIO = getMidiSerialMode(); <-- this one is delt with in applySerialMode(); DO NOT exec here.
     return;
   }
 
-  if (isMidiUsingDIN()) {
-    digitalWrite(36, LOW);   // Set LOW for DIN jacks
-    Serial.begin(31250);     // set serial port at MIDI DIN speed 31250
-    Serial.flush();          // clear the serial port
-  }
-  else {
-    digitalWrite(36, HIGH);  // Set HIGH for USB
-    Serial.begin(115200);    // set serial port at fastest speed 115200
-    Serial.flush();          // clear the serial port
+  lastMidiIO = getMidiSerialMode();
+  if (modeChange) {
+    Serial.flush();            // clear the serial port
+
+    if (isMidiUsingDIN()) {
+      digitalWrite(36, LOW);   // Set LOW for DIN jacks
+      Serial.begin(31250);     // set serial port at MIDI DIN speed 31250
+      Serial.flush();          // clear the serial port
+    }
+    else {
+      digitalWrite(36, HIGH);  // Set HIGH for USB
+      Serial.begin(115200);    // set serial port at fastest speed 115200
+      Serial.flush();          // clear the serial port
+    }
   }
 
   applyMidiInterval();
