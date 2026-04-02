@@ -1928,7 +1928,8 @@ void handlePresetRelease() {
     if (sensorRow < NUMPRESETS &&
         ensureCellBeforeHoldWait(globalColor, cellOn)) {
       int preset = sensorRow - 2;
-      if (preset < 0) preset += 6;
+      if (preset < 0) 
+        preset += 6;
 
       // load the selected preset
       loadSettingsFromPreset(preset);

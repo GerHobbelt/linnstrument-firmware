@@ -1010,11 +1010,11 @@ void paintPresetDisplay(byte side) {
     if (p == Device.lastLoadedPreset) {
       color = COLOR_CYAN;
     }
-    int row = p+2;
+    int row = p + 2;
     if (row >= 6) row -= 6;
     setLed(getPresetDisplayColumn(), row, color, cellOn);
   }
-  paintSplitNumericDataDisplay(side, midiPreset[side]+1, 0, false);
+  paintSplitNumericDataDisplay(side, midiPreset[side] + 1, 0, false);
 }
 
 void paintBendRangeDisplay(byte side) {
