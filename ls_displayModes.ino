@@ -248,6 +248,7 @@ void enterDisplayMode(DisplayMode mode) {
   DEBUGPRINT((0,"enterDisplayMode:"));
   DEBUGPRINT((0,int(mode)));
   DEBUGPRINT((0,"\n"));
+
   switch (mode) {
     case displaySleep:
       disableLedDisplay();
@@ -995,11 +996,11 @@ void paintPresetDisplay(byte side) {
     if (p == Device.lastLoadedPreset) {
       color = COLOR_CYAN;
     }
-    int row = p+2;
+    int row = p + 2;
     if (row >= 6) row -= 6;
     setLed(getPresetDisplayColumn(), row, color, cellOn);
   }
-  paintSplitNumericDataDisplay(side, midiPreset[side]+1, 0, false);
+  paintSplitNumericDataDisplay(side, midiPreset[side] + 1, 0, false);
 }
 
 void paintBendRangeDisplay(byte side) {
@@ -1713,46 +1714,32 @@ void paintSwitchAssignment(byte mode) {
   }
 }
 
-void updateGlobalSettingsFlashTempo(unsigned long now) {  
-  if (displayMode == displayGlobal || displayMode == displayGlobalWithTempo) {
-    paintGlobalSettingsFlashTempo(now);
+#if 0
+// checks to see if it's time to refresh the global settings display, and if so, does it
+inline void checkRefreshGlobalSettingsDisplay(unsigned long now) {
+  if ((displayMode == displayGlobal || displayMode == displayGlobalWithTempo) &&
+      calcTimeDelta(now, prevGlobalSettingsDisplayTimerCount) > 30000) {                                      // is it time to refresh the global settings display
+    paintGlobalSettingsFlashTempo(now);                                                                       // yes, refresh the display...
+    prevGlobalSettingsDisplayTimerCount = now;                                                                // and reset the timer count to current time
   }
-  else if (controlButton != GLOBAL_SETTINGS_ROW &&
+}
+#endif
+
+inline void paintGlobalSettingsFlashTempo() {
+  paintGlobalSettingsFlashTempo(globalColor);
+}
+
+void paintGlobalSettingsFlashTempo(byte color) {
+  if (controlButton != GLOBAL_SETTINGS_ROW &&
+#if 0
            !isSyncedToMidiClock() &&
+#endif
            (isArpeggiatorEnabled(Global.currentPerSplit) ||
             isVisibleSequencer() ||
+            sequencerIsRunning() ||
             isStandaloneMidiClockRunning())) {
-    paintGlobalSettingsFlashTempo(now, 0, 0);
-  }
-}
-
-inline void paintGlobalSettingsFlashTempo(unsigned long now) {
-    paintGlobalSettingsFlashTempo(now, 14, 3);
-}
-
-void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
-  if (!animationActive && !userFirmwareActive) {
-    bool flash_on = false;
-    if (isVisibleSequencer())
-    {
-      flash_on = sequencerFlashTempoOn();
-    }
-    else
-    {
-      flash_on = (clock24PPQ == 0);
-    }
-
-    // flash the tap tempo cell at the beginning of the beat
-    if (flash_on) {
-      lightLed(col, row);
-      tempoLedOn = now;
-    }
-
-    // handle turning off the tap tempo led after minimum 30ms
-    if (tempoLedOn != 0 && calcTimeDelta(now, tempoLedOn) > LED_FLASH_DELAY) {
-      tempoLedOn = 0;
-      clearLed(col, row);
-    }
+    //paintGlobalSettingsFlashTempo(now, 0, 0);
+    setLed(0, GLOBAL_SETTINGS_ROW, color, cellTempoPulse);
   }
 }
 
@@ -1940,7 +1927,7 @@ void paintGlobalSettingsDisplay() {
       lightLed(14, 1);
     }
 
-    paintGlobalSettingsFlashTempo(micros());
+    setLed(14, 3, globalColor, cellTempoPulse);
   }
 
   if (displayMode == displayGlobalWithTempo) {
@@ -1951,11 +1938,11 @@ void paintGlobalSettingsDisplay() {
   }
 
 #ifdef DEBUG_ENABLED
-  // Colum 17 is for setting/showing the debug level
+  // Column 17 is for setting/showing the debug level
   // The value of debugLevel is from -1 up.
   lightLed(17, debugLevel + 1);
 
-  // The columns in column 18 are secret switches.
+  // The pads in column 18 are secret switches.
   for (byte ss = 0; ss < SECRET_SWITCHES; ++ss) {
     if (secretSwitch[ss]) {
       lightLed(18, ss);
