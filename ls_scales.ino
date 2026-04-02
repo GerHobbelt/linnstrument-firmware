@@ -159,7 +159,7 @@ static void scaleRedrawScaleSel() {
   for (byte row = 0; row <= 3; ++row) {
     for (byte col = 2; col <= 4; ++col) {
       byte scaleIndex = noteAtCell(col, row);
-      if (scaleIndex == Global.activeNotes) {
+      if (scaleIndex == scaleId) {
         lightLed(col, row);
       }
     }

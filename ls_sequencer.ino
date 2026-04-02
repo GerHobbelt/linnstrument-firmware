@@ -2956,10 +2956,10 @@ void StepSequencerState::paintPerformanceSettings() {
         break;
     }
   }
-  setLed(SEQ_STEPSIZE_RIGHT, SEQ_STEPSIZE_TOP, getPrimaryColor(split), stepSize2CellDisplayTop);
-  setLed(SEQ_STEPSIZE_RIGHT, SEQ_STEPSIZE_BOTTOM, getPrimaryColor(split), stepSize2CellDisplayBottom);
+  setLed(SEQ->STEPSIZE_RIGHT, SEQ->STEPSIZE_TOP, getPrimaryColor(split), stepSize2CellDisplayTop);
+  setLed(SEQ->STEPSIZE_RIGHT, SEQ->STEPSIZE_BOTTOM, getPrimaryColor(split), stepSize2CellDisplayBottom);
 
-  setLed(SEQ_LOOPSCREEN_COLUMN, SEQ_LOOPSCREEN_ROW, getPrimaryColor(split), getCurrentPattern().loopScreen ? cellOn : cellOff);
+  setLed(SEQ->LOOPSCREEN_COLUMN, SEQ->LOOPSCREEN_ROW, getPrimaryColor(split), getCurrentPattern().loopScreen ? cellOn : cellOff);
 
   CellDisplay directionCellDisplay = cellOff;
   if (getCurrentPattern().sequencerDirection != sequencerForward) {

@@ -1273,7 +1273,7 @@ const byte orderedColors[] = {
 };
 
 // A map from each color to its next color (according to orderedColors)
-byte nextColor[COLOR_LAST + 1] = { -1 };
+byte nextColor[COLOR_LAST + 1] = { 255 };
 
 inline void initNextColor() {
   if (nextColor[0] > COLOR_LAST) {
