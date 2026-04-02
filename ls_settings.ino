@@ -96,14 +96,28 @@ void switchSerialMode(boolean flag) {
   DEBUGPRINT((3,"switchSerialMode:EOF\n"));
 }
 
+
+extern signed char lastMidiIO;
+
 void applySerialMode() {
+  DEBUGPRINT_FUNCNAME_L0();
+
+  Serial.flush();
+
+  boolean modeChange = (lastMidiIO != getMidiSerialMode());
+  if (!modeChange) {
+    return;
+  }
+
   if (Device.serialMode) {
+    lastMidiIO = getMidiSerialMode();
     digitalWrite(35, HIGH);
     digitalWrite(36, HIGH);
     Serial.begin(115200);
     Serial.flush();
   }
   else {
+    //lastMidiIO = getMidiSerialMode();  <-- this one is delt with in applyMidiIo() itself, hence DO NOT call here!
     digitalWrite(35, LOW);
     applyMidiIo();
   }
