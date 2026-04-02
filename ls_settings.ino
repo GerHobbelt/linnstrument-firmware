@@ -3077,7 +3077,7 @@ void handleGlobalSettingNewTouch() {
             break;
           case 3:
             if (!isSyncedToMidiClock()) {
-              lightLed(14, 3);
+              lightLed(14, 3);                 // pulses once, 100ms
 
               tapTempoPress();
 
@@ -3191,7 +3191,7 @@ inline void changeMidiIO(byte where) {
   if (where == 0) {
     Global.midiIO = 0;       // Set LOW for DIN jacks
   }
-  else if (where == 1) {
+  else {
     Global.midiIO = 1;       // Set HIGH for USB
   }
   applyMidiIo();
@@ -3443,7 +3443,7 @@ void handleGlobalSettingRelease() {
     else if (sensorCol == 16) {
       // Send AllNotesOff
       if (sensorRow == 0) {
-        lightLed(16, 0);
+        lightLed(16, 0);                 // pulses once, 100ms
         if (Global.splitActive) {
           midiSendAllNotesOff(LEFT);
           midiSendAllNotesOff(RIGHT);

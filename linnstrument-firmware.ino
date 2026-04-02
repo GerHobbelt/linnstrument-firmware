@@ -28,7 +28,6 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 =======================================================================================================================
 =====================================================================================================================*/
 
-
 /*
  * DUE Board pin   |  PORT  | Label
  * ----------------+--------+-------
@@ -155,7 +154,7 @@ static const struct OSinfo {
 //#define DISPLAY_XFRAME_AT_LAUNCH
 //#define DISPLAY_YFRAME_AT_LAUNCH
 //#define DISPLAY_ZFRAME_AT_LAUNCH
-//#define DISPLAY_SURFACESCAN_AT_LAUNCH
+#define DISPLAY_SURFACESCAN_AT_LAUNCH
 #define DISPLAY_FREERAM_AT_LAUNCH
 #define DISPLAY_DEBUGMIDI_AT_LAUNCH
 //#define TESTING_SENSOR_DISABLE
@@ -194,7 +193,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 // - Cyan           : Green + Blue
 // - White          : Red + Green + Blue
 // - Black          : all OFF
-// Then there's also the 50% duty cycle remixes: half the time color A, the other half its color B:
+// Then there's also the 50% duty cycle remixes: half the time color A, the other half it's color B:
 // a.k.a. 'composite colors':
 // - Orange         : Yellow + Red
 // - Pink           : Purple/Magenta + Yellow
@@ -213,6 +212,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define COLOR_ORANGE   9
 #define COLOR_LIME     10
 #define COLOR_PINK     11
+#define COLOR_LAST     11
 
 // Special row offset values, for legacy reasons
 #define ROWOFFSET_NOOVERLAP        0x00
