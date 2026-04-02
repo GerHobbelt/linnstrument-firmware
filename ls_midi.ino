@@ -2124,8 +2124,8 @@ short computePressurCurve(byte split, short pressureValueHi, short weightForCubi
   // c = output axis intercept (value of output when input is zero)
   // NOTE: multiply by 8 converts 127 to 1016; a shift left by 3 bits also achieves the same result
 
-  int pressureValueHiCubic;
-  int pressureValueHiLinear;
+  int pressureValueHiCubic = 1; // hacky fix for warning: 'pressureValueHiCubic' may be used uninitialized in this function
+  int pressureValueHiLinear = 1; // hacky fix for warning: 'pressureValueHiLinear' may be used uninitialized in this function 
   
   if(pressureValueHi < 508) {
     int a,b,c;
@@ -2149,8 +2149,8 @@ short computePressurCurve(byte split, short pressureValueHi, short weightForCubi
     if(weightForLinear>0) pressureValueHiLinear = 1016 - ((c-b)*aMinusX/a + b);
   }
 
-  if(weightForCubic<=0) return pressureValueHiLinear;
-  if(weightForLinear<=0) return pressureValueHiCubic;
+  if(weightForCubic<=0) return pressureValueHiLinear;    // [GHo] buggy conditional logic here?
+  if(weightForLinear<=0) return pressureValueHiCubic;    // [GHo] buggy conditional logic here?
   return (pressureValueHiCubic*weightForCubic + pressureValueHiLinear*weightForLinear)/(weightForCubic+weightForLinear);
 }
 

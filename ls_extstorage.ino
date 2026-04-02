@@ -2221,7 +2221,7 @@ void copySplitSettingsV7(void* target, void* source) {
   t->minForY = s->minForY;
   t->maxForY = s->maxForY;
   t->relativeY = s->relativeY;
-  t->initialRelativeY = s->initialRelativeY;
+  t->ctrForY = s->initialRelativeY;
   t->expressionForZ = s->expressionForZ;
   t->customCCForZ = s->customCCForZ;
   t->minForZ = s->minForZ;
