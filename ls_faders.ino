@@ -139,7 +139,7 @@ void sendFaderValue(unsigned short ccForFader, short value)
   preSendControlChange(sensorSplit, ccForFader, value, false);
 }
 
-void handleFaderRelease() {
+inline void handleFaderRelease() {
   byte faderLeft, faderLength;
   determineFaderBoundaries(sensorSplit, faderLeft, faderLength);
   handleFaderRelease(faderLeft, faderLength);

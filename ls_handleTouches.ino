@@ -554,6 +554,12 @@ boolean handleNewTouch() {
             calcVelocity(sensorCell->velocityZ);
           }
           result = true;
+
+          // Autoselect the current split when playing
+          if (Global.splitActive && Global.currentPerSplit != sensorSplit) {
+            Global.currentPerSplit = sensorSplit;
+            updateSwitchLeds();
+          }
         }
         else {
           cellTouched(untouchedCell);
@@ -1417,6 +1423,10 @@ void sendNewNote() {
         
         preSendLoudness(sensorSplit, 0, 0, sensorCell->note, sensorCell->channel, false);
 
+        // send row & column in CC 14 and 15
+        midiSendControlChange(14, sensorRow, sensorCell->channel);
+        midiSendControlChange(15, sensorCol, sensorCell->channel);
+
         // send the note on
         midiSendNoteOn(sensorSplit, sensorCell->note, sensorCell->velocity, sensorCell->channel);
       }
@@ -1424,6 +1434,10 @@ void sendNewNote() {
         byte valueZ = scale1016to127(valueZHi, false);
 
         preSendLoudness(sensorSplit, valueZ, valueZHi, sensorCell->note, sensorCell->channel, true);
+
+        // send row & column in CC 14 and 15
+        midiSendControlChange(14, sensorRow, sensorCell->channel);
+        midiSendControlChange(15, sensorCol, sensorCell->channel);
         
         // send the note on
         midiSendNoteOn(sensorSplit, sensorCell->note, sensorCell->velocity, sensorCell->channel);
@@ -1432,6 +1446,10 @@ void sendNewNote() {
       }
     }
     else {
+      // send row & column in CC 14 and 15
+      midiSendControlChange(14, sensorRow, sensorCell->channel);
+      midiSendControlChange(15, sensorCol, sensorCell->channel);
+
       // send the note on
       midiSendNoteOn(sensorSplit, sensorCell->note, sensorCell->velocity, sensorCell->channel);
     }

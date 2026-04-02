@@ -77,37 +77,53 @@ inline boolean isMidiUsingDIN() {
   return Global.midiIO == 0;
 }
 
+signed char lastMidiIO = 0;
+
+// MIDI and the debug channel share a single `Serial` buffer, unfortunately...
+//
+//                           There can be only one!
+signed char getMidiSerialMode() {
+  if (Device.serialMode) {
+    return 3;
+  }
+  return isMidiUsingDIN() + 1;
+}
+
 void applyMidiIo() {
+  DEBUGPRINT_FUNCNAME_L0();
+
+  boolean modeChange = (lastMidiIO != getMidiSerialMode());
+  DEBUGPRINT((0, "MidiIO:mode="));
+  DEBUGPRINT((0, int(modeChange)));
+  DEBUGPRINT((0, "\n"));
+
   // do not reconfigure the serial speeds when device update mode is active
   // the MIDI IO settings will be applied when OS update mode is turned off
   if (Device.serialMode) {
+    //lastMidiIO = getMidiSerialMode(); <-- this one is delt with in applySerialMode(); DO NOT exec here.
     return;
   }
 
-  if (isMidiUsingDIN()) {
-    digitalWrite(36, LOW);   // Set LOW for DIN jacks
-    Serial.begin(31250);     // set serial port at MIDI DIN speed 31250
-    Serial.flush();          // clear the serial port
-  }
-  else {
-    digitalWrite(36, HIGH);  // Set HIGH for USB
-    Serial.begin(115200);    // set serial port at fastest speed 115200
-    Serial.flush();          // clear the serial port
+  lastMidiIO = getMidiSerialMode();
+  if (modeChange) {
+    Serial.flush();            // clear the serial port
+
+    if (isMidiUsingDIN()) {
+      digitalWrite(36, LOW);   // Set LOW for DIN jacks
+      Serial.begin(31250);     // set serial port at MIDI DIN speed 31250
+      Serial.flush();          // clear the serial port
+    }
+    else {
+      digitalWrite(36, HIGH);  // Set HIGH for USB
+      Serial.begin(115200);    // set serial port at fastest speed 115200
+      Serial.flush();          // clear the serial port
+    }
   }
 
   applyMidiInterval();
 }
 
 void handleMidiInput(unsigned long nowMicros) {
-  // handle turning off the MIDI clock led after minimum 30ms
-  if (isSyncedToMidiClock() &&
-      controlButton != GLOBAL_SETTINGS_ROW &&
-      tempoLedOn != 0 &&
-      calcTimeDelta(nowMicros, tempoLedOn) > LED_FLASH_DELAY) {
-    tempoLedOn = 0;
-    clearLed(0, GLOBAL_SETTINGS_ROW);
-  }
-
   // if no serial data is available, return
   if (Serial.available() <= 0) {
     return;
@@ -211,8 +227,7 @@ void handleMidiInput(unsigned long nowMicros) {
 
           // flash the global settings led green on tempo, unless it's currently pressed down
           if (controlButton != GLOBAL_SETTINGS_ROW && midiClockMessageCount == 1) {
-            setLed(0, GLOBAL_SETTINGS_ROW, COLOR_GREEN, cellOn);
-            tempoLedOn = nowMicros;
+            setLed(0, GLOBAL_SETTINGS_ROW, COLOR_GREEN, cellTempoPulse);
           }
 
           // play the next arpeggiator and sequencer steps if needed
@@ -220,9 +235,10 @@ void handleMidiInput(unsigned long nowMicros) {
             performCheckAdvanceArpeggiator();
             performCheckAdvanceSequencer();
           }
-
+#if 0
           // flash the tempo led in the global display when it is on
           updateGlobalSettingsFlashTempo(nowMicros);
+#endif          
         }
         break;
       }
@@ -437,7 +453,6 @@ void handleMidiInput(unsigned long nowMicros) {
           // possible further restriction: replace the previous line with the following line
           // else if (!userFirmwareActive && ccSplit != -1 && Split[ccSplit].ccFaders) {
           boolean handled = false;
-
           for (byte f = 0; f < 8; ++f) {
             unsigned short cc = Split[ccSplit].ccForFader[f];
             if (cc == midiData1) {
@@ -507,8 +522,11 @@ void handleMidiInput(unsigned long nowMicros) {
               if (userFirmwareActive) {
                 layer = LED_LAYER_CUSTOM2;
               }
-              if (midiData2 <= COLOR_PINK && midiData2 != COLOR_OFF) {
-                setLed(midiCellColCC, midiCellRowCC, midiData2, cellOn, layer);
+              if (midiData2 <= ((COLOR_PINK * 2) + 1) && midiData2 != COLOR_OFF) {
+                setLed(midiCellColCC, midiCellRowCC,
+                       midiData2 % (COLOR_PINK + 1),
+                       midiData2 > COLOR_PINK ? cellFocusPulse : cellOn, 
+                       layer);
               }
               else {
                 setLed(midiCellColCC, midiCellRowCC, COLOR_OFF, cellOff, layer);
@@ -530,8 +548,9 @@ void handleMidiInput(unsigned long nowMicros) {
             break;
         }
         lastCC = midiData1;
-        break;        
+        break;
       }
+
       default:
         // don't handle other MIDI messages
         break;
@@ -601,6 +620,7 @@ signed char determineControlChangeSplitForChannel(byte channel) {
 
   return -1;
 }
+
 inline boolean inRange(int value, int lower, int upper) {
   return value >= lower && value <= upper;
 }
@@ -636,11 +656,11 @@ void receivedRpn(byte midiChannel, int parameter, int value) {
   updateDisplay();
 }
 
-boolean hasValidRpn() {
+inline boolean hasValidRpn() {
   return lastRpnMsb != 127 || lastRpnLsb != 127;
 }
 
-boolean hasValidNrpn() {
+inline boolean hasValidNrpn() {
   return lastNrpnMsb != 127 || lastNrpnLsb != 127;
 }
 
@@ -764,25 +784,25 @@ void receivedNrpn(int parameter, int value, int channel) {
       break;
     // Split Color Main
     case 30:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_LAST)) {
         Split[split].colorMain = value;
       }
       break;
     // Split Color Accent
     case 31:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_LAST)) {
         Split[split].colorAccent = value;
       }
       break;
     // Split Color Played
     case 32:
-      if (inRange(value, 0, 11)) {
+      if (inRange(value, 0, COLOR_LAST)) {
         Split[split].colorPlayed = value;
       }
       break;
     // Split Color LowRow
     case 33:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_LAST)) {
         Split[split].colorLowRow = value;
       }
       break;
@@ -3135,11 +3155,6 @@ void standaloneMidiClockStart() {
 void standaloneMidiClockStop() {
   if (!sequencerIsRunning() && !isSyncedToMidiClock()) {
     if (standaloneMidiClockRunning) {
-      if (controlButton != GLOBAL_SETTINGS_ROW && tempoLedOn != 0) {
-        tempoLedOn = 0;
-        clearLed(0, GLOBAL_SETTINGS_ROW);
-      }
-
       standaloneMidiClockRunning = false;
       midiSendStop();
     }

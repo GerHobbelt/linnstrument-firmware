@@ -96,14 +96,28 @@ void switchSerialMode(boolean flag) {
   DEBUGPRINT((3,"switchSerialMode:EOF\n"));
 }
 
+
+extern signed char lastMidiIO;
+
 void applySerialMode() {
+  DEBUGPRINT_FUNCNAME_L0();
+
+  Serial.flush();
+
+  boolean modeChange = (lastMidiIO != getMidiSerialMode());
+  if (!modeChange) {
+    return;
+  }
+
   if (Device.serialMode) {
+    lastMidiIO = getMidiSerialMode();
     digitalWrite(35, HIGH);
     digitalWrite(36, HIGH);
     Serial.begin(115200);
     Serial.flush();
   }
   else {
+    //lastMidiIO = getMidiSerialMode();  <-- this one is delt with in applyMidiIo() itself, hence DO NOT call here!
     digitalWrite(35, LOW);
     applyMidiIo();
   }
@@ -2020,8 +2034,9 @@ void handlePresetRelease() {
   else if (sensorCol == getPresetDisplayColumn()) {
     if (sensorRow < NUMPRESETS &&
         ensureCellBeforeHoldWait(globalColor, cellOn)) {
-      int preset = sensorRow-2;
-      if (preset < 0) preset += 6;
+      int preset = sensorRow - 2;
+      if (preset < 0) 
+        preset += 6;
 
       // load the selected preset
       loadSettingsFromPreset(preset);
@@ -3120,7 +3135,7 @@ void handleGlobalSettingNewTouch() {
             break;
           case 3:
             if (!isSyncedToMidiClock()) {
-              lightLed(14, 3);
+              lightLed(14, 3);                 // pulses once, 100ms
 
               tapTempoPress();
 
@@ -3234,7 +3249,7 @@ inline void changeMidiIO(byte where) {
   if (where == 0) {
     Global.midiIO = 0;       // Set LOW for DIN jacks
   }
-  else if (where == 1) {
+  else {
     Global.midiIO = 1;       // Set HIGH for USB
   }
   applyMidiIo();
@@ -3486,7 +3501,7 @@ void handleGlobalSettingRelease() {
     else if (sensorCol == 16) {
       // Send AllNotesOff
       if (sensorRow == 0) {
-        lightLed(16, 0);
+        lightLed(16, 0);                 // pulses once, 100ms
         if (Global.splitActive) {
           midiSendAllNotesOff(LEFT);
           midiSendAllNotesOff(RIGHT);
