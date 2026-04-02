@@ -1081,12 +1081,12 @@ void paintPresetDisplay(byte side) {
     if (p == Device.lastLoadedPreset) {
       color = COLOR_CYAN;
     }
-    int row = p+2;
+    int row = p + 2;
     if (row >= 6) row -= 6;
     setLed(getPresetDisplayColumn(), row, color, cellOn);
   }
-  if (touchInfo[1][0].touched != touchedCell) {
-    paintSplitNumericDataDisplay(side, midiPreset[side]+1, 0, false);
+  if (cell(1, 0).touched != touchedCell) {
+    paintSplitNumericDataDisplay(side, midiPreset[side] + 1, 0, false);
   } else {
     paintShowSplitSelection(side);
     paintNumericDataDisplay(Split[side].colorAccent, midiBank[side] + 1, 0, false);

@@ -1924,9 +1924,9 @@ signed char prepareMicroLinnHammerOnOLD(byte side, byte row) {
     if (Split[sensorSplit].microLinn.hammerOnMode() >= 2 &&
         colsInRowTouched & (1 << (sensorCol + col)) && (sensorCol + col) < NUMCOLS &&
         abs(edostep - sensorEdostep) <= microLinnHammerOnEdosteps[side] &&
-        calcTimeDelta(millis(), touchInfo[sensorCol + col][row].lastTouch) > wait) {
-      note = touchInfo[sensorCol + col][row].note;            // + (touchInfo[sensorCol + col][row].microLinnGroup << 7);
-      channel = ch = touchInfo[sensorCol + col][row].channel;
+        calcTimeDelta(millis(), cell(sensorCol + col, row).lastTouch) > wait) {
+      note = cell(sensorCol + col, row).note;            // + (cell(sensorCol + col, row).microLinnGroup << 7);
+      channel = ch = cell(sensorCol + col, row).channel;
       microLinnHammerOns[microLinnNumHammerOns].note = note;
       microLinnHammerOns[microLinnNumHammerOns].channel = channel;
       microLinnNumHammerOns += 1;
@@ -1942,11 +1942,11 @@ signed char prepareMicroLinnHammerOnOLD(byte side, byte row) {
     if (Split[sensorSplit].microLinn.hammerOnMode() % 2 == 1 &&
         colsInRowTouched & (1 << (sensorCol - col)) && (sensorCol - col) > 0 &&
         abs(edostep - sensorEdostep) <= microLinnHammerOnEdosteps[side] &&
-        calcTimeDelta(millis(), touchInfo[sensorCol - col][row].lastTouch) > wait) {
-      note = touchInfo[sensorCol - col][row].note;   // + (touchInfo[sensorCol - col][row].microLinnGroup << 7);
+        calcTimeDelta(millis(), cell(sensorCol - col, row).lastTouch) > wait) {
+      note = cell(sensorCol - col, row).note;   // + (cell(sensorCol - col, row).microLinnGroup << 7);
       // if no pad was found on the right, proceed the same way
       if (channel == -1) { 
-        channel = touchInfo[sensorCol - col][row].channel;
+        channel = cell(sensorCol - col, row).channel;
         microLinnHammerOns[microLinnNumHammerOns].note = note;
         microLinnHammerOns[microLinnNumHammerOns].channel = channel;
         microLinnNumHammerOns += 1;
@@ -1954,13 +1954,13 @@ signed char prepareMicroLinnHammerOnOLD(byte side, byte row) {
       // else sensorCell is equidistant between 2 sounding pads and in the zones of each,
       // but the 2 sounding pads are not in each other's zones and have different channels
       // mute them both and steal the channel from the more recent pad
-      else if (calcTimeDelta(millis(), touchInfo[sensorCol - col][row].lastTouch) <
-               calcTimeDelta(millis(), touchInfo[sensorCol + col][row].lastTouch)) {
-        channel = touchInfo[sensorCol - col][row].channel;
+      else if (calcTimeDelta(millis(), cell(sensorCol - col, row).lastTouch) <
+               calcTimeDelta(millis(), cell(sensorCol + col, row).lastTouch)) {
+        channel = cell(sensorCol - col, row).channel;
         microLinnHammerOns[microLinnNumHammerOns - 1].note = note;                 // subtract 1 to overwrite the righthand data
         microLinnHammerOns[microLinnNumHammerOns - 1].channel = channel;
       }
-      ch = touchInfo[sensorCol - col][row].channel;
+      ch = cell(sensorCol - col, row).channel;
       if (isMicroLinnOn()) {
         note = getMicroLinnMidiNote(side, note, sensorCell->microLinnGroup);
         ch = rechannelMicroLinnGroup(side, ch, sensorCell->microLinnGroup);
@@ -2009,14 +2009,14 @@ signed char prepareMicroLinnHammerOn(byte side, byte row) {
   unsigned long latestTouchSoFar = 0;
   signed char latestChannel = -1;
   for (byte col = startCol; col <= endCol; ++col) {
-    lastTouch = touchInfo[col][row].lastTouch;
-    if (touchInfo[col][row].touched == touchedCell &&
+    lastTouch = cell(col, row).lastTouch;
+    if (cell(col, row).touched == touchedCell &&
         calcTimeDelta(millis(), lastTouch) > wait &&
         lastTouch > latestTouchSoFar &&
         //colsInRowTouched & (1 << (col)) &&
         abs(microLinnEdostep[side][col][row] - sensorEdostep) <= maxEdosteps) {
       latestTouchSoFar = lastTouch;
-      latestChannel = touchInfo[col][row].channel;
+      latestChannel = cell(col, row).channel;
     }
   }
   if (latestChannel == -1) return -1;
@@ -2025,13 +2025,13 @@ signed char prepareMicroLinnHammerOn(byte side, byte row) {
   short note = -1;
   signed char channel = -1;
   for (byte col = startCol; col <= endCol; ++col) {
-    if (touchInfo[col][row].touched == touchedCell &&
+    if (cell(col, row).touched == touchedCell &&
         //colsInRowTouched & (1 << (col)) &&
-        calcTimeDelta(millis(), touchInfo[col][row].lastTouch) > wait &&
+        calcTimeDelta(millis(), cell(col, row).lastTouch) > wait &&
         abs(microLinnEdostep[side][col][row] - sensorEdostep) <= maxEdosteps) {
-      touchInfo[col][row].touched = ignoredCell;
-      note = touchInfo[col][row].note;            // + (touchInfo[col][row].microLinnGroup << 7);
-      channel = touchInfo[col][row].channel;
+      cell(col, row).touched = ignoredCell;
+      note = cell(col, row).note;            // + (cell(col, row).microLinnGroup << 7);
+      channel = cell(col, row).channel;
       { //if (channel == latestChannel) {
         microLinnHammerOns[microLinnNumHammerOns].note = note;
         microLinnHammerOns[microLinnNumHammerOns].channel = channel;
@@ -2133,8 +2133,8 @@ void sendMicroLinnPullOff() {
     // find the most recently muted pad on this channel (the other hand might be doing hammer-ons on another channel)
     signed char col = microLinnHammerOns[i].col;
     signed char row = microLinnHammerOns[i].row;
-    if (microLinnHammerOns[i].channel == channel && touchInfo[col][row].touched == ignoredCell) {
-      touchInfo[col][row].touched = touchedCell;
+    if (microLinnHammerOns[i].channel == channel && cell(col, row).touched == ignoredCell) {
+      cell(col, row).touched = touchedCell;
       //focus(sensorSplit, channel).col = col;                      // reassign focus to this cell
       //focus(sensorSplit, channel).row = row;
       note = microLinnHammerOns[i].note;

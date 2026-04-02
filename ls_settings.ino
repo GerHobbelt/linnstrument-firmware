@@ -1982,7 +1982,7 @@ void handlePresetNewTouch() {
 
   // microLinn sends a program change message on release not on new touch, to avoid sending multiple messages per swipe
   // it also sends a bank select message instead of a PC message if the blue dot is held when releasing
-  boolean isBank = touchInfo[1][0].touched == touchedCell;
+  boolean isBank = cell(1, 0).touched == touchedCell;
   byte side = Global.currentPerSplit;
   byte number = isBank ? midiBank[side] : midiPreset[side];
   if ((sensorCol == 1 && sensorRow == 7) ||
@@ -2088,21 +2088,25 @@ void handlePresetRelease() {
     // microLinn sends the program change msg on release, not on new touch
     if (cellsTouched == 0) {
       // if releasing the blue dot, update the number and its color
-      if (sensorCol == 1 && sensorRow == 0) updateDisplay();
+      if (sensorCol == 1 && sensorRow == 0) 
+        updateDisplay();
       // if releasing anywhere else besides the split selector, send the PC message
-      else if (!(inRange(sensorCol, 15, 16) && sensorRow == 7)) applyMidiPreset();
+      else if (!(inRange(sensorCol, 15, 16) && sensorRow == 7)) 
+        applyMidiPreset();
     }
     // if holding the blue dot while releasing another touch, send the Bank Select message (CC0)
-    if (cellsTouched == 1 && touchInfo[1][0].touched == touchedCell)
+    if (cellsTouched == 1 && cell(1, 0).touched == touchedCell)
       preSendControlChange(Global.currentPerSplit, 0, midiBank[Global.currentPerSplit], true);
     // if releasing the blue dot while holding another touch, update the number and its color
-    if (cellsTouched == 1 && sensorCol == 1 && sensorRow == 0) updateDisplay();
+    if (cellsTouched == 1 && sensorCol == 1 && sensorRow == 0) 
+      updateDisplay();
   }
   else if (sensorCol == getPresetDisplayColumn()) {
     if (sensorRow < NUMPRESETS &&
         ensureCellBeforeHoldWait(globalColor, cellOn)) {
-      int preset = sensorRow-2;
-      if (preset < 0) preset += 6;
+      int preset = sensorRow - 2;
+      if (preset < 0) 
+        preset += 6;
 
       // load the selected preset
       loadSettingsFromPreset(preset);
