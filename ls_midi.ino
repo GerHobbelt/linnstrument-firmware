@@ -432,7 +432,6 @@ void handleMidiInput(unsigned long nowMicros) {
           // possible further restriction: replace the previous line with the following line
           // else if (!userFirmwareActive && ccSplit != -1 && Split[ccSplit].ccFaders) {
           boolean handled = false;
-
           for (byte f = 0; f < 8; ++f) {
             unsigned short cc = Split[ccSplit].ccForFader[f];
             if (cc == midiData1) {
@@ -525,8 +524,9 @@ void handleMidiInput(unsigned long nowMicros) {
             break;
         }
         lastCC = midiData1;
-        break;        
+        break;
       }
+
       default:
         // don't handle other MIDI messages
         break;
@@ -596,6 +596,7 @@ signed char determineControlChangeSplitForChannel(byte channel) {
 
   return -1;
 }
+
 inline boolean inRange(int value, int lower, int upper) {
   return value >= lower && value <= upper;
 }
@@ -631,11 +632,11 @@ void receivedRpn(byte midiChannel, int parameter, int value) {
   updateDisplay();
 }
 
-boolean hasValidRpn() {
+inline boolean hasValidRpn() {
   return lastRpnMsb != 127 || lastRpnLsb != 127;
 }
 
-boolean hasValidNrpn() {
+inline boolean hasValidNrpn() {
   return lastNrpnMsb != 127 || lastNrpnLsb != 127;
 }
 
@@ -759,25 +760,25 @@ void receivedNrpn(int parameter, int value, int channel) {
       break;
     // Split Color Main
     case 30:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_LAST)) {
         Split[split].colorMain = value;
       }
       break;
     // Split Color Accent
     case 31:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_LAST)) {
         Split[split].colorAccent = value;
       }
       break;
     // Split Color Played
     case 32:
-      if (inRange(value, 0, 11)) {
+      if (inRange(value, 0, COLOR_LAST)) {
         Split[split].colorPlayed = value;
       }
       break;
     // Split Color LowRow
     case 33:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_LAST)) {
         Split[split].colorLowRow = value;
       }
       break;

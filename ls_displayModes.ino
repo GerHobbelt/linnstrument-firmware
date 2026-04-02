@@ -248,6 +248,7 @@ void enterDisplayMode(DisplayMode mode) {
   DEBUGPRINT((0,"enterDisplayMode:"));
   DEBUGPRINT((0,int(mode)));
   DEBUGPRINT((0,"\n"));
+
   switch (mode) {
     case displaySleep:
       disableLedDisplay();
@@ -1941,11 +1942,11 @@ void paintGlobalSettingsDisplay() {
   }
 
 #ifdef DEBUG_ENABLED
-  // Colum 17 is for setting/showing the debug level
+  // Column 17 is for setting/showing the debug level
   // The value of debugLevel is from -1 up.
   lightLed(17, debugLevel + 1);
 
-  // The columns in column 18 are secret switches.
+  // The pads in column 18 are secret switches.
   for (byte ss = 0; ss < SECRET_SWITCHES; ++ss) {
     if (secretSwitch[ss]) {
       lightLed(18, ss);
