@@ -135,7 +135,7 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 
 /******************************************** CONSTANTS ******************************************/
 
-LS_CONST struct OSinfo {
+static const struct OSinfo {
   const char* OSVersion;
   const char* OSVersionBuild;
 } OSinfo = {
@@ -339,7 +339,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 #define TEMPO_ARP_SIXTEENTH_SWING 0xff
 
-LS_CONST unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+static const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
 constexpr const int LED_PATTERNS = 3;
 
@@ -1058,7 +1058,7 @@ inline int32_t FXD_MUL(int32_t a, int32_t b) {
   return t >> FXD_FBITS;
 }
 
-inline int32_t FXD_DIV(int32_t a, int32_t b) {
+constexpr inline int32_t FXD_DIV(int32_t a, int32_t b) {
   return ((int32_t)a << FXD_FBITS) / (int32_t)b;
 }
 
@@ -1383,6 +1383,9 @@ void setup() {
           SPI.setDataWidth(SPI_LEDS, SPI_CSR_BITS_16_BIT);
   /*!!*/  SPI.setClockDivider(SPI_LEDS, 4);                   // max clock is about 20 mHz. 4 = 21 mHz. Transferring all 4 bytes takes 1.9 uS.
   /*!!*/
+
+  startHFLEDpaintTimer(1 /* Hz */);
+
   /*!!*/  // initialize the SPI port for setting analog switches in touch sensor
   /*!!*/  SPI.begin(SPI_SENSOR);
   /*!!*/  SPI.setDataMode(SPI_SENSOR, SPI_MODE0);
@@ -1428,6 +1431,179 @@ void setup() {
   /*!!*/  }
   /*!!*/
   //*************************************************************************************************************************************************
+
+
+
+
+
+
+
+
+#if 0
+
+  /*
+     43.5.4:: Temperature Sensor
+
+     The temperature sensor is connected to Channel 15 of the ADC.
+     The temperature sensor provides an output voltage VT that is proportional to absolute temperature (PTAT). To
+     activate the temperature sensor, TSON bit (ADC_ACR) needs to be set.
+
+     Note: ADC_ACR: This register can only be written if the WPEN bit is cleared in “ADC Write Protect Mode Register” on page 1353.
+
+     Notes: 
+     1. Use ADC_ACR.IBCTL = 00 for sampling frequency below 500 kHz.
+     2. Use ADC_ACR.IBCTL = 01 for sampling frequency between 500 kHz and 1 MHz.
+
+     45.8:: Temperature Sensor
+
+     The temperature sensor is connected to channel 15 of the ADC.
+     The temperature sensor provides an output voltage (VO_TS) that is proportional to absolute temperature (PTAT).
+     VO_TS linearly varies with a temperature slope dVO_TS/dT = 2.65 mV/°C.
+     VO_TS equals 0.8V at TA 27°C, with a ±15% accuracy. The VO_TS slope versus temperature dVO_TS/dT = 2.65
+     mV/°C only shows a ±5% slight variation over process, mismatch and supply voltage.
+     The user needs to calibrate it (offset calibration) at ambient temperature to eliminate the VO_TS spread at ambient
+     temperature (±15%).
+
+     Table 45-39 :: Temperature Sensor Characteristics
+     Symbol              Parameter                 Conditions      Min      Typ      Max       Unit
+     VO_TS               Output Voltage            TA = 27° C               0.800              V
+     VO_TS(accuracy)     Output Voltage Accuracy   TA = 27° C      -15               +15       %
+     dVO_TS/dT           Temperature Sensitivity (Slope Voltage vs Temperature)
+                                                                            2.65               mV/°C
+                         Slope accuracy                            -5                +5        %
+                         Temperature accuracy
+                         After offset calibration
+                         Over temperature range -40 to 85 °C       -5                +5        °C
+                         After offset calibration
+                         Over temperature range 0 to 80 °C         -3                +3        °C
+     tSTART              Startup Time              After ADC_ACR.TSON=1
+                                                                   20                40        µs
+
+     43.5.3:: Analog Inputs
+
+     The analog input pins can be multiplexed with PIO lines. In this case, the assignment of the ADC input is
+     automatically done as soon as the corresponding channel is enabled by writing the register ADC_CHER. By
+     default, after reset, the PIO line is configured as input with its pull-up enabled and the ADC input is connected to
+     the GND.                                                                   
+  */
+  REG_ADC_WPMR = (0x414443 << 8) | 0;       // WPEN = 0: enable write access
+  REG_ADC_ACR = 0 | (0b00 << 8) | (1 << 4); // IBCTL = 00, TSON = 1 :: TSON: Temperature Sensor On
+  REG_ADC_WPMR = (0x414443 << 8) | 1;       // WPEN = 1: disable write 
+  
+#if 0
+// GerH: if *I* read the datasheet correctly, this anolog I/O activity requires REG_ADC_WPMR access to be set to write-OK iff
+// we want to configure our ADC clock and/or set up a ADC channel like this.
+//
+// Incidentally, the adc code pasted/cludged together below does not set up the ADC module nor the ADC clock, which are mandatory
+// for proper operations, so the question is: where does the default core code do that bit of chip fiddling?!
+
+  //uint32_t analogRead(uint32_t ulPin)
+{
+  //uint32_t ulPin = ADC15;
+  uint32_t ulValue = 0;
+  const uint32_t ulChannel = 15;
+
+#if 0
+  if (ulPin < A0)
+    ulPin += A0;
+
+  ulChannel = g_APinDescription[ulPin].ulADCChannelNumber ;
+#endif
+
+//#if defined __SAM3X8E__ || defined __SAM3X8H__
+	//static uint32_t latestSelectedChannel = -1;
+	//switch ( g_APinDescription[ulPin].ulAnalogChannel )
+	{
+		// Handling ADC 12 bits channels
+		//case ADC15 :
+
+			// Enable the corresponding channel
+uint32_t adc_get_channel_status(const Adc *p_adc, const enum adc_channel_num_t adc_ch)
+{
+	return p_adc->ADC_CHSR & (1 << adc_ch);
+}
+			if (adc_get_channel_status(ADC, ulChannel) != 1) {
+void adc_enable_channel(Adc *p_adc, const enum adc_channel_num_t adc_ch)
+{
+	p_adc->ADC_CHER = 1 << adc_ch;
+}
+				adc_enable_channel( ADC, ulChannel );
+				//if ( latestSelectedChannel != (uint32_t)-1 && ulChannel != latestSelectedChannel)
+				//	adc_disable_channel( ADC, latestSelectedChannel );
+				//latestSelectedChannel = ulChannel;
+				g_pinStatus[ulPin] = (g_pinStatus[ulPin] & 0xF0) | PIN_STATUS_ANALOG;
+			}
+
+			// Start the ADC
+void adc_start(Adc *p_adc)
+{
+	p_adc->ADC_CR = ADC_CR_START;
+}
+			adc_start( ADC );
+
+			// Wait for end of conversion
+uint32_t adc_get_status(const Adc *p_adc)
+{
+	return p_adc->ADC_ISR;
+}
+			while ((adc_get_status(ADC) & ADC_ISR_DRDY) != ADC_ISR_DRDY)
+				;
+
+
+uint32_t adc_get_channel_status(const Adc *p_adc, const enum adc_channel_num_t adc_ch)
+{
+	return p_adc->ADC_CHSR & (1 << adc_ch);
+}
+uint32_t adc_get_channel_value(const Adc *p_adc, const enum adc_channel_num_t adc_ch)
+{
+	uint32_t ul_data = 0;
+
+	if (15 >= adc_ch) {
+		ul_data = *(p_adc->ADC_CDR + adc_ch);
+	}
+
+	return ul_data;
+}
+uint32_t adc_get_latest_value(const Adc *p_adc)
+{
+	return p_adc->ADC_LCDR;
+}
+void adc_enable_tag(Adc *p_adc)
+{
+	p_adc->ADC_EMR |= ADC_EMR_TAG;
+}
+enum adc_channel_num_t adc_get_tag(const Adc *p_adc)
+{
+	return (p_adc->ADC_LCDR & ADC_LCDR_CHNB_Msk) >> ADC_LCDR_CHNB_Pos;
+}
+
+
+			// Read the value
+uint32_t adc_get_latest_value(const Adc *p_adc)
+{
+	return p_adc->ADC_LCDR;
+}
+			ulValue = adc_get_latest_value(ADC);
+			ulValue = mapResolution(ulValue, ADC_RESOLUTION, _readResolution);
+	}
+
+	return ulValue;
+}
+#endif // 0
+
+
+#endif // 0
+
+
+
+
+
+
+
+
+
+
+
 
   // initialize input pins for 2 foot switches
   pinMode(FOOT_SW_LEFT, INPUT_PULLUP);
