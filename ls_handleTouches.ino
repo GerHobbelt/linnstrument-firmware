@@ -1291,7 +1291,10 @@ void sendNewNote() {
       midiSendNoteOff(sensorSplit, sensorCell->note, sensorCell->channel);
     }
 
-    // send the note on
+    // send row & column in CC 14 and 15
+    midiSendControlChange(14, sensorRow, sensorCell->channel);
+    midiSendControlChange(15, sensorCol, sensorCell->channel);
+	// send the note on
     midiSendNoteOn(sensorSplit, sensorCell->note, sensorCell->velocity, sensorCell->channel);
   }
 }
