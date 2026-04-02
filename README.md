@@ -11,6 +11,8 @@ Different versions of this package might create unknown build and execution prob
 
 ## Developer Notes
 
+> This repo fork however has been used to rebuild the firmware using a fresh Arduino IDE + CLI version (see below) and nothing extremely nasty jumped at us yet. Fingers crosssed...
+
 To rebuild the LinnStrument / MicroLinn firmware binary, set up your development environment as follows: 
 
 - download and install the Arduino IDE v2.x (tested with v2.3.8)
