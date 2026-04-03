@@ -904,7 +904,7 @@ struct ConfigurationV16 {
 };
 /*************************************************************************************************/
 
-boolean upgradeConfigurationSettings(int32_t confSize, byte* buff2) {
+boolean upgradeConfigurationSettings(int32_t confSize, const byte* buff2) {
   boolean result = false;
 
   byte settingsVersion = buff2[0];
@@ -914,8 +914,8 @@ boolean upgradeConfigurationSettings(int32_t confSize, byte* buff2) {
     result = false;
   }
   else {
-    void* sourceConfig = buff2;
-    void (*copyConfigurationFunction)(void* target, void* source) = NULL;
+    const void* sourceConfig = buff2;
+    void (*copyConfigurationFunction)(void* target, const void* source) = NULL;
 
     switch (settingsVersion) {
       // if this is v1 of the configuration format, load it in the old structure and then convert it if the size is right
@@ -1039,7 +1039,7 @@ boolean upgradeConfigurationSettings(int32_t confSize, byte* buff2) {
   return result;
 }
 
-void copyCalibrationV1(CalibrationX (*calRowsTarget)[MAXCOLS+1][4], CalibrationX (*calRowsSource)[MAXCOLS+1][4], CalibrationY (*calColsTarget)[9][MAXROWS], CalibrationYV1 (*calColsSource)[9][MAXROWS]) {
+void copyCalibrationV1(CalibrationX (*calRowsTarget)[MAXCOLS+1][4], const CalibrationX (*calRowsSource)[MAXCOLS+1][4], CalibrationY (*calColsTarget)[9][MAXROWS], const CalibrationYV1 (*calColsSource)[9][MAXROWS]) {
   for (int i = 0; i < MAXCOLS+1; ++i) {
     for (int j = 0; j < 4; ++j) {
       (*calRowsTarget)[i][j].fxdMeasuredX = (*calRowsSource)[i][j].fxdMeasuredX;
@@ -1056,7 +1056,7 @@ void copyCalibrationV1(CalibrationX (*calRowsTarget)[MAXCOLS+1][4], CalibrationX
   }
 }
 
-void copyCalibrationV2(CalibrationX (*calRowsTarget)[MAXCOLS+1][4], CalibrationX (*calRowsSource)[MAXCOLS+1][4], CalibrationY (*calColsTarget)[9][MAXROWS], CalibrationY (*calColsSource)[9][MAXROWS]) {
+void copyCalibrationV2(CalibrationX (*calRowsTarget)[MAXCOLS+1][4], const CalibrationX (*calRowsSource)[MAXCOLS+1][4], CalibrationY (*calColsTarget)[9][MAXROWS], const CalibrationY (*calColsSource)[9][MAXROWS]) {
   for (int i = 0; i < MAXCOLS+1; ++i) {
     for (int j = 0; j < 4; ++j) {
       (*calRowsTarget)[i][j].fxdMeasuredX = (*calRowsSource)[i][j].fxdMeasuredX;
@@ -1073,7 +1073,7 @@ void copyCalibrationV2(CalibrationX (*calRowsTarget)[MAXCOLS+1][4], CalibrationX
   }
 }
 
-void copyAudienceMessages(char (*target)[16][31], char (*source)[16][31]) {
+void copyAudienceMessages(char (*target)[16][31], const char (*source)[16][31]) {
   for (byte msg = 0; msg < 16; ++msg) {
     memset((*target)[msg], '\0', 31);
     strncpy((*target)[msg], (*source)[msg], 30);
@@ -1097,10 +1097,10 @@ void setPromoAnimation(void* target, boolean flag) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV1(void* target, void* source) {
+void copyConfigurationV1(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV1* s = (ConfigurationV1*)source;
-  GlobalSettingsV1* g = &(s->global);
+  const ConfigurationV1* s = (const ConfigurationV1*)source;
+  const GlobalSettingsV1* g = &(s->global);
 
   t->device.version = g->version;
   copyCalibrationV1(&(t->device.calRows), &(g->calRows), &(t->device.calCols), &(g->calCols));
@@ -1133,9 +1133,9 @@ void copyConfigurationV1(void* target, void* source) {
   memcpy(&t->settings, &t->preset[0], sizeof(PresetSettings));
 }
 
-void copySplitSettingsV1(void* target, void* source) {
+void copySplitSettingsV1(void* target, const void* source) {
   SplitSettings* t = (SplitSettings*)target;
-  SplitSettingsV1* s = (SplitSettingsV1*)source;
+  const SplitSettingsV1* s = (const SplitSettingsV1*)source;
 
   t->midiMode = s->midiMode;
   t->midiChanMain = s->midiChanMain;
@@ -1184,9 +1184,9 @@ void copySplitSettingsV1(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV2(void* target, void* source) {
+void copyConfigurationV2(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV2* s = (ConfigurationV2*)source;
+  const ConfigurationV2* s = (const ConfigurationV2*)source;
 
   t->device.version = s->device.version;
   copyCalibrationV1(&(t->device.calRows), &(s->device.calRows), &(t->device.calCols), &(s->device.calCols));
@@ -1203,9 +1203,9 @@ void copyConfigurationV2(void* target, void* source) {
   memcpy(&t->settings, &t->preset[0], sizeof(PresetSettings));
 }
 
-void copySplitSettingsV2(void* target, void* source) {
+void copySplitSettingsV2(void* target, const void* source) {
   SplitSettings* t = (SplitSettings*)target;
-  SplitSettingsV2* s = (SplitSettingsV2*)source;
+  const SplitSettingsV2* s = (const SplitSettingsV2*)source;
 
   t->midiMode = s->midiMode;
   t->midiChanMain = s->midiChanMain;
@@ -1265,9 +1265,9 @@ void copySplitSettingsV2(void* target, void* source) {
   t->strum = s->strum;
 }
 
-void copyPresetSettingsOfConfigurationV2(void* target, void* source) {
+void copyPresetSettingsOfConfigurationV2(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV2* s = (ConfigurationV2*)source;
+  const ConfigurationV2* s = (const ConfigurationV2*)source;
 
   for (byte p = 0; p < 4; ++p) {
     t->preset[p].global.splitPoint = s->preset[p].global.splitPoint;
@@ -1293,9 +1293,9 @@ void copyPresetSettingsOfConfigurationV2(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV3(void* target, void* source) {
+void copyConfigurationV3(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV3* s = (ConfigurationV3*)source;
+  const ConfigurationV3* s = (const ConfigurationV3*)source;
 
   t->device.version = s->device.version;
   copyCalibrationV1(&(t->device.calRows), &(s->device.calRows), &(t->device.calCols), &(s->device.calCols));
@@ -1314,9 +1314,9 @@ void copyConfigurationV3(void* target, void* source) {
   memcpy(&t->settings, &t->preset[0], sizeof(PresetSettings));
 }
 
-void copyGlobalSettingsV3(void* target, void* source) {
+void copyGlobalSettingsV3(void* target, const void* source) {
   GlobalSettings* t = (GlobalSettings*)target;
-  GlobalSettingsV3* s = (GlobalSettingsV3*)source;
+  const GlobalSettingsV3* s = (const GlobalSettingsV3*)source;
 
   t->splitPoint = s->splitPoint;
   t->currentPerSplit = s->currentPerSplit;
@@ -1334,9 +1334,9 @@ void copyGlobalSettingsV3(void* target, void* source) {
   t->sustainBehavior = sustainHold;
 }
 
-void copyPresetSettingsOfConfigurationV3(void* target, void* source) {
+void copyPresetSettingsOfConfigurationV3(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV3* s = (ConfigurationV3*)source;
+  const ConfigurationV3* s = (const ConfigurationV3*)source;
 
   for (byte p = 0; p < 4; ++p) {
     copyGlobalSettingsV3(&t->preset[p].global, &s->preset[p].global);
@@ -1351,9 +1351,9 @@ void copyPresetSettingsOfConfigurationV3(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV4(void* target, void* source) {
+void copyConfigurationV4(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV4* s = (ConfigurationV4*)source;
+  const ConfigurationV4* s = (const ConfigurationV4*)source;
 
   copyDeviceSettingsV4(&t->device, &s->device);
 
@@ -1363,9 +1363,9 @@ void copyConfigurationV4(void* target, void* source) {
   }
 }
 
-void copyDeviceSettingsV4(void* target, void* source) {
+void copyDeviceSettingsV4(void* target, const void* source) {
   DeviceSettings* t = (DeviceSettings*)target;
-  DeviceSettingsV4* s = (DeviceSettingsV4*)source;
+  const DeviceSettingsV4* s = (const DeviceSettingsV4*)source;
 
   t->version = s->version;
   t->serialMode = true;
@@ -1377,9 +1377,9 @@ void copyDeviceSettingsV4(void* target, void* source) {
   t->operatingLowPower = false;
 }
 
-void copyPresetSettingsV3(void* target, void* source) {
+void copyPresetSettingsV3(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV3* s = (PresetSettingsV3*)source;
+  const PresetSettingsV3* s = (const PresetSettingsV3*)source;
 
   copyGlobalSettingsV3(&t->global, &s->global);
 
@@ -1389,9 +1389,9 @@ void copyPresetSettingsV3(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV5(void* target, void* source) {
+void copyConfigurationV5(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV5* s = (ConfigurationV5*)source;
+  const ConfigurationV5* s = (const ConfigurationV5*)source;
 
   copyDeviceSettingsV4(&t->device, &s->device);
 
@@ -1401,9 +1401,9 @@ void copyConfigurationV5(void* target, void* source) {
   }
 }
 
-void copyPresetSettingsV4(void* target, void* source) {
+void copyPresetSettingsV4(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV4* s = (PresetSettingsV4*)source;
+  const PresetSettingsV4* s = (const PresetSettingsV4*)source;
 
   copyGlobalSettingsV4(&t->global, &s->global);
 
@@ -1411,7 +1411,7 @@ void copyPresetSettingsV4(void* target, void* source) {
   copySplitSettingsV3(&t->split[RIGHT], &s->split[RIGHT]);
 }
 
-void copyGlobalSettingsNoteLights(void* target, boolean* sourceMainNotes, boolean* sourceAccentNotes) {
+void copyGlobalSettingsNoteLights(void* target, const boolean* sourceMainNotes, const boolean* sourceAccentNotes) {
   GlobalSettings* t = (GlobalSettings*)target;
 
   initializeNoteLights(*t);
@@ -1427,9 +1427,9 @@ void copyGlobalSettingsNoteLights(void* target, boolean* sourceMainNotes, boolea
   }
 }
 
-void copyGlobalSettingsV4(void* target, void* source) {
+void copyGlobalSettingsV4(void* target, const void* source) {
   GlobalSettings* t = (GlobalSettings*)target;
-  GlobalSettingsV4* s = (GlobalSettingsV4*)source;
+  const GlobalSettingsV4* s = (const GlobalSettingsV4*)source;
 
   t->splitPoint = s->splitPoint;
   t->currentPerSplit = s->currentPerSplit;
@@ -1451,9 +1451,9 @@ void copyGlobalSettingsV4(void* target, void* source) {
   t->sustainBehavior = sustainHold;
 }
 
-void copySplitSettingsV3(void* target, void* source) {
+void copySplitSettingsV3(void* target, const void* source) {
   SplitSettings* t = (SplitSettings*)target;
-  SplitSettingsV3* s = (SplitSettingsV3*)source;
+  const SplitSettingsV3* s = (const SplitSettingsV3*)source;
 
   t->midiMode = s->midiMode;
   t->midiChanMain = s->midiChanMain;
@@ -1497,9 +1497,9 @@ void copySplitSettingsV3(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV6(void* target, void* source) {
+void copyConfigurationV6(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV6* s = (ConfigurationV6*)source;
+  const ConfigurationV6* s = (const ConfigurationV6*)source;
 
   copyDeviceSettingsV4(&t->device, &s->device);
 
@@ -1509,9 +1509,9 @@ void copyConfigurationV6(void* target, void* source) {
   }
 }
 
-void copyPresetSettingsV5(void* target, void* source) {
+void copyPresetSettingsV5(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV5* s = (PresetSettingsV5*)source;
+  const PresetSettingsV5* s = (const PresetSettingsV5*)source;
 
   copyGlobalSettingsV5(&t->global, &s->global);
 
@@ -1519,9 +1519,9 @@ void copyPresetSettingsV5(void* target, void* source) {
   copySplitSettingsV4(&t->split[RIGHT], &s->split[RIGHT]);
 }
 
-void copyGlobalSettingsV5(void* target, void* source) {
+void copyGlobalSettingsV5(void* target, const void* source) {
   GlobalSettings* t = (GlobalSettings*)target;
-  GlobalSettingsV5* s = (GlobalSettingsV5*)source;
+  const GlobalSettingsV5* s = (const GlobalSettingsV5*)source;
 
   t->splitPoint = s->splitPoint;
   t->currentPerSplit = s->currentPerSplit;
@@ -1545,9 +1545,9 @@ void copyGlobalSettingsV5(void* target, void* source) {
   t->sustainBehavior = s->sustainBehavior;
 }
 
-void copySplitSettingsV4(void* target, void* source) {
+void copySplitSettingsV4(void* target, const void* source) {
   SplitSettings* t = (SplitSettings*)target;
-  SplitSettingsV4* s = (SplitSettingsV4*)source;
+  const SplitSettingsV4* s = (const SplitSettingsV4*)source;
 
   t->midiMode = s->midiMode;
   t->midiChanMain = s->midiChanMain;
@@ -1595,9 +1595,9 @@ void copySplitSettingsV4(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV7(void* target, void* source) {
+void copyConfigurationV7(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV7* s = (ConfigurationV7*)source;
+  const ConfigurationV7* s = (const ConfigurationV7*)source;
 
   copyDeviceSettingsV5(&t->device, &s->device);
 
@@ -1607,9 +1607,9 @@ void copyConfigurationV7(void* target, void* source) {
   }
 }
 
-void copyDeviceSettingsV5(void* target, void* source) {
+void copyDeviceSettingsV5(void* target, const void* source) {
   DeviceSettings* t = (DeviceSettings*)target;
-  DeviceSettingsV5* s = (DeviceSettingsV5*)source;
+  const DeviceSettingsV5* s = (const DeviceSettingsV5*)source;
 
   t->version = s->version;
   t->serialMode = true;
@@ -1624,9 +1624,9 @@ void copyDeviceSettingsV5(void* target, void* source) {
   t->operatingLowPower = false;
 }
 
-void copyPresetSettingsV6(void* target, void* source) {
+void copyPresetSettingsV6(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV6* s = (PresetSettingsV6*)source;
+  const PresetSettingsV6* s = (const PresetSettingsV6*)source;
 
   copyGlobalSettingsV6(&t->global, &s->global);
 
@@ -1634,9 +1634,9 @@ void copyPresetSettingsV6(void* target, void* source) {
   copySplitSettingsV4(&t->split[RIGHT], &s->split[RIGHT]);
 }
 
-void copyGlobalSettingsV6(void* target, void* source) {
+void copyGlobalSettingsV6(void* target, const void* source) {
   GlobalSettings* t = (GlobalSettings*)target;
-  GlobalSettingsV6* s = (GlobalSettingsV6*)source;
+  const GlobalSettingsV6* s = (const GlobalSettingsV6*)source;
 
   t->splitPoint = s->splitPoint;
   t->currentPerSplit = s->currentPerSplit;
@@ -1665,9 +1665,9 @@ void copyGlobalSettingsV6(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV8(void* target, void* source) {
+void copyConfigurationV8(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV8* s = (ConfigurationV8*)source;
+  const ConfigurationV8* s = (const ConfigurationV8*)source;
 
   copyDeviceSettingsV6(&t->device, &s->device);
 
@@ -1677,9 +1677,9 @@ void copyConfigurationV8(void* target, void* source) {
   }
 }
 
-void copyDeviceSettingsV6(void* target, void* source) {
+void copyDeviceSettingsV6(void* target, const void* source) {
   DeviceSettings* t = (DeviceSettings*)target;
-  DeviceSettingsV6* s = (DeviceSettingsV6*)source;
+  const DeviceSettingsV6* s = (const DeviceSettingsV6*)source;
 
   t->version = s->version;
   t->serialMode = true;
@@ -1698,9 +1698,9 @@ void copyDeviceSettingsV6(void* target, void* source) {
   t->otherHanded = s->leftHanded;
 }
 
-void copyPresetSettingsV7(void* target, void* source) {
+void copyPresetSettingsV7(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV7* s = (PresetSettingsV7*)source;
+  const PresetSettingsV7* s = (const PresetSettingsV7*)source;
 
   copyGlobalSettingsV7(&t->global, &s->global);
 
@@ -1708,9 +1708,9 @@ void copyPresetSettingsV7(void* target, void* source) {
   copySplitSettingsV4(&t->split[RIGHT], &s->split[RIGHT]);
 }
 
-void copyGlobalSettingsV7(void* target, void* source) {
+void copyGlobalSettingsV7(void* target, const void* source) {
   GlobalSettings* t = (GlobalSettings*)target;
-  GlobalSettingsV7* s = (GlobalSettingsV7*)source;
+  const GlobalSettingsV7* s = (const GlobalSettingsV7*)source;
 
   t->splitPoint = s->splitPoint;
   t->currentPerSplit = s->currentPerSplit;
@@ -1740,9 +1740,9 @@ void copyGlobalSettingsV7(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV9(void* target, void* source) {
+void copyConfigurationV9(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV9* s = (ConfigurationV9*)source;
+  const ConfigurationV9* s = (const ConfigurationV9*)source;
 
   copyDeviceSettingsV7(&t->device, &s->device);
 
@@ -1754,9 +1754,9 @@ void copyConfigurationV9(void* target, void* source) {
   memcpy(&t->project, &s->project, sizeof(SequencerProject));
 }
 
-void copyDeviceSettingsV7(void* target, void* source) {
+void copyDeviceSettingsV7(void* target, const void* source) {
   DeviceSettings* t = (DeviceSettings*)target;
-  DeviceSettingsV7* s = (DeviceSettingsV7*)source;
+  const DeviceSettingsV7* s = (const DeviceSettingsV7*)source;
 
   t->version = s->version;
   t->serialMode = true;
@@ -1776,9 +1776,9 @@ void copyDeviceSettingsV7(void* target, void* source) {
   t->midiThrough = s->midiThrough;
 }
 
-void copyPresetSettingsV8(void* target, void* source) {
+void copyPresetSettingsV8(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV8* s = (PresetSettingsV8*)source;
+  const PresetSettingsV8* s = (const PresetSettingsV8*)source;
 
   copyGlobalSettingsV7(&t->global, &s->global);
 
@@ -1786,9 +1786,9 @@ void copyPresetSettingsV8(void* target, void* source) {
   copySplitSettingsV5(&t->split[RIGHT], &s->split[RIGHT]);
 }
 
-void copySplitSettingsV5(void* target, void* source) {
+void copySplitSettingsV5(void* target, const void* source) {
   SplitSettings* t = (SplitSettings*)target;
-  SplitSettingsV5* s = (SplitSettingsV5*)source;
+  const SplitSettingsV5* s = (const SplitSettingsV5*)source;
 
   t->midiMode = s->midiMode;
   t->midiChanMain = s->midiChanMain;
@@ -1841,9 +1841,9 @@ void copySplitSettingsV5(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV10(void* target, void* source) {
+void copyConfigurationV10(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV10* s = (ConfigurationV10*)source;
+  const ConfigurationV10* s = (const ConfigurationV10*)source;
 
   copyDeviceSettingsV8(&t->device, &s->device);
 
@@ -1855,9 +1855,9 @@ void copyConfigurationV10(void* target, void* source) {
   memcpy(&t->project, &s->project, sizeof(SequencerProject));
 }
 
-void copyDeviceSettingsV8(void* target, void* source) {
+void copyDeviceSettingsV8(void* target, const void* source) {
   DeviceSettings* t = (DeviceSettings*)target;
-  DeviceSettingsV8* s = (DeviceSettingsV8*)source;
+  const DeviceSettingsV8* s = (const DeviceSettingsV8*)source;
 
   t->version = s->version;
   t->serialMode = true;
@@ -1881,9 +1881,9 @@ void copyDeviceSettingsV8(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV11(void* target, void* source) {
+void copyConfigurationV11(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV11* s = (ConfigurationV11*)source;
+  const ConfigurationV11* s = (const ConfigurationV11*)source;
 
   copyDeviceSettingsV9(&t->device, &s->device);
 
@@ -1895,9 +1895,9 @@ void copyConfigurationV11(void* target, void* source) {
   memcpy(&t->project, &s->project, sizeof(SequencerProject));
 }
 
-void copyDeviceSettingsV9(void* target, void* source) {
+void copyDeviceSettingsV9(void* target, const void* source) {
   DeviceSettings* t = (DeviceSettings*)target;
-  DeviceSettingsV9* s = (DeviceSettingsV9*)source;
+  const DeviceSettingsV9* s = (const DeviceSettingsV9*)source;
 
   t->version = s->version;
   t->serialMode = true;
@@ -1922,9 +1922,9 @@ void copyDeviceSettingsV9(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV12(void* target, void* source) {
+void copyConfigurationV12(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV12* s = (ConfigurationV12*)source;
+  const ConfigurationV12* s = (const ConfigurationV12*)source;
 
   copyDeviceSettingsV10(&t->device, &s->device);
 
@@ -1936,9 +1936,9 @@ void copyConfigurationV12(void* target, void* source) {
   memcpy(&t->project, &s->project, sizeof(SequencerProject));
 }
 
-void copyDeviceSettingsV10(void* target, void* source) {
+void copyDeviceSettingsV10(void* target, const void* source) {
   DeviceSettings* t = (DeviceSettings*)target;
-  DeviceSettingsV10* s = (DeviceSettingsV10*)source;
+  const DeviceSettingsV10* s = (const DeviceSettingsV10*)source;
 
   t->version = s->version;
   t->serialMode = true;
@@ -1961,9 +1961,9 @@ void copyDeviceSettingsV10(void* target, void* source) {
   t->lastLoadedProject = s->lastLoadedProject;
 }
 
-void copyPresetSettingsV9(void* target, void* source) {
+void copyPresetSettingsV9(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV9* s = (PresetSettingsV9*)source;
+  const PresetSettingsV9* s = (const PresetSettingsV9*)source;
 
   copyGlobalSettingsV8(&t->global, &s->global);
 
@@ -1971,9 +1971,9 @@ void copyPresetSettingsV9(void* target, void* source) {
   copySplitSettingsV5(&t->split[RIGHT], &s->split[RIGHT]);
 }
 
-void copyGlobalSettingsV8(void* target, void* source) {
+void copyGlobalSettingsV8(void* target, const void* source) {
   GlobalSettings* t = (GlobalSettings*)target;
-  GlobalSettingsV8* s = (GlobalSettingsV8*)source;
+  const GlobalSettingsV8* s = (const GlobalSettingsV8*)source;
 
   t->splitPoint = s->splitPoint;
   t->currentPerSplit = s->currentPerSplit;
@@ -2004,9 +2004,9 @@ void copyGlobalSettingsV8(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV13(void* target, void* source) {
+void copyConfigurationV13(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV13* s = (ConfigurationV13*)source;
+  const ConfigurationV13* s = (const ConfigurationV13*)source;
 
   copyDeviceSettingsV11(&t->device, &s->device);
 
@@ -2027,9 +2027,9 @@ void copyConfigurationV13(void* target, void* source) {
   memcpy(&t->project, &s->project, sizeof(SequencerProject));
 }
 
-void copyDeviceSettingsV11(void* target, void* source) {
+void copyDeviceSettingsV11(void* target, const void* source) {
   DeviceSettings* t = (DeviceSettings*)target;
-  DeviceSettingsV11* s = (DeviceSettingsV11*)source;
+  const DeviceSettingsV11* s = (const DeviceSettingsV11*)source;
 
   t->version = s->version;
   t->serialMode = true;
@@ -2055,9 +2055,9 @@ void copyDeviceSettingsV11(void* target, void* source) {
   t->lastLoadedProject = s->lastLoadedProject;
 }
 
-void copyPresetSettingsV10(void* target, void* source) {
+void copyPresetSettingsV10(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV10* s = (PresetSettingsV10*)source;
+  const PresetSettingsV10* s = (const PresetSettingsV10*)source;
 
   copyGlobalSettingsV9(&t->global, &s->global);
 
@@ -2065,9 +2065,9 @@ void copyPresetSettingsV10(void* target, void* source) {
   copySplitSettingsV6(&t->split[RIGHT], &s->split[RIGHT]);
 }
 
-void copyGlobalSettingsV9(void* target, void* source) {
+void copyGlobalSettingsV9(void* target, const void* source) {
   GlobalSettings* t = (GlobalSettings*)target;
-  GlobalSettingsV9* s = (GlobalSettingsV9*)source;
+  const GlobalSettingsV9* s = (const GlobalSettingsV9*)source;
 
   t->splitPoint = s->splitPoint;
   t->currentPerSplit = s->currentPerSplit;
@@ -2095,9 +2095,9 @@ void copyGlobalSettingsV9(void* target, void* source) {
   t->splitActive = s->splitActive;
 }
 
-void copySplitSettingsV6(void* target, void* source) {
+void copySplitSettingsV6(void* target, const void* source) {
   SplitSettings* t = (SplitSettings*)target;
-  SplitSettingsV6* s = (SplitSettingsV6*)source;
+  const SplitSettingsV6* s = (const SplitSettingsV6*)source;
 
   t->midiMode = s->midiMode;
   t->midiChanMain = s->midiChanMain;
@@ -2154,9 +2154,9 @@ void copySplitSettingsV6(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyDeviceSettingsV12(void* target, void* source) {
+void copyDeviceSettingsV12(void* target, const void* source) {
   DeviceSettings* t = (DeviceSettings*)target;
-  DeviceSettingsV12* s = (DeviceSettingsV12*)source;
+  const DeviceSettingsV12* s = (const DeviceSettingsV12*)source;
 
   t->version = s->version;
   t->serialMode = true;
@@ -2182,9 +2182,9 @@ void copyDeviceSettingsV12(void* target, void* source) {
   t->lastLoadedProject = s->lastLoadedProject;
 }
 
-void copyConfigurationV14(void* target, void* source) {
+void copyConfigurationV14(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV14* s = (ConfigurationV14*)source;
+  const ConfigurationV14* s = (const ConfigurationV14*)source;
 
   copyDeviceSettingsV12(&t->device, &s->device);
 
@@ -2198,9 +2198,9 @@ void copyConfigurationV14(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copySplitSettingsV7(void* target, void* source) {
+void copySplitSettingsV7(void* target, const void* source) {
   SplitSettings* t = (SplitSettings*)target;
-  SplitSettingsV7* s = (SplitSettingsV7*)source;
+  const SplitSettingsV7* s = (const SplitSettingsV7*)source;
 
   t->midiMode = s->midiMode;
   t->midiChanMain = s->midiChanMain;
@@ -2255,9 +2255,9 @@ void copySplitSettingsV7(void* target, void* source) {
   t->sequencerView = s->sequencerView;
 }
 
-void copyPresetSettingsV11(void* target, void* source) {
+void copyPresetSettingsV11(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV11* s = (PresetSettingsV11*)source;
+  const PresetSettingsV11* s = (const PresetSettingsV11*)source;
 
   memcpy(&t->global, &s->global, sizeof(GlobalSettings));
 
@@ -2265,9 +2265,9 @@ void copyPresetSettingsV11(void* target, void* source) {
   copySplitSettingsV7(&t->split[RIGHT], &s->split[RIGHT]);
 }
 
-void copyConfigurationV15(void* target, void* source) {
+void copyConfigurationV15(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV15* s = (ConfigurationV15*)source;
+  const ConfigurationV15* s = (const ConfigurationV15*)source;
 
   copyDeviceSettingsV12(&t->device, &s->device);
 
@@ -2281,9 +2281,9 @@ void copyConfigurationV15(void* target, void* source) {
 
 /*************************************************************************************************/
 
-void copyConfigurationV16(void* target, void* source) {
+void copyConfigurationV16(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV16* s = (ConfigurationV16*)source;
+  const ConfigurationV16* s = (const ConfigurationV16*)source;
 
   memcpy(&t->device, &s->device, sizeof(DeviceSettings));
 
