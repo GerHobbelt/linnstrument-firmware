@@ -48,8 +48,11 @@ currently debugging. After debugging something, either remove them or move them 
 #define DEBUGPRINT_FUNCNAME_L5()     debugprint_funcname_L5(__func__)
 #define DEBUGPRINT_FUNCNAME_L0()     debugprint_funcname_L0(__func__)
 
+#define DEBUGPRINT_FUNCNAME_L5_X(addenda_msg)     debugprint_funcname_L5(__func__, addenda_msg)
+
 void debugprint_funcname(const char *fname);
 void debugprint_funcname_L0(const char *fname);
 void debugprint_funcname_L5(const char *fname);
+void debugprint_funcname_L5(const char *fname, const char *addenda_msg);
 
 #endif

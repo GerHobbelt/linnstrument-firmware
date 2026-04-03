@@ -87,12 +87,31 @@ void debugprint_funcname_L5(const char *fname) {
     static const char *align_ws = "                              ";
     const auto ws_len = sizeof(align_ws) - 1;
     if (l < ws_len) {
-      DEBUGPRINT((2, align_ws - l));
+      DEBUGPRINT((4, align_ws - l));
     }
     DEBUGPRINT((4,": anim="));
     DEBUGPRINT((4,int(animationActive)));
     DEBUGPRINT((4," mode="));
     DEBUGPRINT((4,int(displayMode)));
+    DEBUGPRINT((4,"\n"));
+  }
+}
+
+void debugprint_funcname_L5(const char *fname, const char *addenda) {
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((4,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((4, align_ws - l));
+    }
+    DEBUGPRINT((4,": anim="));
+    DEBUGPRINT((4,int(animationActive)));
+    DEBUGPRINT((4," mode="));
+    DEBUGPRINT((4,int(displayMode)));
+    DEBUGPRINT((4,", "));
+    DEBUGPRINT((4,addenda));
     DEBUGPRINT((4,"\n"));
   }
 }
@@ -104,7 +123,7 @@ void debugprint_funcname_L0(const char *fname) {
     static const char *align_ws = "                              ";
     const auto ws_len = sizeof(align_ws) - 1;
     if (l < ws_len) {
-      DEBUGPRINT((2, align_ws - l));
+      DEBUGPRINT((0, align_ws - l));
     }
     DEBUGPRINT((0,": anim="));
     DEBUGPRINT((0,int(animationActive)));
