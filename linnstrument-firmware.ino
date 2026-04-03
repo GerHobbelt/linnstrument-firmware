@@ -28,7 +28,6 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 =======================================================================================================================
 =====================================================================================================================*/
 
-
 /*
  * DUE Board pin   |  PORT  | Label
  * ----------------+--------+-------
@@ -155,7 +154,7 @@ static const struct OSinfo {
 //#define DISPLAY_XFRAME_AT_LAUNCH
 //#define DISPLAY_YFRAME_AT_LAUNCH
 //#define DISPLAY_ZFRAME_AT_LAUNCH
-//#define DISPLAY_SURFACESCAN_AT_LAUNCH
+#define DISPLAY_SURFACESCAN_AT_LAUNCH
 #define DISPLAY_FREERAM_AT_LAUNCH
 #define DISPLAY_DEBUGMIDI_AT_LAUNCH
 //#define TESTING_SENSOR_DISABLE
@@ -194,7 +193,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 // - Cyan           : Green + Blue
 // - White          : Red + Green + Blue
 // - Black          : all OFF
-// Then there's also the 50% duty cycle remixes: half the time color A, the other half its color B:
+// Then there's also the 50% duty cycle remixes: half the time color A, the other half it's color B:
 // a.k.a. 'composite colors':
 // - Orange         : Yellow + Red
 // - Pink           : Purple/Magenta + Yellow
@@ -225,8 +224,6 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define ROWOFFSET_OCTAVECUSTOM     0x0c
 #define ROWOFFSET_GUITAR           0x0d
 #define ROWOFFSET_ZERO             0x7f
-
-#define LED_FLASH_DELAY  500000        // the time before a led is turned off when flashing or pulsing, in microseconds
 
 #define DEFAULT_MAINLOOP_DIVIDER      2
 #define DEFAULT_LED_REFRESH           333
@@ -561,7 +558,8 @@ enum CellDisplay {
   cellOn = 1,
   cellFastPulse = 2,
   cellSlowPulse = 3,
-  cellFocusPulse = 4
+  cellFocusPulse = 4,
+  cellTempoPulse = 5
 };
 
 enum DisplayMode {
@@ -1126,7 +1124,7 @@ const int32_t FXD_CONST_1016 = FXD_FROM_INT(1016);
 
 const int CALX_VALUE_MARGIN = 85;                         // 4095 / 48
 const int32_t FXD_CALX_HALF_UNIT = FXD_MAKE(85.3125);     // 4095 / 48
-const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(128);     // 4095 / 32
+const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(170);     // full cell width (~4095 / 24), accept any X within cell bounds
 const int32_t FXD_CALX_FULL_UNIT = FXD_MAKE(170.625);     // 4095 / 24
 const int32_t CALX_QUARTER_UNIT = FXD_TO_INT(FXD_CALX_FULL_UNIT) / 4;
 
@@ -1159,12 +1157,9 @@ unsigned long lastControlPress[MAXROWS];
 byte mainLoopDivider = DEFAULT_MAINLOOP_DIVIDER;         // loop divider at which continuous tasks are ran
 unsigned long ledRefreshInterval = DEFAULT_LED_REFRESH;  // LED timing
 unsigned long prevLedTimerCount;                         // timer for refreshing leds
-unsigned long prevGlobalSettingsDisplayTimerCount;       // timer for refreshing the global settings display
 unsigned long prevTouchAnimTimerCount;                   // timer for refreshing the touch animation
 
 boolean customLedPatternActive = false;                  // was a custom led pattern loaded from flash
-
-unsigned long tempoLedOn = 0;                       // indicates when the tempo clock led was turned on
 
 ChannelBucket splitChannels[NUMSPLITS];             // the MIDI channels that are being handed out
 unsigned short midiPreset[NUMSPLITS];               // preset number 0-127
@@ -1239,8 +1234,6 @@ short guitarTuningPreviewChannel = -1;              // active channel that is pr
 byte customLedColor = COLOR_GREEN;                  // color is used for drawing in the custom LED editor
 
 byte accentColor = COLOR_BLACK;
-
-unsigned int debugContentWritten = 0;
 
 /************************* FUNCTION DECLARATIONS TO WORK AROUND COMPILER *************************/
 
@@ -1432,7 +1425,7 @@ void setup() {
 
   /*!!*/  // Initialize the output enable line for the 2 LED display chips
   /*!!*/  pinMode(37, OUTPUT);
-  /*!!*/  digitalWrite(37, HIGH);
+  /*!!*/  digitalWrite(37, HIGH); // clearDisplayImmediately();
   /*!!*/
   /*!!*/  if (switchPressAtStartup(GLOBAL_SETTINGS_ROW)) {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
@@ -1656,7 +1649,7 @@ uint32_t adc_get_latest_value(const Adc *p_adc)
   }
 
   // setup system timers for interval between LED column refreshes and foot switch reads
-  prevLedTimerCount = prevFootSwitchTimerCount = prevGlobalSettingsDisplayTimerCount = micros();
+  prevLedTimerCount = prevFootSwitchTimerCount = micros();
 
   // perform some initialization
   initializeCalibrationSamples();

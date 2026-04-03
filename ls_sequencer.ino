@@ -16,6 +16,8 @@ limitations under the License.
 These implement the polyphonic expressive step sequencer, independently for each split.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 struct SequencerConstantsT {
   constexpr static const byte FADER_TOP = 3;
   byte FADER_LENGTH;
@@ -149,7 +151,7 @@ static short sequencerCopyStepSource = -1;
 
 static boolean sequencerSwitch1WasUsed = false;
 
-const byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
+static const byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
    1,  // StepSixtyfourthTriplet
    2,  // StepThirtysecondTriplet
    3,  // StepThirtysecond
@@ -169,7 +171,9 @@ const byte seqDurationEditPanelChoices[SEQ_DURATION_EDIT_PANEL_COUNT] {
    96  // StepWhole
 };
 
-const char* seqDurationEditPanelLabels[SEQ_DURATION_EDIT_PANEL_COUNT] {
+static const struct seqDurationEditPanelLabels {
+  const char* labels[SEQ_DURATION_EDIT_PANEL_COUNT];
+} seqDurationEditPanelLabels = { {
   "64t",
   "32t",
   "32",
@@ -187,7 +191,7 @@ const char* seqDurationEditPanelLabels[SEQ_DURATION_EDIT_PANEL_COUNT] {
   " 1t",
   " 2.",
   " 1"
-};
+} };
 
 struct StepSequencerState;
 
@@ -1254,7 +1258,7 @@ void handleSequencerFaderTouch(boolean newVelocity) {
         case 2:
         {
           int offset = 1;
-          const char* durationLabel = seqDurationEditPanelLabels[focus->getFaderValue(sensorRow)];
+          const char* durationLabel = seqDurationEditPanelLabels.labels[focus->getFaderValue(sensorRow)];
           if (durationLabel[0] == '1' || (durationLabel[0] == ' ' && durationLabel[1] == '1')) {
             offset += 2;
           }
@@ -2374,6 +2378,8 @@ boolean StepSequencerState::isRunning() {
 }
 
 void StepSequencerState::advanceSequencer() {
+  DEBUGPRINT_FUNCNAME();
+
   // handle the preview event's duration
   if (previewEvent.isActive()) {
     DEBUGPRINT_FUNCNAME_L5();

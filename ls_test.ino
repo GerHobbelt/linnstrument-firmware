@@ -20,55 +20,19 @@ Assorted debug functions.
 
 
 static void debugPrint1(const char* msg) {
-  unsigned int msgLen = strlen(msg);
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.print(msg);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 static void debugPrintln1(const char* msg) {
-  unsigned int msgLen = strlen(msg);
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.println(msg);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 static void debugPrint1(int val) {
-  const unsigned int msgLen = 2;
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.print(val);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 static void debugPrintln1(int val) {
-  const unsigned int msgLen = 2;
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.println(val);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 inline void debugPrint(int level, const char* msg) {
@@ -97,7 +61,7 @@ inline void debugPrintln(int level, int val) {
 
 void debugprint_funcname(const char *fname) {
   if (SWITCH_SURFACESCAN) {
-    static const char *touchInfo[] = { "untouched", "ignored", "transfer", "touched" };
+    static const char *touchInfoStr[] = { "untouched", "ignored", "transfer", "touched" };
 
     DEBUGPRINT((2,fname));
     auto l = strlen(fname);
@@ -111,7 +75,7 @@ void debugprint_funcname(const char *fname) {
     DEBUGPRINT((2," veloZ="));DEBUGPRINT((2,(int)sensorCell->velocityZ));
     DEBUGPRINT((2," pressZ="));DEBUGPRINT((2,(int)sensorCell->pressureZ));
     DEBUGPRINT((2," velo="));DEBUGPRINT((2,(int)sensorCell->velocity));
-    DEBUGPRINT((2," touch="));DEBUGPRINT((2,touchInfo[int(sensorCell->touched)]));
+    DEBUGPRINT((2," touch="));DEBUGPRINT((2,touchInfoStr[int(sensorCell->touched)]));
     DEBUGPRINT((2,"\n"));
   }
 }
@@ -154,8 +118,6 @@ void displayDigitalPins() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
 
     Serial.println();
@@ -163,8 +125,6 @@ void displayDigitalPins() {
     displayDigitalPins(0, 27);
     Serial.println();
     displayDigitalPins(27, 54);
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -226,8 +186,6 @@ void displayXFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
 
     Serial.println();
@@ -239,16 +197,14 @@ void displayXFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        if (cell(x, y-1).touched == touchedCell) {
-          Serial.print("#_");
-        }
         Serial.print(cell(x, y-1).currentRawX);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -262,8 +218,6 @@ void displayYFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
     
     Serial.println();
@@ -275,16 +229,14 @@ void displayYFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        if (cell(x, y-1).touched == touchedCell) {
-          Serial.print("#_");
-        }
         Serial.print(cell(x, y-1).currentRawY);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -294,8 +246,6 @@ void displayZFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
     
     Serial.println();
@@ -307,16 +257,14 @@ void displayZFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        if (cell(x, y-1).touched == touchedCell) {
-          Serial.print("#_");
-        }
         Serial.print(cell(x, y-1).currentRawZ);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -347,8 +295,6 @@ void displayCellTouchedFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
 
     Serial.println();
@@ -379,8 +325,6 @@ void displayCellTouchedFrame() {
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
