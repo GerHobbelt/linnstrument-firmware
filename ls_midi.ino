@@ -2562,6 +2562,10 @@ inline void midiSendControlChange(byte controlnum, byte controlval, byte channel
   midiSendControlChange(controlnum, controlval, channel, false);
 }
 
+#ifdef DEBUG_ENABLED
+static unsigned long decimatedCount = 0;
+#endif
+
 void midiSendControlChange(byte controlnum, byte controlval, byte channel, boolean always) {
   controlnum = constrain(controlnum, 0, 127);
   controlval = constrain(controlval, 0, 127);
@@ -2570,8 +2574,14 @@ void midiSendControlChange(byte controlnum, byte controlval, byte channel, boole
   unsigned long now = micros();
   // always send channel mode messages and sustain, as well as messages that are flagged as always
   if (!always && controlnum < 120 && controlnum != 64) {
+#ifdef DEBUG_ENABLED
+    decimatedCount++;
+#endif
     if (lastValueMidiCC[channel][controlnum] == controlval) return;
     if (controlval != 0 && calcTimeDelta(now, lastMomentMidiCC[channel][controlnum]) <= midiDecimateRate) return;
+#ifdef DEBUG_ENABLED
+    decimatedCount--;
+#endif
   }
   lastValueMidiCC[channel][controlnum] = controlval;
   lastMomentMidiCC[channel][controlnum] = now;
@@ -2586,6 +2596,13 @@ void midiSendControlChange(byte controlnum, byte controlval, byte channel, boole
       Serial.print(", channel=");
       Serial.print((int)channel);
       Serial.print("\n");
+
+      if (decimatedCount) {
+        Serial.print("MIDI decimatedCount=");
+        Serial.print(decimatedCount);
+        Serial.print("\n");
+        decimatedCount = 0;
+      }
     }
 #endif
   }
@@ -2606,10 +2623,17 @@ void midiSendControlChange14BitUserFirmware(byte controlMsb, byte controlLsb, sh
   unsigned msb = (controlval & 0x3fff) >> 7;
   unsigned lsb = controlval & 0x7f;
 
+#ifdef DEBUG_ENABLED
+  decimatedCount++;
+#endif
   if (lastValueMidiCC[channel][controlMsb] == msb && lastValueMidiCC[channel][controlLsb] == lsb) return;
   if (controlval != 0 &&
       (calcTimeDelta(now, lastMomentMidiCC[channel][controlMsb]) <= midiDecimateRate ||
        calcTimeDelta(now, lastMomentMidiCC[channel][controlLsb]) <= midiDecimateRate)) return;
+#ifdef DEBUG_ENABLED
+  decimatedCount--;
+#endif
+
   lastValueMidiCC[channel][controlMsb] = msb;
   lastMomentMidiCC[channel][controlMsb] = now;
   lastValueMidiCC[channel][controlLsb] = lsb;
@@ -2627,6 +2651,13 @@ void midiSendControlChange14BitUserFirmware(byte controlMsb, byte controlLsb, sh
       Serial.print(", channel=");
       Serial.print((int)channel);
       Serial.print("\n");
+
+      if (decimatedCount) {
+        Serial.print("MIDI decimatedCount=");
+        Serial.print(decimatedCount);
+        Serial.print("\n");
+        decimatedCount = 0;
+      }
     }
 #endif
   }
@@ -2648,10 +2679,17 @@ void midiSendControlChange14BitMIDISpec(byte controlMsb, byte controlLsb, short 
   unsigned msb = (controlval & 0x3fff) >> 7;
   unsigned lsb = controlval & 0x7f;
 
+#ifdef DEBUG_ENABLED
+  decimatedCount++;
+#endif
   if (lastValueMidiCC[channel][controlMsb] == msb && lastValueMidiCC[channel][controlLsb] == lsb) return;
   if (controlval != 0 &&
       (calcTimeDelta(now, lastMomentMidiCC[channel][controlMsb]) <= midiDecimateRate ||
        calcTimeDelta(now, lastMomentMidiCC[channel][controlLsb]) <= midiDecimateRate)) return;
+#ifdef DEBUG_ENABLED
+  decimatedCount--;
+#endif
+
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
     if (SWITCH_DEBUGMIDI && debugLevel >= 0) {
@@ -2664,6 +2702,13 @@ void midiSendControlChange14BitMIDISpec(byte controlMsb, byte controlLsb, short 
       Serial.print(", channel=");
       Serial.print((int)channel);
       Serial.print("\n");
+
+      if (decimatedCount) {
+        Serial.print("MIDI decimatedCount=");
+        Serial.print(decimatedCount);
+        Serial.print("\n");
+        decimatedCount = 0;
+      }
     }
 #endif
   }
@@ -2781,8 +2826,15 @@ void midiSendPitchBend(int pitchval, byte channel) {
   channel = constrain(channel-1, 0, 15);
 
   unsigned long now = micros();
+#ifdef DEBUG_ENABLED
+  decimatedCount++;
+#endif
   if (lastValueMidiPB[channel] == bend) return;
   if (pitchval != 0 && calcTimeDelta(now, lastMomentMidiPB[channel]) <= midiDecimateRate) return;
+#ifdef DEBUG_ENABLED
+  decimatedCount--;
+#endif
+
   lastValueMidiPB[channel] = bend;
   lastMomentMidiPB[channel] = now;
 
@@ -2794,6 +2846,13 @@ void midiSendPitchBend(int pitchval, byte channel) {
       Serial.print(", channel=");
       Serial.print((int)channel);
       Serial.print("\n");
+
+      if (decimatedCount) {
+        Serial.print("MIDI decimatedCount=");
+        Serial.print(decimatedCount);
+        Serial.print("\n");
+        decimatedCount = 0;
+      }
     }
 #endif
   }
@@ -2832,9 +2891,16 @@ void midiSendAfterTouch(byte value, byte channel, boolean always) {
 
   unsigned long now = micros();
   if (!always) {
+#ifdef DEBUG_ENABLED
+    decimatedCount++;
+#endif
     if (lastValueMidiAT[channel] == value) return;
     if (value != 0 && calcTimeDelta(now, lastMomentMidiAT[channel]) <= midiDecimateRate) return;
+#ifdef DEBUG_ENABLED
+    decimatedCount--;
+#endif
   }
+
   lastValueMidiAT[channel] = value;
   lastMomentMidiAT[channel] = now;
 
@@ -2846,6 +2912,13 @@ void midiSendAfterTouch(byte value, byte channel, boolean always) {
       Serial.print(", channel=");
       Serial.print((int)channel);
       Serial.print("\n");
+
+      if (decimatedCount) {
+        Serial.print("MIDI decimatedCount=");
+        Serial.print(decimatedCount);
+        Serial.print("\n");
+        decimatedCount = 0;
+      }
     }
 #endif
   }
@@ -2861,8 +2934,15 @@ void midiSendPolyPressure(byte notenum, byte value, byte channel) {
   channel = constrain(channel-1, 0, 15);
 
   unsigned long now = micros();
+#ifdef DEBUG_ENABLED
+  decimatedCount++;
+#endif
   if (lastValueMidiPP[channel][notenum] == value) return;
   if (value != 0 && calcTimeDelta(now, lastMomentMidiPP[channel][notenum]) <= midiDecimateRate) return;
+#ifdef DEBUG_ENABLED
+  decimatedCount--;
+#endif
+
   lastValueMidiPP[channel][notenum] = value;
   lastMomentMidiPP[channel][notenum] = now;
 
@@ -2876,6 +2956,13 @@ void midiSendPolyPressure(byte notenum, byte value, byte channel) {
       Serial.print(", channel=");
       Serial.print((int)channel);
       Serial.print("\n");
+
+      if (decimatedCount) {
+        Serial.print("MIDI decimatedCount=");
+        Serial.print(decimatedCount);
+        Serial.print("\n");
+        decimatedCount = 0;
+      }
     }
 #endif
   }
