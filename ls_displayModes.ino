@@ -92,6 +92,11 @@ void setDisplayMode(DisplayMode mode) {
 // 0:normal, 1:perSplit, 2:preset, 3:volume, 4:transpose, 5:split, 6:global
 void updateDisplay() {
   DEBUGPRINT_FUNCNAME_L5();
+  DEBUGPRINT((4,"animationActive="));
+  DEBUGPRINT((4,animationActive));
+  DEBUGPRINT((4,", displayMode="));
+  DEBUGPRINT((4,displayMode));
+  DEBUGPRINT((4,"\n"));
   
   if (animationActive) {
     return;
@@ -306,6 +311,13 @@ void exitDisplayMode(DisplayMode mode) {
 }
 
 void updateSwitchLeds() {
+  DEBUGPRINT_FUNCNAME();
+  DEBUGPRINT((3,"operatingMode="));
+  DEBUGPRINT((3,operatingMode));
+  DEBUGPRINT((3," -> "));
+  DEBUGPRINT((3,operatingMode != modePerformance ? "TRUE" : "FALSE"));
+  DEBUGPRINT((3,"\n"));
+  
   if (operatingMode != modePerformance) {
     return;
   }
@@ -391,6 +403,8 @@ void updateSwitchLeds() {
 // paintNormalDisplay:
 // Paints all non-switch columns of the display with the normal performance colors
 void paintNormalDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   if (userFirmwareActive) return;
 
   if (Split[Global.currentPerSplit].sequencer) {
@@ -1166,6 +1180,8 @@ void paintPlayedTouchModeDisplay(byte side) {
 }
 
 void paintLowRowBendConfigDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   switch (Split[Global.currentPerSplit].lowRowBendBehavior) {
     case lowRowBendBend:
       adaptfont_draw_string(0, 0, "BEND", Split[side].colorMain, true);
@@ -1431,6 +1447,8 @@ void paintMinUSBMIDIIntervalDisplay() {
 }
 
 void paintSensorSensitivityZDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   for (byte row = 1; row < NUMROWS; ++row) {
     clearRow(row);
   }
@@ -1726,18 +1744,65 @@ inline void paintGlobalSettingsFlashTempo() {
 }
 
 void paintGlobalSettingsFlashTempo(byte color) {
+#if 0
+  if (displayMode == displayGlobal || displayMode == displayGlobalWithTempo) {
+    paintGlobalSettingsFlashTempo(now, 14, 3);
+    setLed(14, 3, globalColor, cellTempoPulse);
+  }
+  else 
+#endif
   if (controlButton != GLOBAL_SETTINGS_ROW &&
 #if 0
            !isSyncedToMidiClock() &&
 #endif
            (isArpeggiatorEnabled(Global.currentPerSplit) ||
             isVisibleSequencer() ||
+#if 0
             sequencerIsRunning() ||
+#endif
             isStandaloneMidiClockRunning())) {
     //paintGlobalSettingsFlashTempo(now, 0, 0);
     setLed(0, GLOBAL_SETTINGS_ROW, color, cellTempoPulse);
   }
+#if 0
+  // handle turning off the MIDI clock led after minimum 30ms
+  if (isSyncedToMidiClock() &&
+      controlButton != GLOBAL_SETTINGS_ROW &&
+      tempoLedOn != 0 &&
+      calcTimeDelta(nowMicros, tempoLedOn) > LED_FLASH_DELAY()) {
+    tempoLedOn = 0;
+    clearLed(0, GLOBAL_SETTINGS_ROW);
+  }
+#endif
 }
+
+#if 0
+void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row) {
+  if (!animationActive && !userFirmwareActive) {
+    bool flash_on = false;
+    if (isVisibleSequencer())
+    {
+      flash_on = sequencerFlashTempoOn();
+    }
+    else
+    {
+      flash_on = (clock24PPQ == 0);
+    }
+
+    // flash the tap tempo cell at the beginning of the beat
+    if (flash_on) {
+      lightLed(col, row);
+      tempoLedOn = now;
+    }
+
+    // handle turning off the tap tempo led after minimum 30ms
+    if (tempoLedOn != 0 && calcTimeDelta(now, tempoLedOn) > LED_FLASH_DELAY()) {
+      tempoLedOn = 0;
+      clearLed(col, row);
+    }
+  }
+}
+#endif
 
 // paintGlobalSettingsDisplay:
 // Paints LEDs with state of all global settings
@@ -1947,6 +2012,8 @@ void paintGlobalSettingsDisplay() {
 }
 
 void paintCustomLedsEditor() {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   // nothing to do, everything is handled in the regular LED rendering routine
 }
 
@@ -2046,6 +2113,8 @@ void paintCalibrationDisplay() {
 }
 
 void paintResetDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   clearDisplay();
 
   condfont_draw_string(0, 0, LINNMODEL == 200 ? "RESET" : "RSET", globalColor, true);
@@ -2055,6 +2124,8 @@ void paintResetDisplay() {
 }
 
 void paintEditAudienceMessage() {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   bigfont_draw_string(audienceMessageOffset, 0, Device.audienceMessages[audienceMessageToEdit], Split[LEFT].colorMain, true, false, Split[LEFT].colorAccent);
 }
 
