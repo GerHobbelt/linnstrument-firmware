@@ -64,7 +64,11 @@ static const byte CUSTOM_LEDS_PATTERN2[LED_LAYER_SIZE] = {
 
 unsigned long tempoChangeTime = 0;           // time of last touch for tempo change
 
+uint32_t settingsBootBlockOffset = 0;
+
 void GlobalSettings::setSwitchAssignment(byte whichSwitch, byte assignment, boolean disableSame) {
+  DEBUGPRINT_FUNCNAME();
+
   if (Global.switchAssignment[whichSwitch] == assignment) {
     if (disableSame) {
       Global.switchAssignment[whichSwitch] = ASSIGNED_DISABLED;
@@ -78,6 +82,7 @@ void GlobalSettings::setSwitchAssignment(byte whichSwitch, byte assignment, bool
 
 void switchSerialMode(boolean flag) {
   DEBUGPRINT((3,"switchSerialMode:SOF\n"));
+
   if (controlModeActive) {
     controlModeActive = false;
     clearDisplay();
@@ -93,6 +98,7 @@ void switchSerialMode(boolean flag) {
   
   Device.serialMode = flag;
   applySerialMode();
+
   DEBUGPRINT((3,"switchSerialMode:EOF\n"));
 }
 
@@ -109,11 +115,32 @@ void applySerialMode() {
   }
 }
 
+// look in several spots in the FlashROM to find a valid SettingsBootBlock: 
+// originally this was always found at the start of Flash #2, but as our software
+// grows it may be anywhere beyond that point: it may exist at another 'Flash Page' 
+// start.
+uint32_t locateSettingsBootBlock() {
+  DEBUGPRINT_FUNCNAME();
+
+  uint32_t pos = IFLASH0_SIZE;
+  byte bootblock = dueFlashStorage.read(pos);
+  settingsBootBlockOffset; // getFirstFreeBlock
+
+
+
+  // TODO
+
+
+  return 0;
+}
+
 void initializeStorage() {
+  DEBUGPRINT_FUNCNAME();
+
   byte bootblock = dueFlashStorage.read(0);
 
-  if (bootblock != 0) {                                   // See if we need to boot from scratch
-    if (bootblock == 255) {                               // When a new firmware is uploaded, the first flash byte will be 255
+  if (01 || bootblock != 0) {                                   // See if we need to boot from scratch
+    if (01 || bootblock == 255) {                               // When a new firmware is uploaded, the first flash byte will be 255
       switchSerialMode(true);                             // Start in serial mode after OS upgrade to be able to receive the settings
       Device.serialMode = true;
       firstTimeBoot = true;
@@ -172,7 +199,9 @@ inline void storeSettings() {
   }
 }
 
-void writeAdaptivelyToFlash(uint32_t offset, byte* source, int length) {
+void writeAdaptivelyToFlash(uint32_t offset, const void* source_, int length) {
+  const byte* source = (const byte *)source_;
+
   // batch and slow down the flash storage in low power mode
   if (Device.operatingLowPower) {
     unsigned long now = millis();
@@ -220,7 +249,7 @@ void writeSettingsToFlash() {
   if (marker != 0) {
     configOffset = sizeof(Configuration);
   }
-  auto diff = memcmp(&config, dueFlashStorage.readAddress(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset), sizeof(Configuration));
+  auto diff = memcmp(&config, dueFlashStorage.readAddress(SETTINGS_OFFSET + sizeof(unsigned long) + configOffset), sizeof(Configuration));
   if (diff == 0) {
     DEBUGPRINT((0,"writeSettingsToFlash: no changes to store.\n"));
   }
@@ -238,7 +267,7 @@ void writeSettingsToFlash() {
     }
 
     // write to flash, taking low power mode into account
-    writeAdaptivelyToFlash(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset, (byte*)&config, sizeof(Configuration));
+    writeAdaptivelyToFlash(SETTINGS_OFFSET + sizeof(unsigned long) + configOffset, &config, sizeof(Configuration));
 
     // write the marker after the configuration data so that this version becomes the latest coherent one
     dueFlashStorage.write(SETTINGS_OFFSET, marker);
@@ -258,7 +287,7 @@ inline void loadSettings() {
   if (marker != 0) {
     configOffset = sizeof(Configuration);
   }
-  memcpy(&config, dueFlashStorage.readAddress(SETTINGS_OFFSET+sizeof(unsigned long)+configOffset), sizeof(Configuration));
+  memcpy(&config, dueFlashStorage.readAddress(SETTINGS_OFFSET + sizeof(unsigned long) + configOffset), sizeof(Configuration));
 }
 
 void writeInitialProjectSettings() {
@@ -322,10 +351,12 @@ void writeInitialProjectSettings() {
 }
 
 inline void writeProjectToFlashRaw(byte project) {
+  DEBUGPRINT_FUNCNAME_L0();
+
   // write to flash, taking low power mode into account
   uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + project * SINGLE_PROJECT_SIZE;
   Project.tempo = FXD4_TO_INT(fxd4CurrentTempo);
-  writeAdaptivelyToFlash(projectOffset, (byte*)&Project, sizeof(SequencerProject));
+  writeAdaptivelyToFlash(projectOffset, &Project, sizeof(SequencerProject));
 }
 
 void writeProjectToFlash(byte project) {
@@ -393,6 +424,8 @@ void loadProject(byte project) {
 }
 
 void applyPresetSettings() {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   applyPitchCorrectHold();
   applyLimitsForY();
   applyLimitsForZ();
@@ -405,17 +438,23 @@ void applyPresetSettings() {
 }
 
 inline void applyConfiguration() {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   applyPresetSettings();
   applySequencerSettings();
   loadCustomLedLayer(getActiveCustomLedPattern());
 }
 
 inline void applySystemState() {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   applyConfiguration();
   applySerialMode();
 }
 
 void loadSettingsFromPreset(byte p) {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   Device.lastLoadedPreset = p;
 
   memcpy(&Global, &config.preset[p].global, sizeof(GlobalSettings));
@@ -426,6 +465,8 @@ void loadSettingsFromPreset(byte p) {
 }
 
 inline void storeSettingsToPreset(byte p) {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   memcpy(&config.preset[p].global, &Global, sizeof(GlobalSettings));
   memcpy(&config.preset[p].split[LEFT], &Split[LEFT], sizeof(SplitSettings));
   memcpy(&config.preset[p].split[RIGHT], &Split[RIGHT], sizeof(SplitSettings));
@@ -434,6 +475,8 @@ inline void storeSettingsToPreset(byte p) {
 // The first time after new code is loaded into the Linnstrument, this sets the initial defaults of all settings.
 // On subsequent startups, these values are overwritten by loading the settings stored in flash.
 void initializeDeviceSettings() {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   Device.version = 17;
   Device.serialMode = false;
   Device.sleepAnimationActive = false;
@@ -457,6 +500,8 @@ void initializeDeviceSettings() {
 }
 
 void initializeAudienceMessages() {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   for (byte msg = 0; msg < 16; ++msg) {
     memset(Device.audienceMessages[msg], '\0', sizeof(Device.audienceMessages[msg]));
     strncpy(Device.audienceMessages[msg], defaultAudienceMessages[msg], 30);
@@ -465,6 +510,8 @@ void initializeAudienceMessages() {
 }
 
 void initializeNoteLights(GlobalSettings& g) {
+  DEBUGPRINT_FUNCNAME_L0();
+  
     g.activeNotes = 0;
 
     // initialize accentNotes array. Starting with only C within each octave highlighted
@@ -592,6 +639,8 @@ void initializeGuitarTuning(GlobalSettings& g) {
 }
 
 void initializeMidiSettings(byte split, PresetSettings& p) {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   for (byte chan = 0; chan < 16; ++chan) {
     focusCell[split][chan].col = 0;
     focusCell[split][chan].row = 0;
@@ -633,6 +682,8 @@ void initializeMidiSettings(byte split, PresetSettings& p) {
 }
 
 void initializePresetSettings() {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   Global.splitActive = false;
 
   for (byte n = 0; n < NUMPRESETS; ++n) {
@@ -814,6 +865,8 @@ void initializePresetSettings() {
 }
 
 void applyPitchCorrectHold() {
+  DEBUGPRINT_FUNCNAME_L0();
+  
   for (byte sp = 0; sp < NUMSPLITS; ++sp) {
     switch (Split[sp].pitchCorrectHold) {
       case pitchCorrectHoldOff:
@@ -937,6 +990,12 @@ void handleControlButtonNewTouch() {
   // determine whether a double-tap happened on the switch (ie. second tap within 500 ms)
   boolean doubleTap = (calcTimeDelta(millis(), lastControlPress[sensorRow]) < 500);
 
+  DEBUGPRINT((3,"handleControlButtonNewTouch: doubleTap="));
+  DEBUGPRINT((3,doubleTap));
+  DEBUGPRINT((3,", sensorRow="));
+  DEBUGPRINT((3,sensorRow));
+  DEBUGPRINT((3,"\n"));
+
   lastControlPress[sensorRow] = millis();              // keep track of the last press
 
   switch (sensorRow) {                                 // which control button is it?
@@ -1021,6 +1080,8 @@ void handleControlButtonNewTouch() {
 
 // Called to handle release events of the 8 control buttons
 void handleControlButtonRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   // unless we pressed a new control button, no control button releases in global reset
   // phase will be taken into account, this is needed to allow users to release the
   // control button startup combination without leaving calibration mode
@@ -1033,8 +1094,6 @@ void handleControlButtonRelease() {
     return;
   }
 
-  DEBUGPRINT_FUNCNAME();
-
   if (sensorRow != SWITCH_1_ROW &&
       sensorRow != SWITCH_2_ROW) {                                          // don't allow simultaneous control buttons except for the switches
 
@@ -1046,6 +1105,10 @@ void handleControlButtonRelease() {
 
     controlButton = -1;                                                     // keep track of which control button we're handling
   }
+
+  DEBUGPRINT((3,"handleControlButtonRelease: sensorRow="));
+  DEBUGPRINT((3,sensorRow));
+  DEBUGPRINT((3,"\n"));
 
   switch (sensorRow) {
     // Most of the buttons, when released, revert the display to normal

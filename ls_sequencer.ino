@@ -1378,6 +1378,11 @@ inline void handleStepEditingReleaseDrums() {
 
 inline void updateSequencerSwitchLeds() {
   DEBUGPRINT_FUNCNAME();
+  DEBUGPRINT((3,"isSequencerDisplayMode="));
+  DEBUGPRINT((3,(int)isSequencerDisplayMode()));
+  DEBUGPRINT((3,", isSequencerSettingsDisplayMode="));
+  DEBUGPRINT((3,(int)isSequencerSettingsDisplayMode()));
+  DEBUGPRINT((3,"\n"));
 
   if (isSequencerDisplayMode()) {
     if (seqState[Global.currentPerSplit].running) {
@@ -2379,14 +2384,12 @@ boolean StepSequencerState::isRunning() {
 }
 
 void StepSequencerState::advanceSequencer() {
-  DEBUGPRINT_FUNCNAME();
-
   // handle the preview event's duration
   if (previewEvent.isActive()) {
-    DEBUGPRINT_FUNCNAME_L5();
-    DEBUGPRINT((5,"ticksUntilNextStep="));
-    DEBUGPRINT((5,ticksUntilNextStep));
-    DEBUGPRINT((5,"\n"));
+    DEBUGPRINT_FUNCNAME_L5_X("previewEvent.isActive");
+    DEBUGPRINT((4,"ticksUntilNextStep="));
+    DEBUGPRINT((4,ticksUntilNextStep));
+    DEBUGPRINT((4,"\n"));
 
     previewEvent.tick();
     if (previewEvent.remainingDuration == 0) {
@@ -2397,10 +2400,10 @@ void StepSequencerState::advanceSequencer() {
 
   // step sequencer advancement logic
   if (isRunning()) {
-    DEBUGPRINT_FUNCNAME_L5();
-    DEBUGPRINT((5,"ticksUntilNextStep="));
-    DEBUGPRINT((5,ticksUntilNextStep));
-    DEBUGPRINT((5,"\n"));
+    DEBUGPRINT_FUNCNAME_L5_X("isRunning");
+    DEBUGPRINT((4,"ticksUntilNextStep="));
+    DEBUGPRINT((4,ticksUntilNextStep));
+    DEBUGPRINT((4,"\n"));
 
     // count down all active step events
     for (byte s = 0; s < MAX_SEQUENCER_STEPS; ++s) {
