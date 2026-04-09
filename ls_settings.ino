@@ -1205,7 +1205,8 @@ void setSplitMpeMode(byte split, boolean enabled) {
 byte colorCycle(byte color, boolean includeOff) {
   switch (color) { 
     case COLOR_WHITE:   color = COLOR_RED;     break;   // cycle through the colors in rainbow order
-    case COLOR_RED:     color = COLOR_ORANGE;  break;
+    case COLOR_RED:     color = COLOR_PINK;    break;
+    case COLOR_PINK:    color = COLOR_ORANGE;  break;
     case COLOR_ORANGE:  color = COLOR_YELLOW;  break;
     case COLOR_YELLOW:  color = COLOR_LIME;    break;
     case COLOR_LIME:    color = COLOR_GREEN;   break;
@@ -1213,8 +1214,7 @@ byte colorCycle(byte color, boolean includeOff) {
     case COLOR_CYAN:    color = COLOR_BLUE;    break;
     case COLOR_BLUE:    color = COLOR_VIOLET;  break;
     case COLOR_VIOLET:  color = COLOR_MAGENTA; break;
-    case COLOR_MAGENTA: color = COLOR_PINK;    break;
-    case COLOR_PINK:    color = COLOR_OFF;     break;
+    case COLOR_MAGENTA: color = COLOR_OFF;     break;
     case COLOR_OFF:     color = COLOR_WHITE;   break;
     default:            color = COLOR_WHITE;   break;   // black? bad data? start over at white
   }
@@ -1903,6 +1903,10 @@ void handlePresetNewTouch() {
     return;
   }
 
+  // on the Linn200, stop short of the 16 launching buttons 
+  // on the Linn128, stop short of the 6 memory buttons 
+  byte rightmostSwipingCol = isLinn200() ? 17 : 15;
+
   if (sensorCol == getPresetDisplayColumn()) {
     if (sensorRow < NUMPRESETS) {
       // start tracking the touch duration to be able detect a long press
@@ -1911,10 +1915,14 @@ void handlePresetNewTouch() {
       setLed(sensorCol, sensorRow, globalColor, cellSlowPulse);
     }
   }
-  else if (sensorCol <= 15) {
+  else if (sensorCol <= rightmostSwipingCol) {
+    byte playingCellsTouched = cellsTouched;
+    if (touchInfo[0][6].touched == touchedCell) {
+      playingCellsTouched--;     // don't count long-pressing the PRESET button
+    }
     // if the blue dot is newly touched, or if it's held while there's a single new touch elsewhere (a slide makes 2 touches),
     // call resetNumericDataChangeCol() so that the blue dot touch won't be interpreted as part of a swipe 
-    if ((sensorCol == 1 && sensorRow == 0) || (isBank && cellsTouched == 2)) {
+    if ((sensorCol == 1 && sensorRow == 0) || (isBank && playingCellsTouched == 2)) {
       resetNumericDataChangeCol();
     }
     if (!isBank) {
@@ -1975,20 +1983,29 @@ void handlePresetRelease() {
     return;
   }
 
-  if (sensorCol <= 15 || (sensorCol == 16 && sensorRow == 7)) {
+  byte playingCellsTouched = cellsTouched;
+  if (touchInfo[0][6].touched == touchedCell) {
+    playingCellsTouched--;       // don't count long-pressing the PRESET button
+  }
+
+  // on the Linn200, stop short of the 16 launching buttons 
+  // on the Linn128, stop short of the 6 memory buttons 
+  byte rightmostSwipingCol = isLinn200() ? 17 : 15;
+
+  if (sensorCol <= rightmostSwipingCol || (sensorCol == 16 && sensorRow == 7)) {
     handleNumericDataReleaseCol(true);
     // microLinn sends the program change msg on release, not on new touch
-    if (cellsTouched == 0) {
+    if (playingCellsTouched == 0) {
       // if releasing the blue dot, update the number and its color
       if (sensorCol == 1 && sensorRow == 0) updateDisplay();
       // if releasing anywhere else besides the split selector, send the PC message
       else if (!(inRange(sensorCol, 15, 16) && sensorRow == 7)) applyMidiPreset();
     }
     // if holding the blue dot while releasing another touch, send the Bank Select message (CC0)
-    if (cellsTouched == 1 && touchInfo[1][0].touched == touchedCell)
+    if (playingCellsTouched == 1 && touchInfo[1][0].touched == touchedCell)
       preSendControlChange(Global.currentPerSplit, 0, midiBank[Global.currentPerSplit], true);
     // if releasing the blue dot while holding another touch, update the number and its color
-    if (cellsTouched == 1 && sensorCol == 1 && sensorRow == 0) updateDisplay();
+    if (playingCellsTouched == 1 && sensorCol == 1 && sensorRow == 0) updateDisplay();
   }
   else if (sensorCol == getPresetDisplayColumn()) {
     if (sensorRow < NUMPRESETS &&

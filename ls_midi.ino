@@ -53,8 +53,8 @@ unsigned long lastMidiClockTime = 0;                       // the last time we r
 int32_t fxd4MidiTempoAverage = fxd4CurrentTempo;           // the current average of the MIDI clock tempo, in fixes precision
 byte midiClockMessageCount = 0;                            // the number of MIDI clock messages we've received, from 1 to 24, with 0 meaning none has been received yet
 byte initialMidiClockMessageCount = 0;                     // the first MIDI clock messages, counted until the minimum number of samples have been received
-bool receivedSongPositionPointer = false;                  // tracks whether a song position pointer message was received before the MIDI clock start
-bool standaloneMidiClockRunning = false;                   // indicates whether the MIDI Clock is sending data in a standalone fashion, without sequencer
+boolean receivedSongPositionPointer = false;               // tracks whether a song position pointer message was received before the MIDI clock start
+boolean standaloneMidiClockRunning = false;                // indicates whether the MIDI Clock is sending data in a standalone fashion, without sequencer
 
 byte lastRpnMsb;
 byte lastRpnLsb;
@@ -357,7 +357,7 @@ void handleMidiInput(unsigned long nowMicros) {
       case MIDIChannelPressure:
       {
         if (split != -1) {
-          bool handled = false;
+          boolean handled = false;
 
           for (byte f = 0; f < 8; ++f) {
             unsigned short cc = Split[split].ccForFader[f];
@@ -400,7 +400,7 @@ void handleMidiInput(unsigned long nowMicros) {
         else if (!userFirmwareActive && split != -1) {
         // possible further restriction: replace the previous line with the following line
         // else if (!userFirmwareActive && split != -1 && Split[split].ccFaders) {
-          bool handled = false;
+          boolean handled = false;
           for (byte f = 0; f < 8; ++f) {
             unsigned short cc = Split[split].ccForFader[f];
             if (cc == midiData1) {
@@ -3067,7 +3067,7 @@ void midiSendMpePitchBendRange(byte split) {
   }
 }
 
-bool isStandaloneMidiClockRunning() {
+boolean isStandaloneMidiClockRunning() {
   return standaloneMidiClockRunning;
 }
 

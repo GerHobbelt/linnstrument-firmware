@@ -552,66 +552,6 @@ boolean isZExpressiveCell() {
   }
 }
 
-// functions hasZExpressiveNotes() and isMaxZ() are for microLinn's Z-maximizing
-// they are the work of KVR forum member teknico, many thanks! 
-// Individually expressive notes on the same channel
-// only when there's just one note, or using PolyAT
-boolean hasZExpressiveNotes() {
-  return ((countTouchesForMidiChannel(sensorSplit, sensorCol, sensorRow) == 1) ||
-    (Split[sensorSplit].expressionForZ == loudnessPolyPressure));
-}
-
-// Is this value higher than all other notes on this channel?
-// Check the max value for each note against all others, not just the last played one (focused)
-// TODO: isMaxZ could be collapsed by adding a getPressureZ method to TouchInfo
-// TODO: use a sorted multimap to avoid looping?
-boolean isMaxZ(unsigned short valueZHi) {
-  unsigned short curVal = 0;
-
-  // iterate over all the rows...
-  byte beginRow = 0;
-  byte endRow = NUMROWS;
-  // ...or just this one when in ChannelPerRow mode
-  if (Split[sensorSplit].midiMode == channelPerRow) {
-    beginRow = sensorRow;
-    endRow = sensorRow + 1;
-  }
-
-  int32_t colsInRowTouched = 0;
-  for (byte row = beginRow; row < endRow; ++row) {
-    colsInRowTouched = colsInRowsTouched[row];
-
-    // exclude the current cell
-    if (row == sensorRow) {
-      colsInRowTouched = colsInRowTouched & ~(1 << sensorCol);
-    }
-
-    // continue while there are touched columns in the row
-    while (colsInRowTouched) {
-      byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
-
-      // compare the Z value of the cell to the current maximum if the cell
-      // is on the same channel
-      curVal = cell(touchedCol, row).pressureZ;
-      if (cell(touchedCol, row).touched == touchedCell &&
-          cell(touchedCol, row).channel == sensorCell->channel &&
-          curVal != INVALID_DATA) {
-
-        if (valueZHi < curVal) {
-          // Found a higher value already, no need to look at the other ones
-          return false;
-        }
-      }
-
-      // exclude the cell we just processed by flipping its bit
-      colsInRowTouched &= ~(1 << touchedCol);
-    }
-  }
-
-  // No higher value found, we're it
-  return true;
-}
-
 byte takeChannel(byte split, byte row) {
   switch (Split[split].midiMode)
   {
@@ -1160,7 +1100,7 @@ boolean handleXYZupdate() {
 
       // if sensing Z is enabled...
       // send different pressure update depending on midiMode
-      boolean yes = isMicroLinnZmaxOn() ? (hasZExpressiveNotes() || isMaxZ(valueZHi)) : isZExpressiveCell();
+      boolean yes = isMicroLinnZmaxOn() ? (microLinnHasZExpressiveNotes() || microLinnIsMaxZ(valueZHi)) : isZExpressiveCell();
       if (Split[sensorSplit].sendZ && yes) {
         signed char note = sensorCell->note;
         signed char channel = sensorCell->channel;
@@ -1922,7 +1862,7 @@ void handleTouchRelease() {
   else if (sensorCell->hasNote()) {
 
     // reset the pressure when the note is released and that setting is active
-    boolean yes = isMicroLinnZmaxOn() ? hasZExpressiveNotes() : isZExpressiveCell();
+    boolean yes = isMicroLinnZmaxOn() ? microLinnHasZExpressiveNotes() : isZExpressiveCell();
     if (Split[sensorSplit].sendZ && yes) {
       signed char note = sensorCell->note;                // used *only* for sending actual midi
       signed char channel = sensorCell->channel;          // ditto

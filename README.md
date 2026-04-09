@@ -10,7 +10,7 @@ For experienced linnstrumentalists, microLinn makes exploring microtonality very
 #  INSTALLATION  
 
 
-1) Go to https://www.rogerlinndesign.com/support/support-linnstrument-update-software and follow the "How to Check Your Software Version" instructions. If it's not 2.3.3, follow the "How to Update Your LinnStrument Software‍" instructions to update to 2.3.3. Linux users: use a friend's mac or Windows machine to update.
+1) Go to https://www.rogerlinndesign.com/support/support-linnstrument-update-software and follow the "How to Check Your Software Version" instructions. If it's not 2.3.3, follow the "How to Update Your LinnStrument Software‍" instructions to update to 2.3.3. Linux users: use a friend's mac or Windows machine to update. Version 2.3.4 is still in beta and is not yet supported.
 2) Download linnstrument-firmware-microLinn-234.072.001.ino.bin.zip from the LinnWIki (the LinnStrument Community wiki) and unzip it. Important: if on a mac, put the .bin file on your **desktop**. 
 3) Follow the "How to Update Your LinnStrument Software‍" instructions, with one difference: after you download and unzip the updater and before running it, put it in the same folder as the .bin file from step 2. Mac users: when you run the updater, if it asks for permission to read files from the desktop, say yes.
 If you accidentally long-press the Update OS button, you'll enter user firmware mode and the display will go blank. To return to normal, just unplug your LinnStrument.
@@ -25,6 +25,8 @@ If you see "Couldn't retrieve LinnStrument's settings, interrupting firmware upg
 IMPORTANT: Updating to a newer version of microLinn is done normally. Put the new .bin file next to the updater app, etc. But if you want to go back to an official (non-microtonal) version of the firmware, there's an extra step. Just before you run the updater, on the Global Settings screen, tap (don't long-press) the "Update OS" pad *twice* so that it turns red. This tells your LinnStrument to *uninstall* microLinn. This deletes all your microtonal data, necessary in order to avoid deleting your calibration data and all your user settings.
 
 Don't uninstall when updating to a newer version of microLinn, because you'll needlessly delete your microtonal data.
+
+*Details: if you're a programmer using the Arduino IDE to flash the firmware or to display debugging data on the serial monitor, it doesn't matter if the Update OS pad is blue or red.*
 
 
 #  MICROLINN MENUS
@@ -72,7 +74,7 @@ Additions to other menus:
 * * long-press Low Row Bend, additional options BND for normal bending, TRNS for transposing
 * * long-press Low Row XYZ, additional option JOY with additional options for W, X' and Y' CCs
 * Preset display: blue Bank Select button in lower left, 16 clip launching buttons on the right (top/bottom on Linn128)
-* Volume display: double faders, one for each split
+* Volume display: double faders, one for each split, tapping in the middle rows sets both faders
 * Octave/Transpose display: when microtonal, additional option for transposing by major 2nds
 * Global display:
 * * row offset buttons turn pink if overridden by a per-split row offset, red if not coprime with a column offset
@@ -139,11 +141,13 @@ Make the unlit pads go away! Bending still works. Accessed through the microLinn
 
   *If you rarely do large bends, you might prefer a constant bend slope. This avoids lopsided vibrato. You can set the slope to a specific number of semitones per pad, ranging from 1 to whatever the largest step is. For example, the largest step in a 12edo major scale is 2 semitones, so you can swipe Condense To Scale past VAR to either 1 or 2. You can still do large bends, but they can be tricky. If you choose 1 semitone, overshoot and bend by ear. If you choose 2 semitones, set QUANTIZE HOLD off and you can slide into the gap between pads to reach all the notes of the scale.*
 
-  *When condensing is on, you can freely change scales in the Global Settings display. The bend slope won't change automatically. Thus you can choose a pentatonic scale, set the bend slope to 3 (the largest step size), and switch back to a diatonic scale.*
+  *When condensing is on, changing scales in the Global Settings display automatically updates the playing surface. The bend slope won't be updated. This gives you more freedom. For example, you can choose a pentatonic scale, set the bend slope to 3 (the largest step size), and switch back to a diatonic scale.*
 
   *You can also experiment with changing the pitch bend range on the LinnStrument to the number of notes in your scale, or some multiple of that. For a 7 note scale, change 12 to 7, 24 to 14, etc. Leave your synth set to 12 or 24, so that the bend ranges don't match. With Condense To Scale set to 1, this makes your actual bend slope 1.7 semitones per pad = 10¢/mm. This is good for very large bends, because the octaves are easy to slide to.*
 
   *If you turn off pitch bending (thus avoiding all these issues), there's no difference between VAR, 1, and 2.*
+
+  *To have unlit pads in a condensed scale, in the rainbow editor, turn the color off. See microtonal Note Lights below.*
 
 Condensing can be combined with column offsets. First the scale is condensed, then columns are omitted. Setting the column offset to 2 omits every other column, setting it to 3 omits 2 out of 3 columns, etc.
 
@@ -160,7 +164,7 @@ In OneChannel and ChannelPerRow modes, one midi channel can have mutiple midi no
 
   MAXIMIZE LOUDNESS/Z: The LinnStrument's default behavior is to send Z data from the latest note only. By necessity, a pad's Z data must start and end with a zero value. Thus holding one pad and playing a 2nd pad causes an abrupt jump in loudness to 0, and releasing that pad causes an abrupt jump from 0 to the Z-value of the 1st pad. Selecting "Z" or "X+Z" maximizes the Z data via a "soft takeover" as opposed to a "hard takeover". Z data is sent only from whichever pad is currently being pressed the hardest.
 
-  *Details: Set your LinnStrument to OneChannel or ChannelPerRow and set Mono Mode to X+Z. Don't use poly pressure for TIMBRE/Y or LOUDNESS/Z. Set your synth to mono and to either retrigger or single-trigger. Don't use MPE. Set the non-MPE bend range to match the LinnStrument. (add pic of Surge XT's non-MPE bend range) Set the note priority to latest. If you never play non-MPE synths polyphonically, you can leave mono mode permanently set to X+Z.*
+  *Details: Set your LinnStrument to OneChannel or ChannelPerRow and set Mono Mode to X+Z. Don't use poly pressure for LOUDNESS/Z. Set your synth to mono and to either retrigger or single-trigger. Don't use MPE. Set the non-MPE bend range to match the LinnStrument. (to do: add pic of Surge XT's non-MPE bend range) Set the note priority to latest. If you never play non-MPE synths polyphonically, you can leave mono mode permanently set to X+Z.*
 
   *Thanks to KVR forum member teknico for the maximize-Z code! See https://www.kvraudio.com/forum/viewtopic.php?t=591770.*
 
@@ -230,13 +234,11 @@ FOOTSWITCH / PANEL SWITCH: IMPROVE PCH (pitch)
 
 PRESET DISPLAY: PROGRAM CHANGE AND BANK SELECT
 
-To send a Bank Select message instead of a Program Change message, hold the blue dot in the lower left corner and swipe (or tap the green/red buttons) as usual. When swiping, Bank Select and PC messages are sent only on touch release. This avoids a single swipe sending multiple messages and overwhelming your synth. See https://www.kvraudio.com/forum/viewtopic.php?t=570851.
+To send a Bank Select message instead of a Program Change message, hold the blue dot in the lower left corner and swipe (or tap the green/red buttons) as usual. When swiping, both Bank Select and PC messages are sent only on touch release. This avoids a single swipe sending multiple messages and overwhelming your synth. See https://www.kvraudio.com/forum/viewtopic.php?t=570851.
 
 NEW FOOTSWITCH / PANEL SWITCH FUNCTIONS:
 
   AUTO-OCTAVE: To select, hold Octave Up and tap Octave Down, or vice versa. Playing an arpeggio upwards while this switch is on automatically transposes you up an octave. Downward arpeggios transpose down. (Secret undocumented feature in the official firmware.)
-
-  TRANSPOSE UP/DOWN: TRNS+ and TRNS- transpose by semitones. (Unreleased new feature in the official firmware.)
 
   OCTAVE UP/DOWN: 8VE± toggles between Octave Up and normal. This lets you switch octaves while playing using only one footswitch, instead of two for Octave Up and Octave Down. 8VE∓ toggles between Octave Down and normal. Added onto any settings in the Octave/Transpose display. 
 
@@ -246,37 +248,33 @@ NEW FOOTSWITCH / PANEL SWITCH FUNCTIONS:
 
   PREVIOUS SCALE: SCL returns you to the previous scale (aka note lights). Always applies to both splits. Works with condensed scales to alter the tuning on the fly.
 
-PITCH YIP GONE
-
-MicroLinn implements a bug fix that was never officially released, see https://www.kvraudio.com/forum/viewtopic.php?t=608331
-
 DETUNING
 
 Detune the entire LinnStrument up or down from A-440 to match a similarly detuned recording or instrument. No guarantee that detuning to A-432 will heal your chakras lol. Accessed through microLinn's anchor cents after setting the edo to 12.
 
 MISCELLANEOUS GRAPHICS IMPROVEMENTS
 
-  DOUBLE VOLUME FADERS: The Volume display always has two horizontal faders, one for each split. Incidentally, the volume faders are and always have been more accurate than their appearance suggests. Move sideways within a pad for fine adjustments. They also do and always have done something similar to hammer-ons and pull-offs.
+  DOUBLE VOLUME FADERS: The Volume display now has two horizontal faders, one for each split. Touch rows 1-3 for the left split, rows 6-8 for the right split, or rows 4-5 for both. Incidentally, the volume faders are and always have been more accurate than their appearance suggests. Move sideways within a pad for fine adjustments. They also do and always have done something similar to hammer-ons and pull-offs.
 
-  You can use a splitter on your computer's stereo headphones output to send one audio channel to your amp and the other to an earbud that you use as an in-ear monitor. You can control the volume of both from the Volume screen. Good for noisy gigs, good for chaotic jam sessions where you need to discretely find the key or the chords.
+  The obvious use is to balance the volume of your two splits. But you can use a splitter on your computer's stereo headphones output to send one audio channel to your amp and the other to an earbud that you use as an in-ear monitor. You can control the volume of both from the Volume screen. Good for noisy gigs, good for chaotic jam sessions where you need to discretely find the key or the chords.
 
-    *Details: In your DAW, send the synth's output to two tracks, each hard-panned to opposite sides. Each track receives the LinnStrument's midi from one of the 2 main midi channels (usually 1 and 16). Each track has a gain effect which you midi-learn to the volume CC. Now one volume fader will control your amp and the other will control  your earbud.*
+  *Details: In your DAW, send the synth's output to two tracks, each hard-panned to opposite sides. Each track receives the LinnStrument's midi from one of the 2 main midi channels (usually 1 and 16). Each track has a gain effect which you midi-learn to the volume CC. Now one volume fader will control your amp and the other will control your earbud.*
 
   CC FADERS USE TWO COLORS: When a split is set to SPECIAL = CC FADERS, the 8 faders always alternate between the main and accent colors, making it much easier to locate the right fader. Incidentally, the CC faders are and always have been more accurate than their appearance suggests. Move sideways within a pad for fine adjustments. They also do and always have done something similar to hammer-ons and pull-offs.
 
-  NEW COLOR: Violet. Also, the colors now cycle in rainbow order WROYLGCBVMP.
+  NEW COLOR: Violet. Also, the colors now cycle in rainbow order WRPOYLGCBVM.
 
   MULTI-COLORED NOTE LIGHTS: Each of the 12 notes can be any color. Transposable. Accessed through the microLinn menu after setting the edo to 12.
 
-  SHOW A CUSTOM LIGHT PATTERN IN ONE SPLIT ONLY: Choose any of the 3 patterns (the scales marked A, A# and B) and it will replace the note lights. If you use one split as a clip launcher, you can color-code your clips. You can display different light patterns in each split. Choosing A', A#' or B' displays the note lights as well, on top of the light pattern. This lets you for example set the note lights to show just the tonic and overlay that onto the fretboard. Incidentally, this feature fixes a bug in which a custom light pattern would cover up a split set to CC FADERS or STRUM. Accessed through the microLinn menu.
+  SHOW A CUSTOM LIGHT PATTERN IN ONE SPLIT ONLY: Choose any of the 3 patterns (the scales marked A, A# and B) and it will replace the note lights. If you use one split as a clip launcher, you can color-code your clips. You can display different light patterns in each split. You can have fretboard patterns for each split, in different colors so that you can see the split point. Choosing A', A#' or B' displays the note lights as well, on top of the light pattern. This lets you for example set the note lights to show just the tonic and overlay that onto the fretboard. Incidentally, this feature fixes a bug in which a custom light pattern would cover up a split set to CC FADERS or STRUM. Accessed through the microLinn menu.
 
   DIM MODE: Normally, Low Power mode (Global Settings column 15) dims the display but also increases the latency. You can optionally dim the display without adding latency. It's in effect a crude brightness knob. It's good for when all the pads are lit up, like condensed scales or certain microtonal displays. 
 
-    *Details: Tapping the Low Power pad now cycles through 3 options: normal (unlit), dim-and-slow (dark blue) and dim-and-fast (light blue). When Update OS is on (serial mode), dim-and-slow is not allowed.*
+  *Details: Tapping the Low Power pad now cycles through 3 options: normal (unlit), dim-and-slow (dark blue) and dim-and-fast (light blue). When Update OS is on (serial mode), dim-and-slow is not allowed.*
 
   BLINKING MODE: Like the SAME mode, BLNK shows you other occurences of the currently played note. But instead of changing color, the other occurences blink. It's good for multi-colored displays like custom light pattern #2 (the one marked as A#) or certain microtonal displays. 
 
-    *Details: In Per-split Settings, long-press the PLAYED color. The BLNK option appears right after CELL and SAME. Don't confuse BLNK for blinking with BLIN for blinders.*
+  *Details: In Per-split Settings, long-press the PLAYED color. The BLNK option appears right after CELL and SAME. Don't confuse BLNK for blinking with BLIN for blinders.*
 
   SAME/BLINK CARRY OVER: If both splits are set to SAME or BLNK, playing in one split optionally shows matching notes in the other split too. Accessed through the microLinn menu.
 
@@ -295,11 +293,11 @@ A locating CC message can be sent immediately before every note-on, indicating t
 
 On an actual guitar, middle-C played on the 2nd string 1st fret sounds very different when played on the 6th string 20th fret. Many guitar VSTis allow you to set the playing position (higher or lower on the fretboard) through keyswitches. Depending on your VSTi, it may be possible for code in your DAW to translate a locating CC to such a keyswitch and thus directly map the LinnStrument's columns to the virtual guitar's frets, making the guitar sound much more realistic. (It may also be possible to do this without locating CCs simply by using Channel Per Row mode.)
 
-  *Details: One type of CC is sent for note-ons in cols 1-16 and another type of CC is sent for note-ons in cols 17-25. The two types are selected in the microLinn menu. (On a LinnStrument 128, the 2nd type is never sent, and the menu option for it is hidden.) The two types should be different. If they are the same, they will be displayed in red. See CC SUGGESTIONS below for which CCs to avoid.*
+  *Details: Locating CCs are mainly for ChannelPerNote mode. In OneChannel mode the locating CC can locate a note-on but it can't locate the subsequent XYZ data. In ChannelPerRow mode, the channel serves to locate the note. But locating via CCs has two advantages over locating via ChannelPerRow. One, ChannelPerRow forces you to give up full MPE, because two notes on the same row can't be bent independently. Two, locating by CC is unaffected by transposition, col/row offsets, etc. thus one can assign a function to a specific pad, like the upper left one.*
 
-  *Locating CCs are mainly for ChannelPerNote mode. In OneChannel mode the locating CC can locate a note-on but it can't locate the subsequent XYZ data. In ChannelPerRow mode, the channel serves to locate the note. But locating via CCs has two advantages over locating via ChannelPerRow. One, ChannelPerRow forces you to give up full MPE, because two notes on the same row can't be bent independently. Two, locating by CC is unaffected by transposition, col/row offsets, etc. thus one can assign a function to a specific pad, like the upper left one.*
+  *One type of CC is sent for note-ons in cols 1-16 and another type of CC is sent for note-ons in cols 17-25. The two types are selected in the microLinn menu. (On a LinnStrument 128, the 2nd type is never sent, and the menu option for it is hidden.) The two types should be different. If they are the same, they will be displayed in red. See CC SUGGESTIONS below for which CCs to avoid.*
 
-  *For cols 1-16, the CC's data value is (row - 1) + 8 * (col - 1). For cols 17-25, the data value is (row - 1) + 8 * (col - 17). Row 1 is the top row and column 1 is the leftmost column. The CC is sent on the same channel as the note-on. Assuming the default 235 microseconds between USB MIDI bytes, sending locating CCs delays note-ons by 705 microseconds.*
+  *For cols 1-16, the CC's data value is (row - 1) + 8 * (col - 1). For cols 17-25, the data value is (row - 1) + 8 * (col - 17). Row 1 is the top row and column 1 is the leftmost column. The CC is sent on the same channel as the note-on. Assuming the default 235 microseconds between USB MIDI bytes, sending locating CCs delays note-ons by only 705 microseconds.*
 
   *Reaper users: download microLinnLocatingCCs.jsfx from the LinnWiki. It defines a rectangular region on the LinnStrument, within which it can either transpose each note to a specific note (good for drum pads) or transform it into a CC message in a variety of ways. It can also filter out other midi either inside or outside of this region. Example uses:*
   * *Download microLinnLocatingCCsHorizontalSplits.RPP to create 2 horizontal splits.*
@@ -314,7 +312,7 @@ IMPORTING/EXPORTING
 
 You can back up various settings and/or share them with others via midi files. The 6 memories, the 3 custom light patterns, the 16 audience messages, the 16 sequencer projects, microtonal data, and all settings combined. A memory or light pattern imports in about 1 second, doable on stage in between songs. You can use the clip launcher (see below) to trigger an import on stage, giving you dozens of memories, one for each song on the set list! Check the LinnWiki for export-request files and importable settings files.
 
-  *Details: NOT COMPATIBLE WITH ABLETON LIVE, because of the use of multiple midi channels. Try using Geert Bevin's receivemidi and sendmidi apps (https://github.com/gbevin). It should be possible to create 2 max4live devices that would translate the data to/from a format that doesn't use midi channels. If you're interested in making such devices, contact Kite.*
+  *Details: NOT COMPATIBLE WITH ABLETON LIVE, because of the use of multiple midi channels. Try using Geert Bevin's receivemidi and sendmidi apps (https://github.com/gbevin) to handle the data. It should be possible to create 2 max4live devices that would translate the data to/from a format that doesn't use midi channels. A single polypressure message would become two CC messages. If you're interested in making such devices, contact Kite.*
 
   *To import, download a settings file from the wiki. On your LinnStrument, set Allow Importing to IMP. In your DAW, set the output of a midi track to your LinnStrument. Load the settings file into that track and press play. Your LinnStrument should scroll "IMPORT SUCCESS". To stop the scrolling, tap anywhere. If you see "IMPORT FAILURE", try again. If you don't see anything, see troubleshooting #9 below.*
 
@@ -341,7 +339,7 @@ You can back up various settings and/or share them with others via midi files. T
   * *(8) If you get "IMPORT FAILURE" followed by 2 numbers, the 2nd number says which midi message in the import file caused the failure. For example, 7 means the 7th midi message.*
   * *(9) MicroLinn imports data via polyphonic pressure messages. If you have connected something else to your LinnStrument that also sends polypressure messages, there is a small possibility of confusion. If after importing there is no sucess or failure scrolling message, to avoid confusion either set Allow Importing to OFF, or just unplug the LinnStrument.*
 
-  *Bulk importing or exporting all 16 sequencer projects always overwrites the current project. Therefore export it before exporting the 16 projects, and import it after importing the 16 projects. Or use the updater app as usual to make *.lpr files, which doesn't overwrite anything.*
+  *Bulk importing or exporting all 16 sequencer projects always overwrites the current project. Therefore export it before exporting the 16 projects, and import it after importing the 16 projects. Or use the updater app as usual to make lpr files, which doesn't overwrite anything.*
 
 Export request files available on the LinnWiki:
 
@@ -395,9 +393,10 @@ Importing lets you access more than 6 memories and more than 3 light patterns. A
   *To set up Reaper to launch midi clips:*
   * *In Reaper options/preferences/midiInputs, enable your LinnStrument's input for control messages*
   * *Download clipLaunchingActions.ReaperKeyMap (or clipLaunchingActionsLeft or clipLaunchingActionsRight)*
-  * *Import it into Reaper using Menu/Actions/ShowActionList/KeyMap to create 16 (or 8) custom actions triggered by CCs 21-28*
+  * *Import it via Menu/Actions/ShowActionList/KeyMap (all sections) to create 16 (or 8) custom actions triggered by CCs 21-28*
   * *Either set the CCs on your LinnStrument to 21-28, or else edit the shortcuts of the custom actions*
   * *Download clipLauncher.rpp from the LinnWiki, open it, and put a midi clip (or clips) on each track*
+  * *If you're using clips to import settings, set the midi hardware send of the relevant tracks to your LinnStrument.*
   * *Open your usual performance Reaper project in a new tab and move clipLauncher.rpp to the last tab*
   * *Tapping the launching buttons will launch the clips in tracks 1-16 of the last tab's project*
   * *You can create clipLauncher2.rpp loaded with different clips and use it instead by simply moving it to the last tab*
@@ -408,6 +407,7 @@ Importing lets you access more than 6 memories and more than 3 light patterns. A
   * *Track: set solo for track 17*
   * *Action: Skip next action if CC parameter > 0/mid*
   * *Track: set solo for track 18*
+  *Do the same for the "select track" line. Then put your "on" clips in track 17 and your "off" clips on track 18.*
 
 CC SUGGESTIONS
 
@@ -441,6 +441,10 @@ Disable it by sending NRPN 1 or 101 with a value of 0. Must be in ChannelPerNote
 SET ARPEGGIATOR TO QUARTER-NOTE TEMPO VIA NRPN
 
 Send NRPN 236 with a value of 0. See https://github.com/TallKite/linnstrument-firmware/blob/main/midi.md and https://www.kvraudio.com/forum/viewtopic.php?p=6809095#p6809095. Can also be done via low row by sliding all the way to the left.
+
+MANY NEW NRPN MESSAGES
+
+See https://github.com/TallKite/linnstrument-firmware/blob/main/midi.md.
 
 MISC SMALL BUG FIXES
 
@@ -526,14 +530,20 @@ The 9 scales in Global Settings columns 2-4 are now microtonal and change for ea
 
   *Details: You can still select a scale using columns 2-4, but you can no longer edit a scale there, because for larger edos there are too many notes to fit into the 3x4 box. As a result, when microLinn is on, the VIEW MAIN and VIEW ACCENT buttons do not work, and the SCALE SELECT button is always on. To edit a scale and its colors, instead go to the microLinn menu and go to the note lights screen. Shortcut: you can long-press the scale's pad in Global Settings columns 2-4 to go directly to that scale.*
 
-  *The note lights screen has 7 scale buttons plus the rainbow editor, the fretboard selector and the yellow rainbow-enabler button. Excluding the rainbow enabler, there are 9 buttons, corresponding to the 9 scales in Global Settings cols 2-4. Tap any of these 9 buttons to select it. Tap any already-selected button to backtrack to the previous button. You can repeatedly tap a button to quickly switch back and forth between two scales.*
+  *The note lights screen has 7 scale buttons plus the rainbow editor, the fretboard selector and the yellow rainbow-enabler button. Excluding the rainbow enabler, there are 9 buttons, corresponding to the 9 scales in Global Settings cols 2-4. Tap any of these 9 buttons to select it. Tap any already-selected button to backtrack to the previous button. You can repeatedly tap a button to quickly switch back and forth between two scales. Alternating between the scale you're setting up and the rainbow editor is particularly handy.*
 
-  *There are 7 rows of colored lights on the screen. From top to bottom they are for unisons, 2nds, 3rds, 4ths, 5ths, 6ths and 7ths. Tap a note in a scale to toggle it on or off. Like the guitar tuning screen, a midi note is sent when you tap. The 8th scale is the rainbow editor, in which all notes are always on. Tap a note to cycle it thru the rainbow. The 9th scale (guitar-like fretboard dots) isn't really a scale. It's a full-screen display like the custom light patterns. Tapping the fretboard selector makes the dots appear in dark blue mid-screen. Tapping the dots will toggle them on or off. The fretboard repeats at the octave. To change the color of the dots, after editing go to Per-Split Settings and in column 11 change the main color. Long-press the scale buttons or the rainbow editor button or the fretboard selector button to reset the note lights to the default. Tap the yellow rainbow enabler button to turn off the rainbow and limit the note lights to the usual two colors.*
+  *There are 7 rows of colored lights on the screen. From top to bottom they are for unisons, 2nds, 3rds, 4ths, 5ths, 6ths and 7ths. Tap a note in a scale to toggle it on or off. Like the guitar tuning screen, a midi note is sent when you tap.*
+  
+  *The 8th scale is the rainbow editor. Tap a note to cycle it thru the rainbow. You can turn a note's color off. The advantage of this is that a condensed scale can have unlit pads. The disadvantage is that it makes toggling a note on or off in the 7 scales more confusing. You have to rely on the sound to know if a note is selected. So unless you're using condensed scales, avoid turning off the note's color.*
+  
+  *The 9th scale (guitar-like fretboard dots) isn't really a scale. It's a full-screen display like the custom light patterns. Tapping the fretboard selector makes the dots appear in dark blue mid-screen. Tapping the dots will toggle them on or off. The fretboard automatically repeats at the octave, so in 12edo, changing the 1st column affects the 13th column, changing the 2nd affects the 14th, etc.*
+  
+  *Long-press the scale buttons or the rainbow editor button or the fretboard selector button to reset the note lights to the default. Tap the yellow rainbow enabler button to turn off the rainbow and limit the note lights to the usual two colors.*
 
   *Default colors: There are usually 7 white notes, corresponding to CDEFGAB. In a bosanquet layout, they are grouped CDE and FGAB. There are usually 5 yellow sharps and 5 green flats. Thus F# is always yellow and Bb is always green. Large edos have double sharps/flats, or even triple or quadruple.*
 
-             for most edos              for perfect (7 14 21 28 35) or pentatonic (5 10 15 20 25 30) edos
-              white = natural               pink = tonic = anchor pad plus its octave-mates
+             for most edos                 for perfect (7 14 21 28 35) or pentatonic (5 10 15 20 25 30) edos
+              white = natural              white = natural, pink = tonic = anchor pad plus its octave-mates
               green = b                    green = down
              yellow = #                   yellow = up
                cyan = bb                    cyan = dud (double down)
@@ -546,7 +556,7 @@ The 9 scales in Global Settings columns 2-4 are now microtonal and change for ea
     orangish-yellow = xx#
 
   * *In perfect edos (7, 14, 21, 28 and 35) and pentatonic edos (5, 10, 15, 20, 25 and 30) the tonic is pink, to help it stand out*
-  * *In pentatonic edos and in supersharp edos (8, 13 and 18), there are only 5 white notes*
+  * *In pentatonic edos and in supersharp edos (8, 13 and 18), there are only 5 natural (white/pink) notes*
   * *In superflat edos, green Bb is higher in pitch than white B*
   * *Yellow is officially called lime, and orangish-yellow is officially called yellow*
 
@@ -578,8 +588,7 @@ The 9 scales in Global Settings columns 2-4 are now microtonal and change for ea
   * *22edo: 1L6s(4:3), 6L2s(3:2), 4L5s(3:2),10L2s(2:1), also try 5L2s(3:1) and 2L8s(3:2)*
   * *23edo: 5L1s(4:3), 7L1s(3:2), 5L4s(3:2), 3L7s(3:2), also try 3L2s(5:4) and 11L1s(2:1)*
   * *24edo: 3L4s(4:3), 6L3s(3:2), 4L6s(3:2), 2L9s(3:2), also try 4L1s(5:4) and 7L3s(3:1)*
-  * *25edo  4L3s(4:3), 7L2s(3:2), 3L8s(3:2), 1L11s(3:2)*
-  * *, also try Ls(2:1) and Ls(2:1)*
+  * *25edo  4L3s(4:3), 7L2s(3:2), 3L8s(3:2),1L11s(3:2), also try 1L7s(4:3) and 5L5s(3:2)*
   * *41edo: 5L7s(4:3), also try Ls(2:1) and Ls(2:1)*
 
   *Default fretboards: The dot patterns tend to follow the conventional m3 P4 P5 M6 P8 guitar fret markers. Some edos add M2 and m7. Edos above 24 approximate 12edo, in other words there are dots about every 100 cents. 41edo is an exception. It has kites like a Kite guitar.*
@@ -595,7 +604,7 @@ You can use a chromatically condensed guitar tuning to create a vertical Wicki-H
     *  *  C  D  E  *  *  *      lower
 
 * *Set both the column offset and the per-split row offset to OFF*
-* *Set the EDO to 12*
+* *Set the EDO to 12 (not OFF)*
 * *Set up one of the first 7 scales to contain only the tonic and the 4th*
 * *Switch directly from that scale to the 8th scale and enable the rainbow*
 * *Set Condense To Scale to 1*
@@ -724,14 +733,16 @@ KNOWN ISSUES:
 
 * Uninstalling involves first updating to a special version of microLinn (for now, fix coming soon)
 * Bulk importing/exporting is not compatible with Ableton Live, because of the use of multiple midi channels
+* Hammer-ons and pull-offs are very buggy
 * Low row: Restrike, strum and arpegiate are not yet microtonal
 * Low row: arpegiate doesn't work with drum pad mode
 * Special: arpegiate and strum are not yet microtonal
 * Switching the scale via the PRE footswitch while holding a note causes a hanging note
 * Same/blink carry-over leaves extra lights on
 * Condensing to a scale makes the red playedSame dots appear in the wrong places
+* SCL footswitch leaves hanging notes if playing while switching
+* For edos above 25, the default scales are incomplete
 * For edos above 41, the rainbow colors are not ideal
-* Default scales above 24 are incomplete
 * See also the issues on the TallKite github
 
 NOTES:

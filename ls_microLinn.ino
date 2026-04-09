@@ -33,15 +33,9 @@ Device.microLinn.uninstall is never initialized to false, because no matter wher
 Fortunately, the compiler automatically initializes the flag to false
 Fortunately, a setting of the flag to true does not persist over power cycles, for some mysterious reason
 
-In mono mode, a trill on 2 pads on different rows that have the same note creates multiple noteOns for the same midi note 
-followed by a single noteOff for that note. The single noteOff should silence that note, but some synths may possibly leave it sounding
-If so, use lastValueMidiNotesOn to count up the noteOns and send a series of matching noteOffs
-
 Misc small bug fixes, not in the readme file, line numbers are for the official 2.3.4 firmware:
   ls_fonts.ino      line 587      "static Character small_Q = { 4,"          4 -> 5
-  ls_midi.ino       line 63-64    rewrite NRPN code to be more robust
-                    line 440-467  ditto
-                    line 495      add line to listen to main channel when in ChanPerNote mode
+  ls_midi.ino       line 495      add line to listen to main channel when in ChanPerNote mode
                     line 900      "if (inRange(value, 0, 14)) {"             14 -> 15
   ls_settings.ino   line 722      "midiPreset[0] = 0;"                       [0] -> [s]
                     line 2154     "handleNumericDataReleaseCol(true);"       true -> false   (microLinn issue #5)
@@ -56,11 +50,13 @@ settings.ino line 381: set version from 17 back to 16?
 
 ======================= TO DO ==============================
 
-sample comparisons, add ".diff" to the url to get a diff file
+note to myself: sample comparisons, add ".diff" to the url to get a diff file
 https://github.com/jimsnow/linnstrument-firmware-ml/compare/main...TallKite:linnstrument-firmware:main
 https://github.com/TallKite/linnstrument-firmware/compare/cf85bb7...TallKite:linnstrument-firmware:main
 https://github.com/rogerlinndesign/linnstrument-firmware/compare/master...TallKite:linnstrument-firmware:Brightness-control.patch
 https://github.com/rogerlinndesign/linnstrument-firmware/compare/5258d4a...rogerlinndesign:linnstrument-firmware:master
+to highlight certain lines in yellow:
+https://github.com/rogerlinndesign/linnstrument-firmware/blob/master/ls_settings.ino#L671-L708
 
 
 MUST-DO #1: UNINSTALL
@@ -209,21 +205,31 @@ video on power user: program change swiping, bank select, painting CCs, locating
 video on microtonal: edos, scales, anchor pad/note/cents
 video on microtonal power user: EDO± switches, default layouts, tuning table mode, equave stretch
 
+https://www.kvraudio.com/forum/viewtopic.php?t=628722 FR [feature request], in lowrow XYZ mode let X be pitch bends -- good idea
+https://www.kvraudio.com/forum/viewtopic.php?t=617274 FR, more than 6 memories, send PC on slide release only -- both done
+https://www.kvraudio.com/forum/viewtopic.php?t=592744 Pull request, fix custom light pattern covering split set to strum/CCfader -- done
+    cmhoneycutt343/rocklobster343 did this in the leds.ino file using memcpy, probably faster than my way
+https://www.kvraudio.com/forum/viewtopic.php?t=588949 FR, vertical faders
+https://www.kvraudio.com/forum/viewtopic.php?t=591499 discusses a bug in the dots-carry-over workaround
 https://www.kvraudio.com/forum/viewtopic.php?t=539894 bug, CC faders don't respond to received CCs on main channel -- fixed
 https://www.kvraudio.com/forum/viewtopic.php?t=539553 bug, sequencer mute light doesn't work
 https://www.kvraudio.com/forum/viewtopic.php?p=8897812#p8897812 pianoteq velocity curves, prescale setting of 75/90
 https://www.kvraudio.com/forum/viewtopic.php?t=624925 linnstrument scale tool, emulates the ableton push, requires python
 
-https://www.kvraudio.com/forum/viewtopic.php?t=603578 per-split custom LED patterns, for use with CC faders - done
-https://www.kvraudio.com/forum/viewtopic.php?t=588669 Add Quantize Hold to list of Foot/Panel Switch assignments, Roger approves - done
+https://www.kvraudio.com/forum/viewtopic.php?t=603578 FR, per-split custom LED patterns, for use with CC faders - done
+https://www.kvraudio.com/forum/viewtopic.php?t=594177 FR, delayed reset bend after release, for synth sounds with a long tail
+https://www.kvraudio.com/forum/viewtopic.php?t=594022 FR, add way to determine if the linn is 128 or 200 -- done
+https://www.kvraudio.com/forum/viewtopic.php?t=593670 possible bug with the midi channel used for low row pitch bend, investigate
+https://www.kvraudio.com/forum/viewtopic.php?t=588669 FR, add Quantize Hold to list of Foot/Panel switch functions, Roger approves - done
 https://www.kvraudio.com/forum/viewtopic.php?t=534636 pitch bend behavior when in OneChannel/ChannelPerRow modes, Roger approves
+https://www.kvraudio.com/forum/viewtopic.php?t=535623 arpeggiator bug, Roger agrees it needs fixing
 https://www.kvraudio.com/forum/viewtopic.php?t=550383&start=30 brightness knob
 https://www.youtube.com/watch?v=N5E57qRu8zw Bach on the linnstrument, could have been in 12-of-31edo meantone
-https://www.kvraudio.com/forum/viewtopic.php?t=567742 arpeggiator "order played" option, Roger approves
-https://www.kvraudio.com/forum/viewtopic.php?t=539410 switch 1 & 2 bug -- fix it?
-https://www.kvraudio.com/forum/viewtopic.php?t=587851 volume up/down options (like preset +/-) switches, Roger approves
+https://www.kvraudio.com/forum/viewtopic.php?t=567742 FR, arpeggiator "order played" option, Roger approves
+https://www.kvraudio.com/forum/viewtopic.php?t=539410 bug, switch 1 & 2 bug -- fix it?
+https://www.kvraudio.com/forum/viewtopic.php?t=587851 FR, volume up/down options (like preset +/-) switches, Roger approves
     would need to store the previous volumes, needs 1 byte per side x 2 sides x 7 memories = 14 bytes
-https://www.kvraudio.com/forum/viewtopic.php?t=533095 2nd to last post, send low row notes to the other split -- meh
+https://www.kvraudio.com/forum/viewtopic.php?t=533095 FR, 2nd to last post, send low row notes to the other split -- meh
 https://www.kvraudio.com/forum/viewtopic.php?t=555407 Reaper Lua script to configure and trigger chords
 https://www.kvraudio.com/forum/viewtopic.php?t=529266 hammer-ons zone
 https://www.kvraudio.com/forum/viewtopic.php?t=528597 cubic Y curves vs laggy Y
@@ -233,7 +239,7 @@ https://www.kvraudio.com/forum/viewtopic.php?t=520315 weird bug when playing 5 n
 https://www.kvraudio.com/forum/viewtopic.php?t=520863 clip launching
 https://www.kvraudio.com/forum/viewtopic.php?t=508560&start=30 Y-data initial strike only, Roger approves
 https://www.kvraudio.com/forum/viewtopic.php?t=459910 relative value for CC faders, see below
-https://www.kvraudio.com/forum/viewtopic.php?t=509054 footswitch sends low keyswitch
+https://www.kvraudio.com/forum/viewtopic.php?t=509054 FR, footswitch sends low keyswitch -- just use DAW code for CC->note or pad->note
    would default to C0 = note 24, needs Global.pedalNote[5], 5 bytes per preset for the note = 35 bytes total
 https://www.kvraudio.com/forum/viewtopic.php?t=505385 velocity sensing details, it works less well in low power mode
 https://www.kvraudio.com/forum/viewtopic.php?t=502776 control Y-data maximum with the low row, Roger said no
@@ -250,14 +256,14 @@ https://www.kvraudio.com/forum/viewtopic.php?t=493869
 https://www.kvraudio.com/forum/viewtopic.php?t=493413 minimum note length, was 70ms, now it's 35/70, see isPastDebounceDelay()
 https://www.kvraudio.com/forum/viewtopic.php?t=491827 the sensor internally puts out 4096 levels of velocity
 https://www.kvraudio.com/forum/viewtopic.php?t=489565 footswitch disable Y-data, could launch 1 NRPN pedal down, another pedal up
-https://www.kvraudio.com/forum/viewtopic.php?t=489846 [feature request] high resolution faders - meh
+https://www.kvraudio.com/forum/viewtopic.php?t=489846 FR, high resolution faders - meh
 https://www.kvraudio.com/forum/viewtopic.php?t=487209 Roger: "I'm thinking of adding a mode to allow independent Row Offsets per split"
 https://www.kvraudio.com/forum/viewtopic.php?t=484230 2.1.0 firmware, remove notes from latched arp by playimg them again -- yes!
 https://www.kvraudio.com/forum/viewtopic.php?t=486303&start=15 set arp swing to dotted, Roger approves
 https://www.kvraudio.com/forum/viewtopic.php?t=485767 strumming via a strum split - before 2.0.2 it had tapping but no hammer-ons
 https://www.kvraudio.com/forum/viewtopic.php?t=479863 Low row idea - bow controller -- maybe
-https://www.kvraudio.com/forum/viewtopic.php?t=477209 TJ Shredder asks for locating CCs, Roger says no
-https://www.kvraudio.com/forum/viewtopic.php?t=477257 user firmware mode in one split only, no response
+https://www.kvraudio.com/forum/viewtopic.php?t=477209 FR, TJ Shredder asks for locating CCs, Roger says no
+https://www.kvraudio.com/forum/viewtopic.php?t=477257 FR, user firmware mode in one split only, no response
 https://www.kvraudio.com/forum/viewtopic.php?t=473610 per-split row offsets
 https://www.kvraudio.com/forum/viewtopic.php?t=468592 Geert discusses the 2.0 firmware velocity algorithm
 https://www.kvraudio.com/forum/viewtopic.php?t=465788 strum split has 2 cols for plucking, 1 for xyz and 1 for muting -- meh
@@ -279,8 +285,13 @@ https://www.kvraudio.com/forum/viewtopic.php?t=429418 midi looper
 https://www.kvraudio.com/forum/viewtopic.php?p=6050499#p6050499 feature request, advance to next memory via footswitch, done
 https://www.kvraudio.com/forum/viewtopic.php?t=429646 feature request, 2 4x25 splits, face to face playing mode, 2 people like it - meh
   microLinn can set one split to lefty and a negative row offset, can play face to face that way (needs testing)
+https://www.kvraudio.com/forum/viewtopic.php?t=424128 FR, on the volume screen, two volume sliders side by side - done
 
 test unninstalling more
+
+In OneChannel mode, with a mono synth, a trill on 2 pads on different rows that have the same midi note creates multiple noteOns 
+for the same midi note, followed by a single noteOff for that note. The single noteOff should silence that note, but the SWAM trumpet 
+leaves it sounding. So use lastValueMidiNotesOn to count up the noteOns and send a series of matching noteOffs
 
 fix SCL footswitch leaving hanging notes, see how 8VE+ footswitch handles it
   mainstream bug -- play a note, press 8VE+, it goes down not up!
@@ -359,6 +370,15 @@ Punch -- avoid a sluggish attack, scale the first 50 ms of Z to the velocity, st
 
 add NRPNs for 5th switch SWITCH_FOOT_B?
 
+make the red dot follow a slide to the next pad, see transferFromSameRowCell() and handleSlideTransferCandidate()
+  It already follows if played mode is CELL (starting with firmware 2.1.0)
+  editing handleSlideTransferCandidate() to use inRange(playedTouchMode, playedCell, playedBlink) sort of works, 
+  but it leaves stray dots behind and the twin dots don't follow
+
+when dotsCarryOver is true, maybe the other split should use the home split's played color?
+  highlightPossibleNoteCells() would need another parameter, isCarryOver, to set the color
+  https://www.kvraudio.com/forum/viewtopic.php?t=591499 discusses a bug in the dots-carry-over workaround
+
 Global.microLinn.fineTune[27]?? is a packed array of nybbles, -8..+7 cents/edosteps, fine-tunes all but the tonic
 
 check that microLinnCalcLowestEdostepEtc() and others take into account condensing
@@ -371,9 +391,14 @@ after bulk importing, or after unplugging, bend slope is sometimes too big, goin
 
 when bulk importing/exporting, clear screen and display "IMP" or "EXP"?
 
+make custom light patterns react to transposing the lights? wrap around to fill in the empty area
+
 color-code the menu buttons? makes them more memorable. Per-split can be green & yellow, global can be orange and cyan
 
 low row sustain mode - make it latch on a short press? or on a double-press like the joystick mode? or both?
+
+low row XYZ mode -- add an option to make X be pitch bends, steal from lowRowBend code
+  doesn't apply to joystick mode, too inaccurate
 
 MINOR BUGS
 
@@ -391,7 +416,7 @@ when showing custom light pattern in 1 split, sometimes its low row spills over 
 
 anchor pad chooser is blank when displaying a custom light pattern, search for bug: doesn't load anything
 
-colorAccent can be set to 0, if so my code should use some fixed color
+colorAccent can be set to 0, if user does this my code should use some fixed color
 
 test if changing splits always triggers a calctuning call, if so, just calc the displayed split(s)
 
@@ -435,14 +460,6 @@ col 16) Global microtonal settings
   row 6) Sweetening amount in tenths of cents (OFF, 0.1 to 6.0)
   row 7) Large EDO for fine tuning (OFF, various 56-311, 1200)
 
-Bulk import/export sequencer projects:
-  17 = current project, current split, only the 14 drum notes
-  18 = current project, current split, everything
-  19 = current project, both splits, everything
-  20 = all 16 projects, both splits, everything
-  #20 must overwrite the current project to access the 16 stored projects
-  see loadProject() and writeProjectToFlash() in ls_settings.ino
-
 low row restrike mode alternates between downstrokes and upstrokes, which delay certain notes, steal from arp code?
   downstroke on touch, upstroke on release? play alternating fingers legato = no upstrokes?
   pads alternate colors, green = downstroke, blue = upstroke?
@@ -463,11 +480,6 @@ qanun-style mandals: set one split to CC faders and set the 1st CC to 129 = MND 
   write directly to Device.microLinn.scales using microLinnScale array, then call calcCondensedTuning()
   if one scale note is moved to be on top of another, they merge into one
   if one scale note is moved past another, the notes are reordered
-
-make the red dot follow a slide to the next pad? see transferFromSameRowCell() and handleSlideTransferCandidate()
-  It already follows if played mode is CELL (starting with firmware 2.1.0)
-  editing handleSlideTransferCandidate() to use inRange(playedTouchMode, playedCell, playedBlink) sort of works, 
-  but it leaves stray dots behind and the twin dots don't follow
 
 Upon receiving a locating CC, the linn colors that pad with the color implied by the CC's channel?
   But what if the locating CCs overlap with the painting CCs 20-25?
@@ -586,7 +598,7 @@ add the existing Y-maximizing option? OFF X Z X+Z Y X+Y Y+Z XYZ (still jumpy whe
 
 POSSIBLE PULL REQUESTS (every non-microtonal feature that doesn't require a new user setting, test thoroughly first)
   sequencer: foot pedal fix, pattern-chaining feature, 4x4 array fix
-  DONE: long-press low power affects brightness only
+  done: long-press low power affects brightness only
   double volume faders
   add 8VE± footswitch function
 
@@ -629,10 +641,10 @@ SWAM Viola: https://vi-control.net/community/threads/what-i-would-like-to-see-in
 The Reaper script "MIDI CC Mapper X" can remap any MIDI input along a user-drawn curve.
 
 
-WHEN DONE:
+WHEN DONE
 change microLinnOSVersion from 000 to 001
 comment out #ifdef DEBUG_ENABLED in ls_debug.h
-cleanup: search for "delete", "uncomment", "later" and "bug"
+cleanup: search for "delete", "uncomment", "not yet", "later" and "bug"
 
 ********************************************************************************************************************/
 
@@ -789,13 +801,13 @@ const byte MICROLINN_RAINBOWS[MICROLINN_ARRAY_SIZE] = {
 //          cyan/orange   = used in 41edo for 7/5 and 10/7
 
 // Bosanquet / Wicki-Hayden colors
-//                         for 5n and 7n edos
-//   8   white = natural   pink = tonic
-//   3   green = b         down
-//  10  yellow = #         up
-//   4    cyan = bb        dud
-//   9  orange = ##        dup
-//   5    blue = bbb       trud/trup
+//                           for 5n and 7n edos
+//   8   white = natural     pink = tonic, white = natural
+//   3   green = b          green = down
+//  10  yellow = #         yellow = up
+//   4    cyan = bb          cyan = dud
+//   9  orange = ##        orange = dup
+//   5    blue = bbb         blue = trud/trup
 //  11    pink = x#
 //   6  purple = bbbb
 //   1     red = 
@@ -1207,7 +1219,6 @@ const byte MICROLINN_SCALES[MICROLINN_ARRAY_SIZE] = {
   B0000001,  //  
   B0001110,  // M7
   B0000000,  //  
-  
   // 25edo  4L3s(4:3), 7L2s(3:2), 3L8s(3:2), 1L11s(3:2)
   B1111111,  // P1
   B0000000,  // 
@@ -1244,7 +1255,7 @@ const byte MICROLINN_SCALES[MICROLINN_ARRAY_SIZE] = {
   127, 0,64,64, 0,67,64,64,66, 0,65,64, 0,67, 0,64,64, 0,67,64,64,66, 0,65,64,64,66, 0,65,64, 0, // 31
   127, 0,64,64, 0,67,64,64,66, 0,65,64, 0,67, 0, 0,64, 0, 0,67, 0,64,66, 0,65,64,64,66, 0,65,64, 0, // 32
   127, 0,64,64, 0,67,64, 0,64,66, 0,65,64, 0,67, 0,64,64, 0,67, 0,64,66, 0,65,64, 0,64,66, 0,65,64, 0, // 33
-  // 34: #3 = sagugu halberstadt
+  // 34: #3 = sagugu halberstadt = 7 white keys are a fifthchain F-B, 5 black keys are P8/2 from C-E
   127, 0,64,68, 0,67,68, 0,64,70, 0,65,68, 0,71, 0, 0,68, 0, 0,71, 0,64,70, 0,65,68, 0,64,70, 0,65,68, 0, // 34
   127, 0,64,64, 0,67,64, 0,64,66, 0,65,64, 0, 0,67, 0,64,64, 0,67, 0, 0,64,66, 0,65,64, 0,64,66, 0,65,64, 0, // 35
   127, 0,64,64, 0, 0,67,64,64,66, 0, 0,65,64, 0,67, 0, 0,64, 0, 0,67, 0,64,66, 0, 0,65,64,64,66, 0, 0,65,64, 0, // 36
@@ -1252,7 +1263,54 @@ const byte MICROLINN_SCALES[MICROLINN_ARRAY_SIZE] = {
   127, 0, 0,64,64, 0,67,64, 0,64,66, 0,65,64, 0, 0,67, 0, 0,64, 0, 0,67, 0, 0,64,66, 0,65,64, 0,64,66, 0,65,64, 0, 0, // 38
   127, 0,64,64, 0, 0,64,67, 0,64,66, 0, 0,65,64, 0,67, 0, 0,64,64, 0, 0,67, 0,64,66, 0, 0,65,64, 0,64,66, 0, 0,65,64, 0, // 39
   127, 0, 0,64,64,64,64,67, 0, 0,66,64,64,65,64, 0, 0,67, 0, 0,64, 0, 0,67, 0, 0,64,66,64,64,65, 0, 0,66,64,64,65,64, 0, 0, // 40
-  127, 0,64, 0,64, 0,64,67,64,64, 0,66, 0,65, 0,64, 0,67, 0,64,64,64,64, 0,67, 0,64, 0,66, 0,65, 0,64,64,64,66, 0,65, 0,64, 0, // 41
+  
+  // 41edo  wagogo, downminor pentatonic, double harmonic major, Harrison 14-tone
+  //    Michael Harrison's revelation tuning + vAb + vDb = a mostly isomorphic 14-note scale
+  //    1/1, 63/64, 9/8, 567/512=9/8*63/64=Lz2, 81/64, 21/16, 729/512, 3/2, 189/128=3/2*63/64=Lz5, 27/16, 7/4, 243/128, 2/1
+  //    in F: F vF G vG A vBb B C vC D vEb E F  -->  F vG G (vAb) A vBb B vC C (vDb) D vEb E vF F
+  //    in C: C vC D vEb E F vF G vG A vBb B C  -->  C (vDb) D vEb E vF F vG G (vAb) A vBb B vC C
+  B1111111,  // P1
+  B0000000,  // 
+  B0001000,  // 
+  B0000000,  // m2
+  B0000100,  // 
+  B0000000,  // 
+  B0000000,  // 
+  B0001001,  // M2
+  B0000000,  // 
+  B0001010,  // 
+  B0000000,  // m3
+  B0000000,  // 
+  B0000000,  // 
+  B0000101,  // 
+  B0001000,  // M3
+  B0000000,  // 
+  B0001000,  // 
+  B0001110,  // P4
+  B0000000,  // 
+  B0000000,  // 
+  B0000000,  // d5
+  B0000000,  // A4
+  B0000000,  // 
+  B0001000,  // 
+  B0001111,  // P5
+  B0000000,  // 
+  B0001000,  // 
+  B0000000,  // m6
+  B0000100,  // 
+  B0000000,  // 
+  B0000000,  // 
+  B0001000,  // M6
+  B0000000,  // 
+  B0001011,  // 
+  B0000000,  // m7
+  B0000000,  // 
+  B0000000,  // 
+  B0000100,  // 
+  B0001000,  // M7
+  B0000000,  // 
+  B0001000,  // 
+
   127, 0, 0,64,64,64,64,67, 0, 0,64,66,64,64,65, 0, 0,67, 0, 0,64,64,64, 0, 0,67, 0, 0,64,66,64,64,65, 0, 0,66,64,64,65,64, 0, 0, // 42
   127, 0, 0,64,64, 0, 0,67,64, 0,64,66, 0, 0,65,64, 0, 0,67, 0, 0,64,64, 0, 0,67, 0, 0,64,66, 0, 0,65,64, 0,64,66, 0, 0,65,64, 0, 0, // 43
   127, 0, 0,64, 0,64, 0, 0,67, 0,64, 0,66, 0,65, 0,64, 0,67, 0, 0,64, 0,64, 0, 0,67, 0,64, 0,66, 0,65, 0,64, 0,64, 0,66, 0,65, 0,64, 0, // 44
@@ -1390,6 +1448,8 @@ long microLinnImportCounter = 0;
 boolean microLinnImportXen = true;                              // don't import xen data for most presets if rawEDO == 4
 boolean microLinnImportingOn = false;
 unsigned long microLinnLastMomentMidiPP;                        // for timeout calculations, not yet used
+
+boolean microLinnImitateLinn128 = false;                        // for coders & beta testers, for testing Linn128 led displays on a 200
 
 /************** math functions ************************/
 
@@ -1644,8 +1704,13 @@ byte microLinnGetFret(byte side, byte col) {
 
 /************** lookup functions called from other .ino files ************************/
 
-boolean isLinn200() {          // only call this function for text displays! not calibration, scan order, Z-bias, etc.!
-//return false;                // uncomment this line to test linn128 text displays on a linn200
+boolean isLinn200() {          
+  // IMPORTANT: call this function ONLY for LED displays! not hardware issues like calibration, scan order, Z-bias, etc.!
+  // firmware coders and beta testers can send a NRPN 1200 with value 1 to test linn128 led displays on a linn200
+  // microLinnImitateLinn128 is non-persistent, so after a power cycle this function returns the actual model
+#ifdef DEBUG_ENABLED
+  if (microLinnImitateLinn128) return false;
+#endif  
   return LINNMODEL == 200;
 }
 
@@ -1707,7 +1772,7 @@ short getMicroLinnVirtualEdostep(byte side, byte col, byte row) {
 void applySameAndMicroLinnBlinkToOtherSplit(boolean calledOnNoteOn, short note) {
   if (!Global.splitActive) return;
   if (!Global.microLinn.dotsCarryOver) return;
-  byte otherSide = sensorSplit - 1;
+  byte otherSide = 1 - sensorSplit;
   if (Split[otherSide].playedTouchMode != playedSame &&
       Split[otherSide].playedTouchMode != playedBlink) return;
   if (Split[otherSide].ccFaders || Split[otherSide].strum || Split[otherSide].sequencer) return;
@@ -1888,6 +1953,69 @@ byte getMicroLinnSequencerBendRange() {
 void setMidiChannelSelect() {
   // show the user the channels that are actually in use, user can override this by tapping Split Settings col 2
   midiChannelSelect = 7 - Split[Global.currentPerSplit].midiMode;
+}
+
+// functions microLinnHasZExpressiveNotes() and microLinnIsMaxZ() are for microLinn's Z-maximizing
+// they are the work of KVR forum member teknico, many thanks! 
+
+// called by handleXYZupdate() and handleTouchRelease() in ls_handleTouches.ino
+// teknico says: Individually expressive notes on the same channel
+// only when there's just one note, or using PolyAT
+boolean microLinnHasZExpressiveNotes() {
+  return ((countTouchesForMidiChannel(sensorSplit, sensorCol, sensorRow) == 1) ||
+    (Split[sensorSplit].expressionForZ == loudnessPolyPressure));
+}
+
+// called by handleXYZupdate() in ls_handleTouches.ino
+// teknico says: Is this value higher than all other notes on this channel?
+// Check the max value for each note against all others, not just the last played one (focused)
+// TODO: isMaxZ could be collapsed by adding a getPressureZ method to TouchInfo
+// TODO: use a sorted multimap to avoid looping?
+boolean microLinnIsMaxZ(unsigned short valueZHi) {
+  unsigned short curVal = 0;
+
+  // iterate over all the rows...
+  byte beginRow = 0;
+  byte endRow = NUMROWS;
+  // ...or just this one when in ChannelPerRow mode
+  if (Split[sensorSplit].midiMode == channelPerRow) {
+    beginRow = sensorRow;
+    endRow = sensorRow + 1;
+  }
+
+  int32_t colsInRowTouched = 0;
+  for (byte row = beginRow; row < endRow; ++row) {
+    colsInRowTouched = colsInRowsTouched[row];
+
+    // exclude the current cell
+    if (row == sensorRow) {
+      colsInRowTouched = colsInRowTouched & ~(1 << sensorCol);
+    }
+
+    // continue while there are touched columns in the row
+    while (colsInRowTouched) {
+      byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
+
+      // compare the Z value of the cell to the current maximum if the cell
+      // is on the same channel
+      curVal = cell(touchedCol, row).pressureZ;
+      if (cell(touchedCol, row).touched == touchedCell &&
+          cell(touchedCol, row).channel == sensorCell->channel &&
+          curVal != INVALID_DATA) {
+
+        if (valueZHi < curVal) {
+          // Found a higher value already, no need to look at the other ones
+          return false;
+        }
+      }
+
+      // exclude the cell we just processed by flipping its bit
+      colsInRowTouched &= ~(1 << touchedCol);
+    }
+  }
+
+  // No higher value found, we're it
+  return true;
 }
 
 /**
@@ -4039,7 +4167,7 @@ void microLinnHandleNoteLightsNewTouch() {
     if (Global.activeNotes == 7) {                                            // rainbow editor
       if (!Global.microLinn.useRainbow) return;                               // don't let the user make changes they can't see
       short i = microLinnTriIndex(edo, edostep);
-      Device.microLinn.rainbows[i] = colorCycle(Device.microLinn.rainbows[i], false);
+      Device.microLinn.rainbows[i] = colorCycle(Device.microLinn.rainbows[i], true);
     } else if (Global.activeNotes < 7) {
       Device.microLinn.scales[microLinnTriIndex(edo, edostep)] ^= (1 << Global.activeNotes);      // xor to toggle the bit
       if (Device.microLinn.scales[microLinnTriIndex(edo, edostep)] & (1 << Global.activeNotes)) {
@@ -4611,14 +4739,13 @@ void paintMicroLinnClipLauncher() {
   }
 }
 
-// used to send launching CCs from the Preset display, return true to halt handling other touches
+// used to send launching CCs from the Preset display, return true to halt handling this touch in subsequent code
 boolean handleMicroLinnClipLauncher(byte CCval) {
   byte CCpointer, side;
   if (isLinn200()) {
-    if (sensorCol == 16 && sensorRow == 7) return false;   // do handle left spilt select button
-    if (inRange(sensorCol, 16, 17))        return true;    // don't handle empty columns near the launchers
-    if (inRange(sensorCol, 22, 23))        return true;    //   "
-    if (!inRange(sensorCol, 18, 21))       return false;   // do handle main area and memory chooser
+    if (inRange(sensorCol, 22, 23))  return true;     // don't handle blank columns between launchers and memories
+    if (sensorCol == 25)             return true;     // don't handle blank column to the right of the memories
+    if (!inRange(sensorCol, 18, 21)) return false;    // do handle main area and memory chooser
     if (inRange(sensorRow, 5, 6)) {
       CCpointer = (21 - sensorCol) + 4 * (sensorRow - 5);
       side = LEFT;
@@ -4629,11 +4756,11 @@ boolean handleMicroLinnClipLauncher(byte CCval) {
   } else {  // if Linn128
     if (inRange(sensorRow, 1, 6)) return false;       // do handle main swiping area and memory chooser
     switch(sensorCol) {
-      case 1:                 return false;           // do handle green PC increment button or blue bank select button
+      case 1:                 return false;           // do handle green increment button and blue bank select button
       case 2: case 3: case 8: return true;            // don't handle blank cells between launching buttons
       case 13: case 14:       return true;            //   "
       case 15:                return sensorRow != 7;  // do handle left spilt select button
-      case 16:                return false;           // do handle right spilt select button or lowest preset button
+      case 16:                return false;           // do handle right spilt select button and lowest preset button
     }
     CCpointer = (sensorCol < 8) ? 11 - sensorCol : 12 - sensorCol; 
     side = (sensorRow == 7) ? LEFT : RIGHT;
@@ -4712,10 +4839,11 @@ void sendMicroLinnNrpnParameter(int parameter, int channel) {
     case 1052: value = Split[side].microLinn.tuningTable; break;
     case 1053: value = Split[side].microLinn.groupingCC; break;
     case 1054: value = Split[side].microLinn.transposeEDOsteps + 7; break;
-    case 1200: value = Global.microLinn.drumPadMode; break;
-    case 1201: value = Global.microLinn.dotsCarryOver ? 1 : 0; break;
-    case 1202: value = Global.microLinn.locatingCC1; break;
-    case 1203: value = Global.microLinn.locatingCC2; break;
+    case 1200: value = LINNMODEL == 200 ? 2 : 1; break;
+    case 1201: value = Global.microLinn.drumPadMode; break;
+    case 1202: value = Global.microLinn.dotsCarryOver ? 1 : 0; break;
+    case 1203: value = Global.microLinn.locatingCC1; break;
+    case 1204: value = Global.microLinn.locatingCC2; break;
     case 1250: value = Global.microLinn.EDO; break;
     case 1251: value = Global.microLinn.useRainbow ? 1 : 0; break;
     case 1252: value = Global.microLinn.anchorCol; break;
@@ -4773,10 +4901,15 @@ void receivedMicroLinnNrpn(int parameter, int value) {
     case 1052: if (inRange(value, 0, 3))   Split[side].microLinn.tuningTable = value; break;
     case 1053: if (inRange(value, 0, 127) || value == 255) Split[side].microLinn.groupingCC = value; break;
     case 1054: if (inRange(value, 0, 14))  Split[side].microLinn.transposeEDOsteps = value - 7; break;
-    case 1200: if (inRange(value, 0, 2))   Global.microLinn.drumPadMode = value; break;
-    case 1201: if (inRange(value, 0, 1))   Global.microLinn.dotsCarryOver = (value == 1); break;
-    case 1202: if (inRange(value, 0, 127) || value == 255) Global.microLinn.locatingCC1 = value; break;
-    case 1203: if (inRange(value, 0, 127) || value == 255) Global.microLinn.locatingCC2 = isLinn200() ? value : 255; break;
+    case 1200: // firmware coders and their beta testers can use this NRPN to test Linn128 led displays on a Linn200
+#ifdef DEBUG_ENABLED
+      microLinnImitateLinn128 = (value == 1 && LINNMODEL == 200);
+#endif 
+      break;
+    case 1201: if (inRange(value, 0, 2))   Global.microLinn.drumPadMode = value; break;
+    case 1202: if (inRange(value, 0, 1))   Global.microLinn.dotsCarryOver = (value == 1); break;
+    case 1203: if (inRange(value, 0, 127) || value == 255) Global.microLinn.locatingCC1 = value; break;
+    case 1204: if (inRange(value, 0, 127) || value == 255) Global.microLinn.locatingCC2 = isLinn200() ? value : 255; break;
     case 1250: if (inRange(value, 4, 55))  Global.microLinn.EDO = value; break;
     case 1251: if (inRange(value, 0, 1))   Global.microLinn.useRainbow = (value == 1); break;
     case 1252: if (inRange(value, 1, 25))  Global.microLinn.anchorCol = value; break;

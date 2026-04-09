@@ -292,7 +292,7 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 228   | 0-26  | Global Switch 1 Assignment  (0: Oct Down, 1: Oct Up, 2: Sustain, 3: CC65, 4: Arp, 5: Alt Split, 6: Auto Octave, 7: Tap Tempo...)
 | 229   | 0-26  | Global Switch 2 Assignment  (...8: Legato, 9: Latch, 10/11: Program Change Up/Down, 12: Reverse Pitch X, 13: Sequencer Play...)
 | 230   | 0-26  | Global Foot Left Assignment (...14: Sequencer Previous, 15: Sequencer Next, 16: Send MIDI Clock, 17: Sequencer Mute...)
-| 231   | 0-26  | Global Foot Right Assignment (...18/19: Transpose Up/Down, 20/21: 8ve Up/Down, 22/24: Previous Preset/Memory/Scale, 25/26: EDO Up/Down)
+| 231   | 0-26  | Global Foot Right Assignment (...18-19: Transpose Up/Down, 20-21: 8ve Up/Down, 22-24: Previous Preset/Memory/Scale, 25-26: EDO Up/Down)
 | 232   | 0-3   | Global Velocity Sensitivity (0: Low, 1: Medium, 2: High, 3: Fixed)
 | 233   | 0-2   | Global Pressure Sensitivity (0: Low, 1: Medium, 2: High)
 | 234   | 0-1   | Device MIDI I/O (0: MIDI Jacks, 1: USB)
@@ -336,144 +336,152 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 299   | any   | Send the current value of a particular NRPN configuration parameter, when possible
 | 300   | 1-15  | MicroLinn Bulk Import/Export, see below
 
-* if in an edo, be sure to follow up these NRPNs that affect the tuning with a NRPN 1300!
+\* if in an edo, be sure to follow up these NRPNs that affect the tuning with a NRPN 1300!
 
-Additional NRPN messages for microLinn (nn00-nn49 = non-microtonal, nn50-nn99 = microtonal)
+Additional NRPN messages for microLinn<br>
+nn00-nn49 = non-microtonal, nn50-nn99 = microtonal<br>
+These can be used with a NRPN 299 to query, i.e. export a value.
 
-NRPN   Value   Description
--------------------------------------------------------------------------------------------------------------
-1000 *  1-10        Split Left Column Offset 
-1001 *  0-52        Split Left Row Offset, which ranges -26..26 (-26 = OFF, 26 = NOVR), so add/subtract 26 to convert it
-1002    0-3         Split Left mono fixes, X = fix bends, Z = maximize channel pressure, 0 = OFF, 1 = X, 2 = Z, 3 = X plus Z
-1003    0-3         Split Left hammerOnMode, 0 = OFF, 1 = R, 2 = L, 3 = R and L
-1004    0-121       Split Left hammerOnZone, maximum width in tens of cents of a hammer-on, 0 = OFF, 120 = 1 octave, 121 = ALL
-1005    0-50        Split Left hammerOnWait, minimum time in tens of milliseconds between two note-ons to make a hammer-on, 50 = 1/2 second
-1006    0-6         Split Left showCustomLEDs, 0 = OFF, 1-3 = the three patterns, 4-6 = the three patterns plus note lights on top
-1007    0-128, 255  Split Left ccForLowRowW, used in low row XYZ joystick mode for note-on velocity, 128 = Channel Pressure, 255 = OFF
-1008    0-128, 255  Split Left ccForLowRowX, used in low row XYZ joystick mode for X', 128 = Channel Pressure, 255 = OFF
-1009    0-128, 255  Split Left ccForLowRowY, used in low row XYZ joystick mode for Y', 128 = Channel Pressure, 255 = OFF
-1010    0-1         Split Left WccCentered, used in low row XYZ joystick mode, 1 = reset to 64, 0 = reset to 0
-1011    0-1         Split Left XccCentered, used in low row XYZ joystick mode, 1 = reset to 64, 0 = reset to 0
-1012    0-1         Split Left YccCentered, used in low row XYZ joystick mode, 1 = reset to 64, 0 = reset to 0
-1013    0-1         Split Left Alternate Send X (0: Off, 1: On)
-1014    0-1         Split Left Alternate Pitch Quantize (0: Off, 1: On)
-1015    0-3         Split Left Alternate Pitch Quantize Hold (0: Off, 1: Medium, 2: Fast, 3: Slow)
-1016    0-1         Split Left Alternate Pitch Reset On Release (unprinted parameter, 0: Off, 1: On)
-1050 *  0-56        Split Left condensedBendPerPad, 0 = OFF, 1 = VAR, 2..L+1 = 1..L (L = largest scale step)
-1051 *  0-7         Split Left defaultLayout, 0..7, OFF, Bosanquet 1 & 2, Accordion, Wicki-Hayden 1 & 2, Array Mbira 1 & 2
-1052 *  0-3         Split Left tuningTable, 0..3 = OFF/ON/CC/RCH
-1053    0-127, 255  Split Left groupingCC, 0..127 = CC number, 255 = OFF
-1054 *  0-14        Split Left transposeEDOsteps, ranges -7..7, so add/subtract 7 to convert it
+| NRPN   | Value       | Description
+|--------|-------------|-----------------------------------------------------------------------------------------------
+| 1000 * | 1-10        | Split Left Column Offset 
+| 1001 * | 0-52        | Split Left Row Offset, which ranges -26..26 (-26 = OFF, 26 = NOVR), so add/subtract 26 to convert it
+| 1002   | 0-3         | Split Left mono fixes, X = fix bends, Z = maximize channel pressure, 0 = OFF, 1 = X, 2 = Z, 3 = X plus Z
+| 1003   | 0-3         | Split Left hammerOnMode, 0 = OFF, 1 = R, 2 = L, 3 = R and L
+| 1004   | 0-121       | Split Left hammerOnZone, maximum width in tens of cents of a hammer-on, 0 = OFF, 120 = 1 octave, 121 = ALL
+| 1005   | 0-50        | Split Left hammerOnWait, minimum time in tens of milliseconds between two note-ons to make a hammer-on, 50 = 1/2 second
+| 1006   | 0-6         | Split Left showCustomLEDs, 0 = OFF, 1-3 = the three patterns, 4-6 = the three patterns plus note lights on top
+| 1007   | 0-128, 255  | Split Left ccForLowRowW, used in low row XYZ joystick mode for note-on velocity, 128 = Channel Pressure, 255 = OFF
+| 1008   | 0-128, 255  | Split Left ccForLowRowX, used in low row XYZ joystick mode for X', 128 = Channel Pressure, 255 = OFF
+| 1009   | 0-128, 255  | Split Left ccForLowRowY, used in low row XYZ joystick mode for Y', 128 = Channel Pressure, 255 = OFF
+| 1010   | 0-1         | Split Left WccCentered, used in low row XYZ joystick mode, 1 = reset to 64, 0 = reset to 0
+| 1011   | 0-1         | Split Left XccCentered, used in low row XYZ joystick mode, 1 = reset to 64, 0 = reset to 0
+| 1012   | 0-1         | Split Left YccCentered, used in low row XYZ joystick mode, 1 = reset to 64, 0 = reset to 0
+| 1013   | 0-1         | Split Left Alternate Send X (0: Off, 1: On)
+| 1014   | 0-1         | Split Left Alternate Pitch Quantize (0: Off, 1: On)
+| 1015   | 0-3         | Split Left Alternate Pitch Quantize Hold (0: Off, 1: Medium, 2: Fast, 3: Slow)
+| 1016   | 0-1         | Split Left Alternate Pitch Reset On Release (unprinted parameter, 0: Off, 1: On)
+|        |             | 
+| 1050 * | 0-56        | Split Left condensedBendPerPad, 0 = OFF, 1 = VAR, 2..L+1 = 1..L (L = largest scale step)
+| 1051 * | 0-7         | Split Left defaultLayout, 0..7, OFF, Bosanquet 1 & 2, Accordion, Wicki-Hayden 1 & 2, Array Mbira 1 & 2
+| 1052 * | 0-3         | Split Left tuningTable, 0..3 = OFF/ON/CC/RCH
+| 1053   | 0-127, 255  | Split Left groupingCC, 0..127 = CC number, 255 = OFF
+| 1054 * | 0-14        | Split Left transposeEDOsteps, ranges -7..7, so add/subtract 7 to convert it
+|        |             | 
+| 1100-99|             | ===== same as 1000-1099, but for Split Right =====
+|        |             | 
+| 1200   | 1-2         | Global LinnStrument model, 1 = Linn128, 2 = Linn200 (mainly for querying/exporting, see below for importing usage)
+| 1201 * | 0-2         | Global drumPadMode, 0 = OFF, 1 = 2x3 pads, 2 = 3x3 pads
+| 1202   | 0-1         | Global dotsCarryOver, 1 = yes, 0 = no
+| 1203   | 0-127, 255  | Global locatingCC1, 0..127 = CC number, 255 = OFF
+| 1204   | 0-127, 255  | Global locatingCC2, 0..127 = CC number, 255 = OFF, always 255 for the Linn128
+|        |             | 
+| 1250 * | 4-55        | Global EDO, ranges 5-55, plus 4 for OFF
+| 1251   | 0-1         | Global useRainbow, 1 = yes, 0 = no
+| 1252 * | 1-25        | Global anchorCol, cols 17-25 are allowed for the Linn128
+| 1253 * | 1-8         | Global anchorRow, 1 = top row, 8 = bottom row
+| 1254 * | 0-127       | Global anchorNote (any midi note)
+| 1255 * | 0-120       | Global anchorCents ranges -60..60, so add/subtract 60 to convert it
+| 1256 * | 5-36        | Global equaveSemitones (perfect 4th to a triple octave)
+| 1257 * | 0-100       | Global equaveStretch ranges -50..50, so add/subtract 50 to convert it
+| 1258 * | 0-60        | Global sweeten (in tenths of a cent) (not yet implemented)
+| 1259   |             | (not yet used)    
+| 1260 * | 0-1         | Global microtonal guitarTuning[0] (diatonic/chromatic flag for condensed guitar tunings)
+| 1261 * | 0-640       | Global microtonal guitarTuning[1] ranges -320..320, so add/subtract 320 to convert it
+| 1262 * | 0-640       | Global microtonal guitarTuning[2]   "
+| 1263 * | 0-640       | Global microtonal guitarTuning[3]   "
+| 1264 * | 0-640       | Global microtonal guitarTuning[4]   "
+| 1265 * | 0-640       | Global microtonal guitarTuning[5]   "
+| 1266 * | 0-640       | Global microtonal guitarTuning[6]   "
+| 1267 * | 0-640       | Global microtonal guitarTuning[7]   "
+|        |             | 
+| 1300   | N/A         | setup microLinn, do this after changing any user settings with an asterisk
 
-1100-1199       ===== same as 1000-1099, but for Split Right =====
+\* if in an edo, be sure to follow up these NRPNs that affect the tuning with a NRPN 1300!
 
-1200 *  0-2         Global drumPadMode, 0 = OFF, 1 = 2x3 pads, 2 = 3x3 pads
-1201    0-1         Global dotsCarryOver, 1 = yes, 0 = no
-1202    0-127, 255  Global locatingCC1, 0..127 = CC number, 255 = OFF
-1203    0-127, 255  Global locatingCC2, 0..127 = CC number, 255 = OFF, always 255 for the Linn128
-1250 *  4-55        Global EDO, ranges 5-55, plus 4 for OFF
-1251    0-1         Global useRainbow, 1 = yes, 0 = no
-1252 *  1-25        Global anchorCol, cols 17-25 are allowed for the Linn128
-1253 *  1-8         Global anchorRow, 1 = top row, 8 = bottom row
-1254 *  0-127       Global anchorNote (any midi note)
-1255 *  0-120       Global anchorCents ranges -60..60, so add/subtract 60 to convert it
-1256 *  5-36        Global equaveSemitones (perfect 4th to a triple octave)
-1257 *  0-100       Global equaveStretch ranges -50..50, so add/subtract 50 to convert it
-1258 *  0-60        Global sweeten (in tenths of a cent) (not yet implemented)
-1259                (not yet used)    
-1260 *  0-1         Global microtonal guitarTuning[0] (diatonic/chromatic flag for condensed guitar tunings)
-1261 *  0-640       Global microtonal guitarTuning[1] ranges -320..320, so add/subtract 320 to convert it
-1262 *  0-640       Global microtonal guitarTuning[2]   "
-1263 *  0-640       Global microtonal guitarTuning[3]   "
-1264 *  0-640       Global microtonal guitarTuning[4]   "
-1265 *  0-640       Global microtonal guitarTuning[5]   "
-1266 *  0-640       Global microtonal guitarTuning[6]   "
-1267 *  0-640       Global microtonal guitarTuning[7]   "
+NRPN 1200 is for devs writing software on laptops that interact with the LinnStrument. It's used mainly for querying (exporting) via NRPN 299. But if used directly to set the model to Linn128, if debugging is enabled, it makes a Linn200 imitate a Linn128's led displays. Helpful for firmware coders and beta testers who don't own a Linn128.
 
-1300    N/A     setup microLinn, do this after changing any user settings with an asterisk
-
-* if in an edo, be sure to follow up these NRPNs that affect the tuning with a NRPN 1300!
-
-MICROLINN BULK IMPORT/EXPORT
+MicroLinn Bulk Import/Export
 ============================
 
-MicroLinn bulk importing and exporting uses a NRPN plus polypressure messages: 1010cccc 0nnnnnnn 0vvvvvvv, 18 bits
-Linnstrument responds to a NRPN 299 bulk export request with a NRPN 300 header and multiple polypressure messages
+MicroLinn bulk importing and exporting uses a NRPN plus polypressure messages: 1010cccc 0nnnnnnn 0vvvvvvv, 18 bits<br>
+Linnstrument responds to a NRPN 299 bulk export request with a NRPN 300 header and multiple polypressure messages<br>
 Linnstrument responds to a NRPN 300 header by bulk importing data from subsequent polypressure messages
 
-All importing is blocked unless "Allow Importing" is manually turned on. All exporting is always allowed.
+All importing is blocked unless "Allow Importing" is manually turned on. All exporting is always allowed.<br>
 Importing is automatically turned off every time the user unplugs the Linnstrument, for security reasons.
 
-bulk export request format:
-NRPN 299 = (MSB 2, LSB 43), channel 1, value = 2048 + export type = (MSB 16, LSB 1-15)
+bulk export request format:<br>
+NRPN 299 = (MSB 2, LSB 43), channel 1, value = 2048 + export type = (MSB 16, LSB 1..20)
 
-bulk export format:
-NRPN 300 = (MSB 2, LSB 44), channel 1, value: MSB = export type = 1-16, LSB = current edo if export type = 5..8
-Polypressure header, channel 9, value: LSB = Device.version, MSB = Device.microLinn.MLversion
-(multiple polypressure data messages on channels 1..4)
-Polypressure footer, channel 13, value: MSB = export type = 1-15, LSB = 0
+bulk export format:<br>
+NRPN 300 = (MSB 2, LSB 44), channel 1, value: MSB = export type = 1..20, LSB = current edo if export type = 5..8<br>
+Polypressure header, channel 9, value: MSB = Device.version, LSB = Device.microLinn.MLversion<br>
+(multiple polypressure data messages on channels 1..4)<br>
+Polypressure footer, channel 13, value: MSB = export type = 1..20, LSB = 0<br>
 In each polypressure message, the MSB appears as the note number and the LSB appears as the velocity
 
-For the polypressure data messages, channels 2-4 are used to store the 8th bit of each byte:
-channel 2 or 4 = add 128 to LSB when importing 
+For the polypressure data messages, channels 2-4 are used to store the 8th bit of each byte:<br>
+channel 2 or 4 = add 128 to LSB when importing<br>
 channel 3 or 4 = add 128 to MSB when importing
 
-Type    # of data bytes   Settings exported                    Notes
------------------------------------------------------------------------------------------------------------
- 1      208               Currently-displayed light pattern    imports into the currently-displayed pattern
- 2      624               All 3 light patterns                 
- 3      30                Last-edited audience message         imports into the last-edited message
- 4      480               All 16 audience messages             
-
- 5      edo               Current edo's 7 scales               for odd edos, add 1 byte of padding to the size
- 6      edo               Current edo's rainbow                    "
- 7      edo               Current edo's fretboard                  "
- 8      28 + 3 * edo      All data for the current edo         includes equave, equaveStretch, useRainbow, col/row offsets, guitarTuning
-
- 9      1530              Scales for all 51 edos               
-10      1530              Rainbows for all 51 edos             
-11      1530              Fretboards for all 51 edos           
-12      4590              All 3 arrays for all 51 edos         no equave, equaveStretch, useRainbow, col/row offsets, guitarTuning
-
-13      114               Settings for current split only     
-14      592               Global & Split settings              
-15      3552              All 6 presets (memories)             
-16      16156             All user settings                    only the current sequencer project, not the other 16
-
-17      14                14 sequencer drum notes              for the current split's sequencer, good for drum pad mode                 
-18      3136              current split's sequencer            doesn't include the project tempo
-19      6276              current sequencer project            both splits' sequencers + the tempo
-20      16 x 6276         all 16 sequencer projects            not the current project, which gets overwritten when importing/exporting
+| Type | # of data bytes | Settings exported                  | Notes
+|------|-----------------|------------------------------------|----------------------------------------------------------
+|  1   | 208             | Currently-displayed light pattern  | imports into the currently-displayed pattern
+|  2   | 624             | All 3 light patterns               | 
+|  3   | 30              | Last-edited audience message       | imports into the last-edited message
+|  4   | 480             | All 16 audience messages           | 
+|      |                 |                                    | 
+|  5   | edo             | Current edo's 7 scales             | for odd edos, add 1 byte of padding to the size
+|  6   | edo             | Current edo's rainbow              |     "
+|  7   | edo             | Current edo's fretboard            |     "
+|  8   | 28 + 3 * edo    | All data for the current edo       | includes equave, equaveStretch, useRainbow, col/row offsets, guitarTuning
+|      |                 |                                    | 
+|  9   | 1530            | Scales for all 51 edos             | 
+| 10   | 1530            | Rainbows for all 51 edos           | 
+| 11   | 1530            | Fretboards for all 51 edos         | 
+| 12   | 4590            | All 3 arrays for all 51 edos       | no equave, equaveStretch, useRainbow, col/row offsets, guitarTuning
+|      |                 |                                    | 
+| 13   | 114             | Settings for current split only    |
+| 14   | 592             | Global & Split settings            | 
+| 15   | 3552            | All 6 presets (memories)           | 
+| 16   | 16156           | All user settings                  | only the current sequencer project, not the other 16
+|      |                 |                                    | 
+| 17   | 14              | 14 sequencer drum notes            | for the current split's sequencer, good for drum pad mode                 
+| 18   | 3136            | current split's sequencer          | doesn't include the project tempo
+| 19   | 6276            | current sequencer project          | both splits' sequencers + the tempo
+| 20   | 16 x 6276       | all 16 sequencer projects          | not the current project, which gets overwritten when importing/exporting
 
 The total size of the midi file in bytes will be 1.5 * (# of data bytes) + 24
 
-Import failure error messages:
-INVALID IMPORT TYPE (type must be 1-15)
-INVALID EDO (edo must be 5-55)
-UNKNOWN DATA VERSION = can't import from a future data structure version
-DATA VERSION MISMATCH = incompatible (past or future) data structure version (all settings import only)
-NOT ENOUGH DATA = too few data bytes
-EXCESS DATA = too many data bytes
-FOOTER MISMATCH = import type mismatch between NRPN 300 MSB and polypressure footer MSB
-IMPORT FAILURE M N = M is microLinnImportCounter, Nth midi message was invalid, N is 1-indexed, includes the NRPN's 6 CCs
-IMPORT FAILURE SIMULTANEOUS IMPORTS = a 2nd NRPN 300 was received before the first one finished
-lack of "SUCCESS" message = no footer
+| Import failure error messages       | Notes
+|-------------------------------------|------------------------------------------------------------------------------
+| INVALID IMPORT TYPE                 | type must be 1-20
+| INVALID EDO                         | edo must be 5-55
+| UNKNOWN DATA VERSION                | can't import from a future data structure version
+| DATA VERSION MISMATCH               | incompatible (past or future) data structure version (all settings import only)
+| NOT ENOUGH DATA                     | too few data bytes
+| EXCESS DATA                         | too many data bytes
+| FOOTER MISMATCH                     | import type mismatch between NRPN 300 MSB and polypressure channel 13 footer MSB
+| IMPORT FAILURE M N                  | M = microLinnImportCounter, Nth midi message was invalid, N is 1-indexed, includes the NRPN's 6 CCs
+| IMPORT FAILURE SIMULTANEOUS IMPORTS | a 2nd NRPN 300 was received before the first one's footer
+| lack of "SUCCESS" message           | no footer
 
 Color Values
 ============
 
 | Value | Color 
 |-------|-------
-| 0     | revert to Note Lights settings
+| 0     | Off, meaning revert to Note Lights settings
 | 1     | Red
 | 2     | Yellow
 | 3     | Green
 | 4     | Cyan
 | 5     | Blue
 | 6     | Magenta
-| 7     | Black
+| 7     | Black, meaning turn the LED off
 | 8     | White
 | 9     | Orange
 | 10    | Lime
 | 11    | Pink
-| 12    | Violet (microLinn)
+| 12    | Violet (added by microLinn)
