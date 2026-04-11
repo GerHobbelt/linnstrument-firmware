@@ -51,7 +51,7 @@ enum MidiClock {
 
 MidiClock midiClockStatus = midiClockOff;                  // indicates whether the MIDI clock transport is running
 unsigned long lastMidiClockTime = 0;                       // the last time we received a MIDI clock message in micros
-int32_t fxd4MidiTempoAverage = fxd4CurrentTempo;           // the current average of the MIDI clock tempo, in fixes precision
+int32_t fxd4MidiTempoAverage = fxd4CurrentTempo;           // the current average of the MIDI clock tempo, in fixed precision
 byte midiClockMessageCount = 0;                            // the number of MIDI clock messages we've received, from 1 to 24, with 0 meaning none has been received yet
 byte initialMidiClockMessageCount = 0;                     // the first MIDI clock messages, counted until the minimum number of samples have been received
 boolean receivedSongPositionPointer = false;               // tracks whether a song position pointer message was received before the MIDI clock start
