@@ -378,8 +378,7 @@ void handleMidiInput(unsigned long nowMicros) {
             }
           }
 
-          if (handled)
-          {
+          if (handled) {
             if ((displayMode == displayNormal && Split[ccSplit].ccFaders) || displayMode == displayVolume) {
               updateDisplay();
             }
@@ -457,8 +456,7 @@ void handleMidiInput(unsigned long nowMicros) {
           }
 
           // if the CC was handled by faders, update the display if needed
-          if (handled)
-          {
+          if (handled) {
             if ((displayMode == displayNormal && Split[ccSplit].ccFaders) || displayMode == displayVolume) {
               updateDisplay();
             }
