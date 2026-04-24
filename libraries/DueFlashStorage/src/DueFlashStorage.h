@@ -19,7 +19,7 @@ Rewritten and modified by Sebastian Nilsson
 #include "efc.h"
 
 // 1Kb of data
-#define DATA_LENGTH ((IFLASH1_PAGE_SIZE / sizeof(byte)) * 4)
+#define DATA_LENGTH   ((IFLASH1_PAGE_SIZE / sizeof(byte)) * 4)
 
 // choose a start address that's offset to show that it doesn't have to be on a page boundary
 #define FLASH_START   ((byte*)IFLASH0_ADDR)
@@ -53,7 +53,7 @@ public:
 
 	// Test if the given offset is within the freely available space in the Flash.
 	//
-	// We DO NOT permit overwriting any application code or data, so the first available 
+	// We DO NOT permit overwriting any application code or data, so the first available
 	// address offset would be (getFirstFreeBlock() - FLASH_START).
 	inline bool validateAddress(uint32_t address) const {
 		return validateAddress(address, 1);
@@ -63,31 +63,26 @@ public:
 
 	// These write methods write a byte or a block to the given offset.
 	inline boolean write(uint32_t address, byte value) {
-		//return write(address, &value, 1);
-		return false;
+		return write(address, &value, 1);
 	}
 	inline boolean write(uint32_t address, const byte* data, uint32_t dataLength) {
-		//return write(address, data, dataLength, true);
-		return false;
+		return write(address, data, dataLength, true);
 	}
 
 	boolean write(uint32_t address, const byte* data, uint32_t dataLength, bool with_locking);
 
 	inline boolean write_unlocked(uint32_t address, byte value) {
-		return false;
-		//return write_unlocked(address, &value, 1);
+		return write_unlocked(address, &value, 1);
 	}
 	inline boolean write_unlocked(uint32_t address, const byte* data, uint32_t dataLength) {
-		return false;
-		//return write(address, data, dataLength, false);
+		return write(address, data, dataLength, false);
 	}
 
 	// This writes directly to the given address. It must be in flash.
 	inline boolean write(byte* address, const byte* data, uint32_t dataLength) {
 		uint32_t offset = getOffset(address);
-		return false;
-		//return write(offset, data, dataLength);
-    }
+		return write(offset, data, dataLength);
+	}
 };
 
 #endif
