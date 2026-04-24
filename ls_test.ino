@@ -441,10 +441,29 @@ void modeLoopManufacturingTest() {
 
 #ifdef DEBUG_ENABLED
 
-#include <malloc.h>
+/*
+ COMMON         0x200842ac        0x4 
+                0x200842ac                errno
+                0x200842b0                . = ALIGN (0x4)
+                0x200842b0                _ebss = .
+                0x200842b0                _ezero = .
+                0x200842b0                . = ALIGN (0x4)
+                0x200842b0                _end = .
 
+.stack_dummy    0x200842b0        0x0
+ *(.stack*)
+                0x20088000                __StackTop = (ORIGIN (ram) + 0x18000)
+                0x20088000                __StackLimit = (__StackTop - SIZEOF (.stack_dummy))
+                0x20088000                PROVIDE (_sstack, __StackLimit)
+                0x20088000                PROVIDE (_estack, __StackTop)
+*/
+
+extern char _ebss;
+extern char _ezero;
 extern char _end;
-extern "C" char* sbrk(int i);
+extern char _sstack;
+extern char _estack;
+
 char* ramstart = (char*)0x20070000;
 char* ramend = (char*)0x20088000;
 
@@ -454,15 +473,20 @@ void debugFreeRam() {
   if (Device.serialMode && sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
     lastFrame = now;
 
-    char* heapend = sbrk(0);
     register char* stack_ptr asm ("sp");
-    struct mallinfo mi = mallinfo();
-    Serial.print("RAM dynamic:");
-    Serial.print(mi.uordblks);
-    Serial.print(" static:");
+    Serial.print("RAM static:");
     Serial.print(&_end - ramstart);
+    Serial.print(" stack:");
+    Serial.print(ramend - stack_ptr);
+    Serial.print(" stacksize:");
+    Serial.print(ramend - &_sstack);
+    Serial.print(" stacksize:");
+    Serial.print(ramend - &_estack);
+    Serial.print(" stacksize:");
+    Serial.print(&_sstack - &_estack);
     Serial.print(" free:");
-    Serial.println(stack_ptr - heapend + mi.fordblks);
+    Serial.print(stack_ptr - &_end);
+    Serial.print("\n");
 
     // read RTT (Real Time Timer) value (seconds elapsed):
     const RoReg& rtt_vr = REG_RTT_VR;
