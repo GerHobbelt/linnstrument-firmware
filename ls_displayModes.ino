@@ -97,6 +97,11 @@ void setDisplayMode(DisplayMode mode) {
 // 0:normal, 1:perSplit, 2:preset, 3:volume, 4:transpose, 5:split, 6:global
 void updateDisplay() {
   DEBUGPRINT_FUNCNAME_L5();
+  DEBUGPRINT((4,"animationActive="));
+  DEBUGPRINT((4,animationActive));
+  DEBUGPRINT((4,", displayMode="));
+  DEBUGPRINT((4,displayMode));
+  DEBUGPRINT((4,"\n"));
   
   if (animationActive) {
     return;
@@ -331,6 +336,13 @@ void exitDisplayMode(DisplayMode mode) {
 }
 
 void updateSwitchLeds() {
+  DEBUGPRINT_FUNCNAME();
+  DEBUGPRINT((3,"operatingMode="));
+  DEBUGPRINT((3,operatingMode));
+  DEBUGPRINT((3," -> "));
+  DEBUGPRINT((3,operatingMode != modePerformance ? "TRUE" : "FALSE"));
+  DEBUGPRINT((3,"\n"));
+  
   if (operatingMode != modePerformance) {
     return;
   }
@@ -416,6 +428,8 @@ void updateSwitchLeds() {
 // paintNormalDisplay:
 // Paints all non-switch columns of the display with the normal performance colors
 void paintNormalDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+
   if (userFirmwareActive) return;
 
   if (Split[Global.currentPerSplit].sequencer) {
@@ -1261,6 +1275,8 @@ void paintPlayedTouchModeDisplay(byte side) {
 }
 
 void paintLowRowBendConfigDisplay(byte side) {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   switch (Split[Global.currentPerSplit].lowRowBendBehavior) {
     case lowRowBendBend:
       adaptfont_draw_string(0, 0, "BEND", Split[side].colorMain, true);
@@ -1619,6 +1635,8 @@ void paintMinUSBMIDIIntervalDisplay() {
 }
 
 void paintSensorSensitivityZDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   for (byte row = 1; row < NUMROWS; ++row) {
     clearRow(row);
   }
@@ -2177,6 +2195,8 @@ void paintGlobalSettingsDisplay() {
 }
 
 void paintCustomLedsEditor() {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   // nothing to do, everything is handled in the regular LED rendering routine
 }
 
@@ -2280,6 +2300,8 @@ void paintCalibrationDisplay() {
 }
 
 void paintResetDisplay() {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   clearDisplay();
 
   condfont_draw_string(0, 0, LINNMODEL == 200 ? "RESET" : "RSET", globalColor, true);
@@ -2289,6 +2311,8 @@ void paintResetDisplay() {
 }
 
 void paintEditAudienceMessage() {
+  DEBUGPRINT_FUNCNAME_L5();
+  
   bigfont_draw_string(audienceMessageOffset, 0, Device.audienceMessages[audienceMessageToEdit], Split[LEFT].colorMain, true, false, Split[LEFT].colorAccent);
 }
 

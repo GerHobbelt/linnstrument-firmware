@@ -22,8 +22,9 @@ limitations under the License.
 static const struct HandshakeCodes {
   const char* countDownCode;
   //constexpr const byte countDownLength = 18;
-  const char* linnGoCode; 
+  const char* linnGoCode;
   const char* ackCode;
+  const char* failCode;
   const char* linnStrumentControlCode;
   //constexpr const byte linnStrumentControlLength = 3;
 } HandshakeCodes = {
@@ -31,6 +32,7 @@ static const struct HandshakeCodes {
   //constexpr const byte countDownLength = 18;
   .linnGoCode = "LinnStruments are go!\n",
   .ackCode = "ACK\n",
+  .failCode = "FAIL\n",
   .linnStrumentControlCode = "LC\n",
   //constexpr const byte linnStrumentControlLength = 3;
 };
@@ -56,22 +58,29 @@ byte codePos = 0;
 uint32_t lastSerialMoment = 0;
 
 static const prog_uint32_t crc_table[16] = {
-    0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
-    0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
-    0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
-    0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
+  0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
+  0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
+  0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
+  0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
 };
 
-uint32_t crc_update(uint32_t crc, uint8_t data) {
-    uint8_t tbl_idx;
-    tbl_idx = crc ^ (data >> (0 * 4));
-    crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
-    tbl_idx = crc ^ (data >> (1 * 4));
-    crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
-    return crc;
+inline uint32_t crc_update(uint32_t crc, uint8_t data) {
+  uint8_t tbl_idx;
+  tbl_idx = crc ^ (data >> (0 * 4));
+  crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
+  tbl_idx = crc ^ (data >> (1 * 4));
+  crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
+  return crc;
 }
 
-uint32_t crc_byte_array(uint8_t* s, uint8_t size) {
+inline uint32_t crc_append_byte_array(uint32_t crc, const uint8_t* s, uint32_t size) {
+  for (uint32_t i = 0; i < size; ++i) {
+    crc = crc_update(crc, *s++);
+  }
+  return crc;
+}
+
+inline uint32_t crc_byte_array(const uint8_t* s, uint8_t size) {
   uint32_t crc = ~0L;
   for (uint8_t i = 0; i < size; ++i) {
     crc = crc_update(crc, *s++);
@@ -98,46 +107,46 @@ void handleSerialIO() {
   if (waitingForCommands) {
     switch (d) {
       case SendSettings:
-      {
-        serialSendSettings();
-        break;
-      }
+        {
+          serialSendSettings();
+          break;
+        }
 
       case RestoreSettings:
-      {
-        serialRestoreSettings();
-        break;
-      }
+        {
+          serialRestoreSettings();
+          break;
+        }
 
       case LightLed:
-      {
-        serialLightLed();
-        break;
-      }
+        {
+          serialLightLed();
+          break;
+        }
 
       case SendSingleProject:
-      {
-        serialSendSingleProject();
-        break;
-      }
+        {
+          serialSendSingleProject();
+          break;
+        }
 
       case SendProjects:
-      {
-        serialSendProjects();
-        break;
-      }
+        {
+          serialSendProjects();
+          break;
+        }
 
       case RestoreProject:
-      {
-        serialRestoreProject();
-        break;
-      }
+        {
+          serialRestoreProject();
+          break;
+        }
 
       default:
-      {
-        waitingForCommands = false;
-        break;
-      }
+        {
+          waitingForCommands = false;
+          break;
+        }
     }
   }
   // handle readyness countdown state
@@ -149,8 +158,7 @@ void handleSerialIO() {
         waitingForCommands = true;
         Serial.write(HandshakeCodes.linnGoCode);
       }
-    }
-    else if (d == HandshakeCodes.linnStrumentControlCode[codePos]) {
+    } else if (d == HandshakeCodes.linnStrumentControlCode[codePos]) {
       codePos++;
       if (codePos == linnStrumentControlLength) {
         codePos = 0;
@@ -160,8 +168,7 @@ void handleSerialIO() {
         updateDisplay();
         Serial.write(HandshakeCodes.ackCode);
       }
-    }
-    else {
+    } else {
       codePos = 0;
     }
   }
@@ -190,9 +197,9 @@ inline char waitForSerialCRC() {
   return ack;
 }
 
-int negotiateOutgoingCRC(byte* buffer, uint8_t size) {
+int negotiateOutgoingCRC(const byte* buffer, uint8_t size) {
   uint32_t crc = crc_byte_array(buffer, size);
-  Serial.write((byte*)&crc, sizeof(uint32_t));
+  Serial.write((const byte*)&crc, sizeof(uint32_t));
 
   char crcresponse = waitForSerialCRC();
   if (crcresponse == 0) return -1;
@@ -309,42 +316,51 @@ void serialRestoreSettings() {
 
   Serial.write(HandshakeCodes.ackCode);
 
+  boolean settingsApplied;
+
   // restore the actual settings
-  uint32_t projectOffset = SETTINGS_OFFSET;
-  const uint8_t batchsize = 96;
-  byte buff2[batchsize];
-  lastSerialMoment = millis();
-  int32_t remaining = settingsSize;
-  while (remaining > 0) {
-    int actual = min(remaining, batchsize);
-    for (byte k = 0; k < actual; ++k) {
-      if (!serialWaitForMaximumTwoSeconds()) return;
-      buff2[k] = Serial.read();
-      lastSerialMoment = millis();
+  AddressInfo dataBuffer = appDataFlashStorage.allocateSettingsStorageSpace(settingsSize);
+  if (dataBuffer.address && dataBuffer.size > 0) {
+    byte* projectOffset = dataBuffer.address;
+    const uint8_t batchsize = 96;
+    byte buff2[batchsize];
+    lastSerialMoment = millis();
+    int32_t remaining = settingsSize;
+    while (remaining > 0) {
+      int actual = min(remaining, batchsize);
+      for (byte k = 0; k < actual; ++k) {
+        if (!serialWaitForMaximumTwoSeconds()) goto fail;
+        buff2[k] = Serial.read();
+        lastSerialMoment = millis();
+      }
+
+      int crc = negotiateIncomingCRC(buff2, actual);
+      if (crc == -1) {
+        updaterBadBatchNum = (projectOffset - SETTINGS_OFFSET) / batchsize;       // the number of the batch that flunked
+        goto fail;
+      }
+      else if (crc == 0) continue;
+
+      appDataFlashStorage.writePartialData(projectOffset, buff2, actual);
+
+      remaining -= actual;
+      projectOffset += actual;
     }
 
-    int crc = negotiateIncomingCRC(buff2, actual);
-    if (crc == -1) {
-      updaterBadBatchNum = (projectOffset - SETTINGS_OFFSET) / batchsize;       // the number of the batch that flunked
-      return;
-    }
-    else if (crc == 0)  continue;
+    settingsApplied = upgradeConfigurationSettings(settingsSize, dataBuffer.address);
+    if (!settingsApplied)
+      goto fail;
 
-    dueFlashStorage.write(projectOffset, buff2, actual);
-
-    remaining -= actual;
-    projectOffset += actual;
-  }
-
-  boolean settingsApplied = upgradeConfigurationSettings(settingsSize, dueFlashStorage.readAddress(SETTINGS_OFFSET));
-
-  // activate the retrieved settings
-  if (settingsApplied) {
+    // activate the retrieved settings
     applyConfiguration();
-  }
 
-  // send the acknowledgement of success
-  Serial.write(HandshakeCodes.ackCode);
+    // send the acknowledgement of success
+    Serial.write(HandshakeCodes.ackCode);
+  } else {
+fail:
+    settingsApplied = false;
+    Serial.write(HandshakeCodes.failCode);
+  }
   delayUsec(1000000);
 
   // Turn off OS upgrade mode
@@ -394,16 +410,15 @@ inline int32_t serialSendProjectSize() {
 }
 
 void serialSendProjectRaw(int32_t projectSize, byte projectNumber) {
-  byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
-
   // send the actual settings
   const uint8_t batchsize = 96;
 
-  byte prjIndex = dueFlashStorage.read(PROJECT_INDEX_OFFSET(marker, projectNumber));
-  uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + prjIndex * SINGLE_PROJECT_SIZE;
-  int32_t remaining = projectSize;
+  const AddressInfo flashInfo = appDataFlashStorage.getProjectAddressInfo(projectNumber);
+  if (!flashInfo.address || flashInfo.size == 0)
+    return;
 
-  byte* src = (byte*)dueFlashStorage.readAddress(projectOffset);
+  int32_t remaining = flashInfo.size;
+  const byte* src = flashInfo.address;
   while (remaining > 0) {
     int actual = min(remaining, batchsize);
     Serial.write(src, actual);
@@ -411,8 +426,8 @@ void serialSendProjectRaw(int32_t projectSize, byte projectNumber) {
     if (!waitForSerialCheck()) return;
 
     int crc = negotiateOutgoingCRC(src, actual);
-    if (crc == -1)      return;
-    else if (crc == 0)  continue;
+    if (crc == -1)     return;
+    else if (crc == 0) continue;
 
     remaining -= actual;
     src += actual;
@@ -428,7 +443,7 @@ void serialSendSingleProject() {
   lastSerialMoment = millis();
 
   if (!serialWaitForMaximumTwoSeconds()) return;
-  
+
   uint8_t projectNumber = Serial.read();
   Serial.write(HandshakeCodes.ackCode);
 
@@ -459,7 +474,7 @@ void serialSendProjects() {
 }
 
 
-void serialRestoreProject() {
+static boolean serialRestoreProject___L() {
   Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
@@ -467,16 +482,16 @@ void serialRestoreProject() {
 
   lastSerialMoment = millis();
 
-  if (!serialWaitForMaximumTwoSeconds()) return;
+  if (!serialWaitForMaximumTwoSeconds()) return false;
   uint8_t version = Serial.read();
-  if (version < 9) return;
+  if (version < 9) return false;
   Serial.write(HandshakeCodes.ackCode);
   lastSerialMoment = millis();
 
   // retrieve the size of a project
   byte buff1[sizeof(int32_t)];
   for (byte i = 0; i < 4; ++i) {
-    if (!serialWaitForMaximumTwoSeconds()) return;
+    if (!serialWaitForMaximumTwoSeconds()) return false;
 
     // read the next byte of the project size
     buff1[i] = Serial.read();
@@ -486,43 +501,61 @@ void serialRestoreProject() {
   int32_t projectSize;
   memcpy(&projectSize, buff1, sizeof(int32_t));
 
-  if (projectSize != sizeof(SequencerProject)) return;
+  if (projectSize != sizeof(SequencerProject)) return false;
 
   Serial.write(HandshakeCodes.ackCode);
 
-  if (!serialWaitForMaximumTwoSeconds()) return;
+  if (!serialWaitForMaximumTwoSeconds()) return false;
 
   uint8_t p = Serial.read();
   Serial.write(HandshakeCodes.ackCode);
 
   // write the actual project
-  byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
-  byte prjIndex = dueFlashStorage.read(PROJECT_INDEX_OFFSET(marker, p));
-  uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + prjIndex * SINGLE_PROJECT_SIZE;
+  AddressInfo flashInfo = appDataFlashStorage.allocateProjectStorageSpace(p, projectSize);
+  if (flashInfo.address && flashInfo.size > 0) {
+    const uint8_t batchsize = 96;
+    byte buff2[batchsize];
+    lastSerialMoment = millis();
+    byte* dst = flashInfo.address;
+    int32_t remaining = flashInfo.size;
+    while (remaining > 0) {
+      int actual = min(remaining, batchsize);
+      for (byte k = 0; k < actual; ++k) {
+        if (!serialWaitForMaximumTwoSeconds()) return false;
+        buff2[k] = Serial.read();
+        lastSerialMoment = millis();
+      }
 
-  const uint8_t batchsize = 96;
-  byte buff2[batchsize];
-  lastSerialMoment = millis();
-  int32_t remaining = projectSize;
-  while (remaining > 0) {
-    int actual = min(remaining, batchsize);
-    for (byte k = 0; k < actual; ++k) {
-      if (!serialWaitForMaximumTwoSeconds()) return;
-      buff2[k] = Serial.read();
-      lastSerialMoment = millis();
+      int crc = negotiateIncomingCRC(buff2, actual);
+      if (crc == -1) return false;
+      else if (crc == 0) continue;
+
+      appDataFlashStorage.writePartialData(dst, buff2, actual);
+
+      remaining -= actual;
+      dst += actual;
     }
 
-    int crc = negotiateIncomingCRC(buff2, actual);
-    if (crc == -1)      return;
-    else if (crc == 0)  continue;
+    // validate loaded project
+    if (!checkProjectIntegrity(flashInfo))
+      return false;
 
-    dueFlashStorage.write(projectOffset, buff2, actual);
+    appDataFlashStorage.markSectionAsValid(flashInfo);
 
-    remaining -= actual;
-    projectOffset += actual;
+    // finished
+    Serial.write(HandshakeCodes.ackCode);
+
+    return true;
   }
+  return false;
+}
 
-  // finished
-  Serial.write(HandshakeCodes.ackCode);
+void serialRestoreProject() {
+  // __try:
+  if (!serialRestoreProject___L()) {
+    // __catch/fail:
+    Serial.write(HandshakeCodes.failCode);
+  }
+  // __always:
   delayUsec(500000);
 }

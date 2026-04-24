@@ -130,7 +130,7 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 #include "ls_debug.h"
 #include "ls_channelbucket.h"
 #include "ls_midi.h"
-
+#include "ls_alignToWord.h"
 
 /******************************************** CONSTANTS ******************************************/
 
@@ -354,7 +354,7 @@ constexpr const int LED_PATTERNS = 3;
 // bits 3-6: 4 bits to select the color: 0:off, 1:red, 2:yellow, 3:green, 4:cyan, 5:blue, 6:magenta, etc.
 // bits 0-2: 0:off, 1: on, 2: pulse
 const unsigned long LED_LAYER_SIZE = MAXCOLS * MAXROWS;
-const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS+1) * LED_LAYER_SIZE;
+const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS + 1) * LED_LAYER_SIZE;
 
 /******************************************** VELOCITY *******************************************/
 
@@ -406,9 +406,9 @@ byte sensorSplit = 0;                       // the split of the currently read t
 // saved as the specific column and row for the focus cell.
 // If in 1Ch/Poly mode, continuous X and Y messages are sent only from movements within the focused cell.
 // If in 1Ch/Chan mode, continuous X, Y and Z messages are sent only from movements within the focused cell.
-struct __attribute__ ((packed)) FocusCell {
-  byte col:5;
-  byte row:3;
+struct __attribute__((packed)) FocusCell {
+  byte col : 5;
+  byte row : 3;
 };
 FocusCell focusCell[NUMSPLITS][16];             // 2 splits and 16 MIDI channels for each split
 
@@ -425,7 +425,7 @@ enum TouchState {
   touchedCell = 3
 };
 
-struct __attribute__ ((packed)) TouchInfo {
+struct __attribute__((packed)) TouchInfo {
   void shouldRefreshData();                  // indicate that the X, Y and Z data should be refreshed
   unsigned short rawX();                     // ensure that X is updated to the latest scan and return its raw value
   short calibratedX();                       // ensure that X is updated to the latest scan and return its calibrated value
@@ -642,13 +642,13 @@ enum CalibrationPhase {
 };
 byte calibrationPhase = calibrationInactive;
 
-struct __attribute__ ((packed)) CalibrationSample {
-  unsigned short minValue:12;
-  unsigned short maxValue:12;
-  byte pass:4;
+struct __attribute__((packed)) CalibrationSample {
+  unsigned short minValue : 12;
+  unsigned short maxValue : 12;
+  byte pass : 4;
 };
-CalibrationSample calSampleRows[MAXCOLS][4]; // store four rows of calibration measurements
-CalibrationSample calSampleCols[9][MAXROWS]; // store nine columns of calibration measurements
+CalibrationSample calSampleRows[MAXCOLS][4];  // store four rows of calibration measurements
+CalibrationSample calSampleCols[9][MAXROWS];  // store nine columns of calibration measurements
 
 struct CalibrationX {
   int32_t fxdMeasuredX;
@@ -656,9 +656,9 @@ struct CalibrationX {
   int32_t fxdRatio;
 };
 
-struct __attribute__ ((packed)) CalibrationY {
-  unsigned short minY:12;
-  unsigned short maxY:12;
+struct __attribute__((packed)) CalibrationY {
+  unsigned short minY : 12;
+  unsigned short maxY : 12;
   int32_t fxdRatio;
 };
 
@@ -705,6 +705,13 @@ enum LowRowCCBehavior {
   lowRowCCHold = 0,
   lowRowCCFader = 1,
   lowRowJoystick = 2   // microLinn
+};
+
+enum SeqFaderRowBehavior {
+  seqFaderTimbre = 0,
+  seqFaderPitchOffset = 1,
+  seqFaderDuration = 2,
+  seqFaderVelocity = 3,
 };
 
 enum MidiMode {
@@ -888,7 +895,7 @@ struct DeviceSettings {
   boolean serialMode;                             // 0 = normal MIDI I/O, 1 = Arduino serial mode for OS update and serial monitor
 //byte padding1;                                  // added by the compiler, declaring it explicitly helps with the updating and bulk importing code
 //byte padding2;                                  //   "
-  CalibrationX calRows[MAXCOLS+1][4];             // store four rows of calibration data
+  CalibrationX calRows[MAXCOLS + 1][4];           // store four rows of calibration data
   CalibrationY calCols[9][MAXROWS];               // store nine columns of calibration data
   uint32_t calCrc;                                // the CRC check value of the calibration data to see if it's still valid
   boolean calCrcCalculated;                       // indicates whether the CRC of the calibration was calculated, previous firmware versions didn't
@@ -1046,10 +1053,15 @@ enum SequencerStepSize {
   StepFourthTriplet = 16,
   StepEighthDotted = 18,
   StepFourth = 24,
-  StepFourthDotted = 36
+  StepFourthDotted = 36,
+  StepTwosTriplet = 32,
+  StepTwos = 48,
+  StepTwosDotted = 72,
+  StepOnesTriplet = 64,
+  StepOnes = 96,
 };
 
-struct StepEvent {
+struct __attribute__((packed)) StepEvent {
   boolean hasData();
   void clear();
 
@@ -1076,40 +1088,88 @@ struct StepEvent {
   void operator=(const StepEvent& e);
 
   // the bit-wise arrangement is like below,
-  // we can't rely on structure packing since
-  // it will align each element on byte boundaries
-  // byte note:7;                // 0 to 127
-  // byte duration:10;           // 1 to 768 in 24 PPQ ticks
-  // byte velocity:7;            // 1 to 127
-  // signed char pitchOffset:8;  // -50 to 50 cents
-  // byte timbre:7;              // 0 to 127
-  // byte row:3;                 // 1 to 7
-  // byte microLinnGroup:3       // group 0 = edosteps 0-127, group 1 = 128-255, group 2 = 256-383... group 8 = 896-1023
-  // (3 unused bits per event)
-  byte data[6];
+  // while the struct hierarchy is marked as 'packed' as well
+  // to ensure that each StepEvent in any array is placed at a
+  // BYTE boundary, rather than the default word boundary for classes.
+  struct __attribute__((packed)) StepEventData {
+    unsigned short note : 7 + 3;       // 0 to 127 | microLinnGroup (group 0 = edosteps 0-127, group 1 = 128-255, group 2 = 256-383... group 8 = 896-1023)
+    //unsigned short microLinnGroup : 3;       // group 0 = edosteps 0-127, group 1 = 128-255, group 2 = 256-383... group 8 = 896-1023
+    unsigned short duration : 10;  // 1 to 768 in 24 PPQ ticks
+    unsigned short velocity : 7;   // 1 to 127
+    signed short pitchOffset : 8;  // -50 to 50 cents
+    unsigned short timbre : 7;     // 0 to 127
+    unsigned short row : 3;        // 1 to 7
+                                   // ^^^^^^^^^ total: 45 bits (5.625 bytes => cost: 6 bytes)
+                                   //           (3 unused bits per event)
+
+#if 0  // TODO / future music
+
+    unsigned short probability : 3;         // a la Novation MK4 & Circuit Tracks Groovebox: 12.5% steps: 100% .. 12.5%
+    unsigned short microstepOffset : 3;     // novation has 6 microsteps per step; I prefer 12 or more but we are running at SequencerStepSize, which is 1/6th of a 1/16th, so exactly like Novation.
+    unsigned short legato : 1;              // legato with next note. NOTE: could also be encoded as a 'magic value' in duration field?
+    // unsigned short sostenuto : 1;        // sustain playing(!) notes <-- this is a global config setting; it's results while recording should become visible in the recorded note durations...
+    unsigned short aftertouchEnvelope : 5;  // selected ADSR envelope for aftertouch output: 0(none), 1..31
+    unsigned short isChord : 2;             // 0: no chord. 1: `timbre`+`legato`+`microstepOffset` determine the chord pattern to play, based at `note` in `Sequence.Scale`: chord X, inversion I, bank B. 
+                                            // NOTE: technically, our chords and arps are (mini-)sequences, thus interchangeable.
+                                            // 2: ditto as 1, but now it's an ARP pattern we want played for the duration.
+    // ^^^^^^^^^ total: 42+14=56 bits => cost: 7 bytes per note step record.
+
+#endif
+  };
+
+#if 0  // TODO / future music
+
+  struct __attribute__ ((packed)) ChordEventData {
+    unsigned short rootNote : 7;            // 0 to 127
+    unsigned short duration : 10;           // 1 to 768 in 24 PPQ ticks
+    unsigned short velocity : 7;            // 1 to 127
+    signed short   pitchOffset : 8;         // -96 to 96 semitones
+    unsigned short row : 3;                 // 1 to 7
+
+    unsigned short chordId : 56 - 45;       // # of the chord/arp in the chord/arp pattern bank; high numbers are patterns in ROM.
+
+    unsigned short probability : 3;         // a la Novation MK4 & Circuit Tracks Groovebox: 12.5% steps: 100% .. 12.5%
+    unsigned short aftertouchEnvelope : 5;  // selected ADSR envelope for aftertouch output: 0(none), 1..31
+    unsigned short isChord : 2;             // 0: no chord. 1: `timbre`+`legato`+`microstepOffset` determine the chord pattern to play, based at `note` in `Sequence.Scale`: chord X, inversion I, bank B. 
+                                            // NOTE: technically, our chords and arps are (mini-)sequences, thus interchangeable.
+                                            // 2: ditto as 1, but now it's an ARP pattern we want played for the duration.
+    // ^^^^^^^^^ total: 56 bits => cost: 7 bytes per note step record.
+  };
+
+  union  __attribute__ ((packed)) EventData {
+    StepEventData  note;
+    ChordEventData chord;
+  } data;
+
+#else
+
+  StepEventData data;
+
+#endif
 };
-struct StepData {
+struct __attribute__((packed)) StepData {
   void clear();
 
   void operator=(const StepData& d);
-  
+
   StepEvent events[MAX_SEQUENCER_STEP_EVENTS];  // the events for each step
 };
-struct SequencerPattern {
+struct __attribute__((packed)) SequencerPattern {
   void clear();
 
   void operator=(const SequencerPattern& p);
 
   StepData steps[MAX_SEQUENCER_STEPS];
-  SequencerStepSize stepSize;             // see SequencerStepSize
-  SequencerDirection sequencerDirection;  // see SequencerDirection
-  boolean loopScreen;                     // on or off
-  boolean swing;                          // on or off
-  byte length;                            // between 1 to 32 steps
+
+  SequencerStepSize stepSize : 7;             // see SequencerStepSize, 1..96
+  boolean loopScreen : 1;                     // on or off
+  SequencerDirection sequencerDirection : 2;  // see SequencerDirection, 0..2
+  boolean swing : 1;                          // on or off
+  byte length : 5;                            // between 1 to 32 steps
 };
 struct StepSequencer {
   SequencerPattern patterns[MAX_SEQUENCER_PATTERNS];  // patterns available for each sequencer
-  byte seqDrumNotes[SEQ_DRUM_NOTES];                  // note numbers from 0 to 127
+  byte seqDrumNotes[SEQ_DRUM_NOTES];                  // note numbers from 0 to 127, mapping drum notes to MIDI notes
 };
 struct SequencerProject {
   StepSequencer sequencer[MAX_SEQUENCERS];            // the sequencers available in a project
@@ -1121,7 +1181,7 @@ struct SequencerProject {
 struct Configuration {
   DeviceSettings device;
   PresetSettings settings;
-  PresetSettings preset[NUMPRESETS];
+  PresetSettings preset[NUMPRESETS];  // TODO: move off to flash, load as necessary...
   SequencerProject project;
 };
 struct Configuration config;
@@ -1138,7 +1198,7 @@ struct Configuration config;
 #define SWITCH_MCU_PINS    secretSwitch[6]
 #define SWITCH_TOUCHFRAME  secretSwitch[7] 
 
-boolean secretSwitch[SECRET_SWITCHES] = {0};  // The secretSwitch* values are controlled by cells in column 18
+boolean secretSwitch[SECRET_SWITCHES] = { 0 };  // The secretSwitch* values are controlled by cells in column 18
 
 
 /***************************************** OPERATING MODE ****************************************/
@@ -1153,44 +1213,23 @@ OperatingMode operatingMode = modePerformance;
 
 /************************************** FLASH STORAGE LAYOUT *************************************/
 
-static constexpr inline int alignToWord32Boundary(int value) {
-#if 0
-  if (value % 4 == 0) {
-    return value;
-  }
-
-  return ((value / 4) + 1) * 4;
-#else
-  return int((value + 3) / 4) * 4;
-#endif
-}
-
-constexpr const int PROJECTS_OFFSET = 4;
-constexpr const int PROJECT_VERSION_MARKER_SIZE = 4;
-constexpr const int PROJECT_INDEXES_COUNT = 20;
-constexpr const int PROJECTS_MARKERS_SIZE = alignToWord32Boundary(PROJECT_VERSION_MARKER_SIZE + 2 * PROJECT_INDEXES_COUNT);    // one version marker, two series on indexes for project references
 constexpr const int SINGLE_PROJECT_SIZE = alignToWord32Boundary(sizeof(SequencerProject));
-constexpr const int ALL_PROJECTS_SIZE = PROJECTS_MARKERS_SIZE + (MAX_PROJECTS + 1)*SINGLE_PROJECT_SIZE;
-constexpr const int SETTINGS_OFFSET = PROJECTS_OFFSET + alignToWord32Boundary(ALL_PROJECTS_SIZE);
-
-#define PROJECT_INDEX_OFFSET(marker, index)   (PROJECTS_OFFSET + PROJECT_VERSION_MARKER_SIZE + marker * PROJECT_INDEXES_COUNT + index)
 
 
 /**************************************** FIXED POINT MATH ***************************************/
 
 #define FXD_FBITS        8
 #define FXD_FROM_INT(a)  (int32_t)((a) << FXD_FBITS)
-#define FXD_MAKE(a)      (int32_t)((a*(1 << FXD_FBITS)))
+#define FXD_MAKE(a)      (int32_t)((a * (1 << FXD_FBITS)))
 
 inline int FXD_TO_INT(int32_t a) {
-  a = a + ((a & (int32_t)1 << (FXD_FBITS-1)) << 1);   // rounding instead of truncation
-  return ((a) >> FXD_FBITS);
+  a += ((a & (int32_t)1 << (FXD_FBITS - 1)) << 1);  // rounding instead of truncation
+  return (a >> FXD_FBITS);
 }
 
 inline int32_t FXD_MUL(int32_t a, int32_t b) {
   int32_t t = a * b;
-  t = t + ((t & (int32_t)1 << (FXD_FBITS-1)) << 1);   // rounding instead of truncation
-  return t >> FXD_FBITS;
+  return FXD_TO_INT(t);
 }
 
 constexpr inline int32_t FXD_DIV(int32_t a, int32_t b) {
@@ -1201,17 +1240,16 @@ constexpr inline int32_t FXD_DIV(int32_t a, int32_t b) {
 
 #define FXD4_FBITS        4
 #define FXD4_FROM_INT(a)  (int32_t)((a) << FXD4_FBITS)
-#define FXD4_MAKE(a)      (int32_t)((a*(1 << FXD4_FBITS)))
+#define FXD4_MAKE(a)      (int32_t)((a * (1 << FXD4_FBITS)))
 
 inline int FXD4_TO_INT(int32_t a) {
-  a = a + ((a & (int32_t)1 << (FXD4_FBITS-1)) << 1);   // rounding instead of truncation
-  return ((a) >> FXD4_FBITS);
+  a += ((a & (int32_t)1 << (FXD4_FBITS - 1)) << 1);  // rounding instead of truncation
+  return (a >> FXD4_FBITS);
 }
 
 inline int32_t FXD4_MUL(int32_t a, int32_t b) {
   int32_t t = a * b;
-  t = t + ((t & (int32_t)1 << (FXD4_FBITS-1)) << 1);   // rounding instead of truncation
-  return t >> FXD4_FBITS;
+  return FXD4_TO_INT(t);
 }
 
 inline int32_t FXD4_DIV(int32_t a, int32_t b) {
@@ -1239,7 +1277,7 @@ const int32_t FXD_CALY_FULL_UNIT = FXD_FROM_INT(127);     // range of 7-bit CC
 
 /*************************************** OTHER RUNTIME STATE *************************************/
 
-DueFlashStorage dueFlashStorage;                    // access to the persistent flash storage
+AppDataFlashStorage appDataFlashStorage;  // access to the persistent flash storage
 
 boolean setupDone = false;                          // indicates whether the setup routine is finished
 
@@ -1423,7 +1461,9 @@ boolean switchPressAtStartup(byte switchRow) {
   sensorRow = switchRow;
   updateSensorCell();
   // initially we need read Z a few times for the readings to stabilize
-  readZ(); readZ(); unsigned short switchZ = readZ();
+  readZ();
+  readZ();
+  unsigned short switchZ = readZ();
   if (switchZ > Device.sensorLoZ + 128) {
     return true;
   }
@@ -1432,7 +1472,7 @@ boolean switchPressAtStartup(byte switchRow) {
 
 void activateSleepMode() {
   clearSwitches();
-  disableLedDisplay(); // clearDisplayImmediately();
+  disableLedDisplay();  // clearDisplayImmediately();
   setDisplayMode(displaySleep);
 }
 
@@ -1441,8 +1481,7 @@ void applyLedInterval() {
   if (Device.operatingLowPower > 0) {
     mainLoopDivider = LOWPOWER_MAINLOOP_DIVIDER;
     ledRefreshInterval = LOWPOWER_LED_REFRESH;
-  }
-  else {
+  } else {
     mainLoopDivider = DEFAULT_MAINLOOP_DIVIDER;
     ledRefreshInterval = DEFAULT_LED_REFRESH;
   }
@@ -1452,8 +1491,7 @@ void applyMidiInterval() {
   if (isMidiUsingDIN()) {
     // 256 microseconds between bytes on Serial ports
     midiMinimumInterval = 256;
-  }
-  else {
+  } else {
     midiMinimumInterval = Device.minUSBMIDIInterval;
   }
 
@@ -1524,7 +1562,7 @@ void setup() {
   /*!!*/  // initialize the SPI port for setting one column of LEDs
   /*!!*/  SPI.begin(SPI_LEDS);
   /*!!*/  SPI.setDataMode(SPI_LEDS, SPI_MODE0);
-          SPI.setDataWidth(SPI_LEDS, SPI_CSR_BITS_16_BIT);
+  SPI.setDataWidth(SPI_LEDS, SPI_CSR_BITS_16_BIT);
   /*!!*/  SPI.setClockDivider(SPI_LEDS, 4);                   // max clock is about 20 mHz. 4 = 21 mHz. Transferring all 4 bytes takes 1.9 uS.
   /*!!*/
 
@@ -1535,7 +1573,7 @@ void setup() {
   /*!!*/  SPI.setDataMode(SPI_SENSOR, SPI_MODE0);
   /*!!*/  SPI.setClockDivider(SPI_SENSOR, 4);                 // set clock speed to 84/4 = 21 mHz. Max clock is 25mHz @ 4.5v
   /*!!*/  selectSensorCell(0, 0, READ_Z);                     // set its analog switches to read column 0, row 0 and to read pressure
-            SPI.setDataWidth(SPI_SENSOR, SPI_CSR_BITS_16_BIT);
+  SPI.setDataWidth(SPI_SENSOR, SPI_CSR_BITS_16_BIT);
 
   /*!!*/
   /*!!*/  // initialize the SPI input port for reading the TI ADS7883 ADC
@@ -1543,7 +1581,7 @@ void setup() {
   /*!!*/  SPI.setDataMode(SPI_ADC, SPI_MODE0);
   /*!!*/  SPI.setClockDivider(SPI_ADC, 4);                    // set speed to 84/4 = 21 mHz. Max clock for ADC is 32 mHz @ 2.7-4.5v, 48mHz @ 4.5-5.5v
   /*!!*/
-          SPI.setDataWidth(SPI_ADC, SPI_CSR_BITS_16_BIT);
+  SPI.setDataWidth(SPI_ADC, SPI_CSR_BITS_16_BIT);
 
   /*!!*/  // Initialize the output enable line for the 2 LED display chips
   /*!!*/  pinMode(37, OUTPUT);
@@ -1553,7 +1591,7 @@ void setup() {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
   /*!!*/    if (switchPressAtStartup(SWITCH_2_ROW)) {
   /*!!*/      globalReset = true;
-  /*!!*/      dueFlashStorage.write(0, 254);
+  /*!!*/      appDataFlashStorage.factoryReset();
   /*!!*/    }
   /*!!*/    // if only the global settings button is pressed at startup, activate firmware upgrade mode
   /*!!*/    else {
@@ -1632,8 +1670,8 @@ void setup() {
   */
   REG_ADC_WPMR = (0x414443 << 8) | 0;       // WPEN = 0: enable write access
   REG_ADC_ACR = 0 | (0b00 << 8) | (1 << 4); // IBCTL = 00, TSON = 1 :: TSON: Temperature Sensor On
-  REG_ADC_WPMR = (0x414443 << 8) | 1;       // WPEN = 1: disable write 
-  
+  REG_ADC_WPMR = (0x414443 << 8) | 1;       // WPEN = 1: disable write
+
 #if 0
 // GerH: if *I* read the datasheet correctly, this anolog I/O activity requires REG_ADC_WPMR access to be set to write-OK iff
 // we want to configure our ADC clock and/or set up a ADC channel like this.
@@ -1733,10 +1771,10 @@ uint32_t adc_get_latest_value(const Adc *p_adc)
 
 	return ulValue;
 }
-#endif // 0
+#endif  // 0
 
 
-#endif // 0
+#endif  // 0
 
 
 
@@ -1752,7 +1790,7 @@ uint32_t adc_get_latest_value(const Adc *p_adc)
   // initialize input pins for 2 foot switches
   pinMode(FOOT_SW_LEFT, INPUT_PULLUP);
   pinMode(FOOT_SW_RIGHT, INPUT_PULLUP);
-  
+
   // initialize the calibration data for it to be a no-op, unless it's loaded from a previous calibration sample result
   initializeCalibrationData();
 
@@ -1827,37 +1865,37 @@ uint32_t adc_get_latest_value(const Adc *p_adc)
   }
 
 #ifdef DISPLAY_XFRAME_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_XFRAME = true;
 #endif
 
 #ifdef DISPLAY_YFRAME_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_YFRAME = true;
 #endif
 
 #ifdef DISPLAY_ZFRAME_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_ZFRAME = true;
 #endif
 
 #ifdef DISPLAY_SURFACESCAN_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_SURFACESCAN = true;
 #endif
 
 #ifdef DISPLAY_FREERAM_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_FREERAM = true;
 #endif
 
 #ifdef DISPLAY_DEBUGMIDI_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_DEBUGMIDI = true;
   debugLevel = 5;
@@ -1904,8 +1942,7 @@ inline void modeLoopPerformance() {
       setDisplayMode(displayNormal);                             // this should make the reset operation feel more predictable
       updateDisplay();
     }
-  }
-  else {
+  } else {
     TouchState previousTouch = sensorCell->touched;                              // get previous touch status of this cell
 
     boolean canShortCircuit = false;
@@ -1913,13 +1950,11 @@ inline void modeLoopPerformance() {
     if (previousTouch != touchedCell && previousTouch != ignoredCell &&
         sensorCell->isMeaningfulTouch()) {                                       // if touched now but not before, it's a new touch
       canShortCircuit = handleNewTouch();
-    }
-    else if (previousTouch == touchedCell && sensorCell->isActiveTouch()) {      // if touched now and touched before
-      canShortCircuit = handleXYZupdate();                                       // handle any X, Y or Z movements
-    }
-    else if (previousTouch != untouchedCell && !sensorCell->isActiveTouch() &&   // if not touched now but touched before, it's been released
-             sensorCell->isPastDebounceDelay()) {
-        handleTouchRelease();
+    } else if (previousTouch == touchedCell && sensorCell->isActiveTouch()) {     // if touched now and touched before
+      canShortCircuit = handleXYZupdate();                                        // handle any X, Y or Z movements
+    } else if (previousTouch != untouchedCell && !sensorCell->isActiveTouch() &&  // if not touched now but touched before, it's been released
+               sensorCell->isPastDebounceDelay()) {
+      handleTouchRelease();
     }
 
     if (canShortCircuit) {

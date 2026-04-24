@@ -118,15 +118,6 @@ inline void performContinuousTasks(unsigned long nowMicros) {
       continuousFootSwitches = false;
     }
 
-#if 0 // TODO [GHo]
-    static boolean continuousRefreshGlobalSettingsDisplay = false;
-    if (!continuousRefreshGlobalSettingsDisplay) {
-      continuousRefreshGlobalSettingsDisplay = true;
-      checkRefreshGlobalSettingsDisplay(nowMicros);
-      continuousRefreshGlobalSettingsDisplay = false;
-    }
-#endif
-
     static boolean continuousSleep = false;
     if (!continuousSleep) {
       continuousSleep = true;
@@ -243,7 +234,7 @@ inline void checkStopBlinkingLeds(unsigned long now) {
         if (p == Device.lastLoadedPreset) {
           color = COLOR_CYAN;
         }
-        int row = p+2;
+        int row = p + 2;
         if (row >= 6) row -= 6;
         setLed(getPresetDisplayColumn(), row, color, cellOn);
         presetBlinkStart[p] = 0;
@@ -259,7 +250,7 @@ inline void checkStopBlinkingLeds(unsigned long now) {
         if (p == Device.lastLoadedProject) {
           color = COLOR_CYAN;
         }
-        setLed(6 + p%4, 2 + p/4, color, cellOn);
+        setLed(6 + p % 4, 2 + p / 4, color, cellOn);
         projectBlinkStart[p] = 0;
       }
     }
