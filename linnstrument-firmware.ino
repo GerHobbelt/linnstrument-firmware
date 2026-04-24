@@ -1084,14 +1084,13 @@ constexpr const int SINGLE_PROJECT_SIZE = alignToWord32Boundary(sizeof(Sequencer
 #define FXD_MAKE(a)      (int32_t)((a * (1 << FXD_FBITS)))
 
 inline int FXD_TO_INT(int32_t a) {
-  a = a + ((a & (int32_t)1 << (FXD_FBITS - 1)) << 1);  // rounding instead of truncation
-  return ((a) >> FXD_FBITS);
+  a += ((a & (int32_t)1 << (FXD_FBITS - 1)) << 1);  // rounding instead of truncation
+  return (a >> FXD_FBITS);
 }
 
 inline int32_t FXD_MUL(int32_t a, int32_t b) {
   int32_t t = a * b;
-  t = t + ((t & (int32_t)1 << (FXD_FBITS - 1)) << 1);  // rounding instead of truncation
-  return t >> FXD_FBITS;
+  return FXD_TO_INT(t);
 }
 
 constexpr inline int32_t FXD_DIV(int32_t a, int32_t b) {
@@ -1105,14 +1104,13 @@ constexpr inline int32_t FXD_DIV(int32_t a, int32_t b) {
 #define FXD4_MAKE(a)      (int32_t)((a * (1 << FXD4_FBITS)))
 
 inline int FXD4_TO_INT(int32_t a) {
-  a = a + ((a & (int32_t)1 << (FXD4_FBITS - 1)) << 1);  // rounding instead of truncation
-  return ((a) >> FXD4_FBITS);
+  a += ((a & (int32_t)1 << (FXD4_FBITS - 1)) << 1);  // rounding instead of truncation
+  return (a >> FXD4_FBITS);
 }
 
 inline int32_t FXD4_MUL(int32_t a, int32_t b) {
   int32_t t = a * b;
-  t = t + ((t & (int32_t)1 << (FXD4_FBITS - 1)) << 1);  // rounding instead of truncation
-  return t >> FXD4_FBITS;
+  return FXD4_TO_INT(t);
 }
 
 inline int32_t FXD4_DIV(int32_t a, int32_t b) {
