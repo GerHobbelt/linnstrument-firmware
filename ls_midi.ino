@@ -53,8 +53,8 @@ unsigned long lastMidiClockTime = 0;                       // the last time we r
 int32_t fxd4MidiTempoAverage = fxd4CurrentTempo;           // the current average of the MIDI clock tempo, in fixes precision
 byte midiClockMessageCount = 0;                            // the number of MIDI clock messages we've received, from 1 to 24, with 0 meaning none has been received yet
 byte initialMidiClockMessageCount = 0;                     // the first MIDI clock messages, counted until the minimum number of samples have been received
-bool receivedSongPositionPointer = false;                  // tracks whether a song position pointer message was received before the MIDI clock start
-bool standaloneMidiClockRunning = false;                   // indicates whether the MIDI Clock is sending data in a standalone fashion, without sequencer
+boolean receivedSongPositionPointer = false;               // tracks whether a song position pointer message was received before the MIDI clock start
+boolean standaloneMidiClockRunning = false;                // indicates whether the MIDI Clock is sending data in a standalone fashion, without sequencer
 
 byte lastRpnMsb = 127;
 byte lastRpnLsb = 127;
@@ -286,6 +286,7 @@ void handleMidiInput(unsigned long nowMicros) {
     }
 
     int split = determineSplitForChannel(midiChannel);
+    int ccSplit = determineControlChangeSplitForChannel(midiChannel);
 
     if (midiStatus == MIDISongPositionPointer) {
       receivedSongPositionPointer = true;
@@ -343,33 +344,109 @@ void handleMidiInput(unsigned long nowMicros) {
         break;
       }
 
+      case MIDIChannelPressure:
+      {
+        if (ccSplit != -1) {
+          boolean handled = false;
+
+          for (byte f = 0; f < 8; ++f) {
+            unsigned short cc = Split[ccSplit].ccForFader[f];
+            if (cc == 128) {
+              ccFaderValues[ccSplit][cc] = midiData1;
+              handled = true;
+            }
+          }
+
+          if (handled)
+          {
+            if ((displayMode == displayNormal && Split[ccSplit].ccFaders) || displayMode == displayVolume) {
+              updateDisplay();
+            }
+          }
+        }
+
+        break;
+      }
+
       case MIDIControlChange:
       {
+        // Prioritize handling NRPN / RPN messages
+        boolean received_rpn_nrpn = false;
         switch (midiData1) {
           case 6:
             // if an NRPN or RPN parameter was selected, start constituting the data
             // otherwise control the fader of MIDI CC 6
-            if ((lastRpnMsb != 127 || lastRpnLsb != 127) ||
-                (lastNrpnMsb != 127 || lastNrpnLsb != 127)) {
+            if (hasValidRpn() || hasValidNrpn()) {
               lastDataMsb = midiData2;
-              break;
-            }
-          case 1:
-          case 2:
-          case 3:
-          case 4:
-          case 5:
-          case 7:
-          case 8:
-            if (split != -1) {
-              unsigned short ccForFader = Split[split].ccForFader[midiData1-1];
-              ccFaderValues[split][ccForFader] = midiData2;
-              if ((displayMode == displayNormal && Split[split].ccFaders) ||
-                  displayMode == displayVolume) {
-                updateDisplay();
-              }
+              received_rpn_nrpn = true;
             }
             break;
+          case 38:
+            if (hasValidRpn()) {
+              lastDataLsb = midiData2;
+              receivedRpn(midiChannel, (lastRpnMsb<<7)+lastRpnLsb, (lastDataMsb<<7)+lastDataLsb);
+              received_rpn_nrpn = true;
+            }
+            else if (hasValidNrpn()) {
+              lastDataLsb = midiData2;
+              receivedNrpn((lastNrpnMsb<<7)+lastNrpnLsb, (lastDataMsb<<7)+lastDataLsb, midiChannel);
+              received_rpn_nrpn = true;
+            }
+            break;
+          case 98:
+            lastNrpnLsb = midiData2;
+            lastRpnLsb = 127;
+            lastRpnMsb = 127;
+            break;
+          case 99:
+            lastNrpnMsb = midiData2;
+            lastRpnLsb = 127;
+            lastRpnMsb = 127;
+            break;
+          case 100:
+            lastRpnLsb = midiData2;
+            lastNrpnLsb = 127;
+            lastNrpnMsb = 127;
+            break;
+          case 101:
+            lastRpnMsb = midiData2;
+            lastNrpnLsb = 127;
+            lastNrpnMsb = 127;
+            break;          
+        }
+
+        if (received_rpn_nrpn) {
+          break;
+        }
+
+        // try to match incoming CC message to the faders that generate CCs
+        // if faders are set up to handle a particular incoming CC,
+        // these CCs will update the faders and not control any of the
+        // LinnStrument features
+        if (ccSplit != -1) {
+          boolean handled = false;
+
+          for (byte f = 0; f < 8; ++f) {
+            unsigned short cc = Split[ccSplit].ccForFader[f];
+            if (cc == midiData1) {
+              ccFaderValues[ccSplit][cc] = midiData2;
+              handled = true;
+            }
+          }
+
+          // if the CC was handled by faders, update the display if needed
+          if (handled)
+          {
+            if ((displayMode == displayNormal && Split[ccSplit].ccFaders) || displayMode == displayVolume) {
+              updateDisplay();
+            }
+            break;
+          }
+        }
+
+        // handle the CC message by trying to match it to any of the
+        // supported incoming MIDI CC messages
+        switch (midiData1) {
           case 9:
             if (userFirmwareActive && midiChannel < NUMROWS && (midiData2 == 0 || midiData2 == 1)) {
               userFirmwareSlideMode[midiChannel] = midiData2;
@@ -437,34 +514,6 @@ void handleMidiInput(unsigned long nowMicros) {
               storeSettings();
             }
             break;
-          case 38:
-            if (lastRpnMsb != 127 || lastRpnLsb != 127) {
-              lastDataLsb = midiData2;
-              receivedRpn(midiChannel, (lastRpnMsb<<7)+lastRpnLsb, (lastDataMsb<<7)+lastDataLsb);
-              break;
-            }
-            if (lastNrpnMsb != 127 || lastNrpnLsb != 127) {
-              lastDataLsb = midiData2;
-              receivedNrpn((lastNrpnMsb<<7)+lastNrpnLsb, (lastDataMsb<<7)+lastDataLsb, midiChannel);
-              break;
-            }
-          case 98:
-            lastNrpnLsb = midiData2;
-            break;
-          case 99:
-            lastNrpnMsb = midiData2;
-            break;
-          case 100:
-            lastRpnLsb = midiData2;
-            // resetting RPN numbers also resets NRPN numbers
-            if (lastRpnLsb == 127 && lastRpnMsb == 127) {
-              lastNrpnLsb = 127;
-              lastNrpnMsb = 127;
-            }
-            break;
-          case 101:
-            lastRpnMsb = midiData2;
-            break;
         }
       }
       default:
@@ -507,6 +556,35 @@ signed char determineSplitForChannel(byte channel) {
   return -1;
 }
 
+signed char determineControlChangeSplitForChannel(byte channel) {
+  if (channel > 15) {
+    return -1;
+  }
+
+  for (byte split = LEFT; split <= RIGHT; ++split) {
+    switch (Split[split].midiMode) {
+      case oneChannel:
+        if (Split[split].midiChanMain-1 == channel) {
+          return split;
+        }
+        break;
+      case channelPerNote:
+        if ((Split[split].midiChanMainEnabled && Split[split].midiChanMain-1 == channel) ||
+            Split[split].midiChanSet[channel] == true) {
+          return split;
+        }
+        break;
+      case channelPerRow:
+        if ((Split[split].midiChanMainEnabled && Split[split].midiChanMain-1 == channel) ||
+            calculateRowPerChannelRow(split, channel) < NUMROWS) {
+          return split;
+        }
+        break;
+    }
+  }
+
+  return -1;
+}
 inline boolean inRange(int value, int lower, int upper) {
   return value >= lower && value <= upper;
 }
@@ -540,6 +618,14 @@ void receivedRpn(byte midiChannel, int parameter, int value) {
   }
 
   updateDisplay();
+}
+
+boolean hasValidRpn() {
+  return lastRpnMsb != 127 || lastRpnLsb != 127;
+}
+
+boolean hasValidNrpn() {
+  return lastNrpnMsb != 127 || lastNrpnLsb != 127;
 }
 
 void receivedNrpn(int parameter, int value, int channel) {
@@ -1843,10 +1929,11 @@ void preResetMidiExpression(byte split) {
     {
       for (byte ch = 0; ch < 16; ++ch) {
         if (Split[split].midiChanSet[ch]) {
-          midiSendPitchBend(0, ch+1);
+          byte channel = ch + 1;
+          midiSendPitchBend(0, channel);
           byte note = 128; // this is invalid on purpose
-          preSendTimbre(split, 0, note, ch);
-          preSendLoudness(split, 0, 0, note, ch);
+          preSendTimbre(split, 0, note, channel);
+          preSendLoudness(split, 0, 0, note, channel);
         }
       }
       break;
@@ -2914,7 +3001,7 @@ void midiSendMpePitchBendRange(byte split) {
   }
 }
 
-bool isStandaloneMidiClockRunning() {
+boolean isStandaloneMidiClockRunning() {
   return standaloneMidiClockRunning;
 }
 
