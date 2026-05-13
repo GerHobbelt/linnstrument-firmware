@@ -75,10 +75,7 @@ boolean potentialSlideTransferCandidate(byte col) {
   }
   else {
     if (sensorSplit != getSplitOf(col)) return false;
-    if (!isLowRow() &&                                                   // don't perform slide transfers
-        (!Split[sensorSplit].sendX ||                                    // if pitch slides are disabled
-         !isFocusedCell(col, sensorRow) ||                               // if this is not a focused cell
-         countTouchesForMidiChannel(sensorSplit, col, sensorRow) > 1)) { // when there are several touches for the same MIDI channel
+    if (!isLowRow() && !Split[sensorSplit].sendX) {
       return false;
     }
     if (isLowRow() && !lowRowRequiresSlideTracking()) return false;
