@@ -343,7 +343,7 @@ boolean hasTouchInSplitOnRow(byte split, byte row) {
 
 void handleSlideTransferCandidate(byte siblingCol) {
   if (isReadyForSlideTransfer(siblingCol)) {
-    if (!userFirmwareActive && Split[sensorSplit].colorPlayed != 0 && Split[sensorSplit].playedTouchMode == playedSame) {
+    if (!userFirmwareActive && Split[sensorSplit].colorPlayed != 0 && Split[sensorSplit].playedTouchMode == playedSame && !isLowRow()) {
       short noteBefore = transposedNote(sensorSplit, siblingCol, sensorRow);
       short noteAfter = transposedNote(sensorSplit, sensorCol, sensorRow);
       
@@ -1793,6 +1793,7 @@ void handleTouchRelease() {
             if (!(sensorCol == touchedCol && sensorRow == row) &&
                 sp == getSplitOf(touchedCol) &&
                 cell(touchedCol, row).touched == touchedCell &&
+                !(row == 0 && Split[getSplitOf(touchedCol)].lowRowMode != lowRowNormal) &&
                 transposedNote(sp, touchedCol, row) == currentVisualNote) {
               allNotesOff = false;
               break;
