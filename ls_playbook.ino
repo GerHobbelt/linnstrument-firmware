@@ -169,7 +169,7 @@ void playPlayBook(int totalFrames, const char* const * playbook) {
     animationActive = true;
     const char* frameData = playbook[frameIndex];
     startBufferedLeds();
-    for (int r = MAXROWS-1; r >= 0; --r) {
+    for (int r = MAXROWS - 1; r >= 0; --r) {
       for (int c = 0; c < MAXCOLS; ++c) {
         setLed(c, r, colorCharToNumber(*frameData), cellOn);
         frameData++;
