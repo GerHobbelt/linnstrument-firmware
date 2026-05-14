@@ -564,7 +564,7 @@ signed char determineSplitForChannel(byte channel) {
   for (byte split = LEFT; split <= RIGHT; ++split) {
     switch (Split[split].midiMode) {
       case oneChannel:
-        if (Split[split].midiChanMain-1 == channel) {
+        if (Split[split].midiChanMain - 1 == channel) {
           return split;
         }
         break;
@@ -592,18 +592,18 @@ signed char determineControlChangeSplitForChannel(byte channel) {
   for (byte split = LEFT; split <= RIGHT; ++split) {
     switch (Split[split].midiMode) {
       case oneChannel:
-        if (Split[split].midiChanMain-1 == channel) {
+        if (Split[split].midiChanMain - 1 == channel) {
           return split;
         }
         break;
       case channelPerNote:
-        if ((Split[split].midiChanMainEnabled && Split[split].midiChanMain-1 == channel) ||
+        if ((Split[split].midiChanMainEnabled && Split[split].midiChanMain - 1 == channel) ||
             Split[split].midiChanSet[channel] == true) {
           return split;
         }
         break;
       case channelPerRow:
-        if ((Split[split].midiChanMainEnabled && Split[split].midiChanMain-1 == channel) ||
+        if ((Split[split].midiChanMainEnabled && Split[split].midiChanMain - 1 == channel) ||
             calculateRowPerChannelRow(split, channel) < NUMROWS) {
           return split;
         }
@@ -1763,7 +1763,7 @@ byte calculateRowPerChannelRow(byte split, byte channel) {
   // calculate the row that corresponds to the incoming MIDI channel and
   // the active split MIDI Channel Per Row configuration
   byte row = 0;
-  byte basechan = Split[split].midiChanPerRow-1;
+  byte basechan = Split[split].midiChanPerRow - 1;
   if (channel >= basechan) {
     row = channel - basechan;
   }
@@ -2009,7 +2009,7 @@ void preSendPitchBend(byte split, int pitchValue) {
       else {
         for (byte ch = 0; ch < 16; ++ch) {
           if (Split[split].midiChanSet[ch]) {
-            midiSendPitchBend(pitchValue, ch+1);
+            midiSendPitchBend(pitchValue, ch + 1);
           }
         }
       }
@@ -2187,14 +2187,14 @@ void preSendLoudness(byte split, byte pressureValueLo, short pressureValueHi, by
 
 inline void resetLastMidiPolyPressure(byte note, byte channel) {
   note = constrain(note, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   lastValueMidiPP[channel][note] = 0xFF;
   lastMomentMidiPP[channel][note] = 0;
 }
 
 inline void resetLastMidiAfterTouch(byte channel) {
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   lastValueMidiAT[channel] = 0xFF;
   lastMomentMidiAT[channel] = 0;
@@ -2216,10 +2216,10 @@ void preResetLastMidiCC(byte split, byte controlnum) {
         for (byte ch = 0; ch < 16; ++ch) {
           if (Split[split].midiChanSet[ch]) {
             if (controlnum == 128) {
-              resetLastMidiAfterTouch(ch+1);
+              resetLastMidiAfterTouch(ch + 1);
             }
             else {
-              resetLastMidiCC(controlnum, ch+1);
+              resetLastMidiCC(controlnum, ch + 1);
             }
           }
         }
@@ -2269,14 +2269,14 @@ void preResetLastMidiCC(byte split, byte controlnum) {
 
 inline void resetLastMidiCC(byte controlnum, byte channel) {
   controlnum = constrain(controlnum, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   lastValueMidiCC[channel][controlnum] = 0xFF;
   lastMomentMidiCC[channel][controlnum] = 0;
 }
 
 inline void resetLastMidiPitchBend(byte channel) {
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
   
   lastValueMidiPB[channel] = 0x7FFF;
   lastMomentMidiPB[channel] = 0;
@@ -2293,7 +2293,7 @@ void preResetLastMidiPitchBend(byte split) {
       else {
         for (byte ch = 0; ch < 16; ++ch) {
           if (Split[split].midiChanSet[ch]) {
-            resetLastMidiPitchBend(ch+1);
+            resetLastMidiPitchBend(ch + 1);
           }
         }
       }
@@ -2490,10 +2490,10 @@ void preSendControlChange(byte split, byte controlnum, byte v, boolean always) {
         for (byte ch = 0; ch < 16; ++ch) {
           if (Split[split].midiChanSet[ch]) {
             if (controlnum == 128) {
-              midiSendAfterTouch(v, ch+1, always);
+              midiSendAfterTouch(v, ch + 1, always);
             }
             else {
-              midiSendControlChange(controlnum, v, ch+1, always);
+              midiSendControlChange(controlnum, v, ch + 1, always);
             }
           }
         }
@@ -2551,7 +2551,7 @@ void preSendPreset(byte split, byte p) {
       else {
         for (byte ch = 0; ch < 16; ++ch) {
           if (Split[split].midiChanSet[ch]) {
-            midiSendProgramChange(p, ch+1);
+            midiSendProgramChange(p, ch + 1);
           }
         }
       }
@@ -2607,14 +2607,14 @@ void midiSendAllNotesOff(byte split) {
           if (ch > 16) {
             ch -= 16;
           }
-          midiSendNoteOffRaw(notenum, 0x40, ch-1);
+          midiSendNoteOffRaw(notenum, 0x40, ch - 1);
         }
         break;
       }
 
       case oneChannel:
       {
-        midiSendNoteOffRaw(notenum, 0x40, Split[split].midiChanMain-1);
+        midiSendNoteOffRaw(notenum, 0x40, Split[split].midiChanMain - 1);
         break;
       }
     }
@@ -2632,7 +2632,7 @@ static unsigned long decimatedCount = 0;
 void midiSendControlChange(byte controlnum, byte controlval, byte channel, boolean always) {
   controlnum = constrain(controlnum, 0, 127);
   controlval = constrain(controlval, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   unsigned long now = micros();
   // always send channel mode messages and sustain, as well as messages that are flagged as always
@@ -2678,7 +2678,7 @@ void midiSendControlChange14BitUserFirmware(byte controlMsb, byte controlLsb, sh
   controlMsb = constrain(controlMsb, 0, 127);
   controlLsb = constrain(controlLsb, 0, 127);
   controlval = constrain(controlval, 0, 0x3fff);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   unsigned long now = micros();
 
@@ -2734,7 +2734,7 @@ void midiSendControlChange14BitMIDISpec(byte controlMsb, byte controlLsb, short 
   controlMsb = constrain(controlMsb, 0, 127);
   controlLsb = constrain(controlLsb, 0, 127);
   controlval = constrain(controlval, 0, 0x3fff);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   unsigned long now = micros();
 
@@ -2791,7 +2791,7 @@ void midiSendNoteOn(byte split, byte notenum, byte velocity, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
   velocity = constrain(velocity, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   lastValueMidiNotesOn[split][notenum][channel]++;
 
@@ -2816,14 +2816,14 @@ void midiSendNoteOn(byte split, byte notenum, byte velocity, byte channel) {
 inline boolean hasActiveMidiNote(byte split, byte notenum, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
   return lastValueMidiNotesOn[split][notenum][channel] > 0;
 }
 
 inline void midiSendNoteOff(byte split, byte notenum, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   if (lastValueMidiNotesOn[split][notenum][channel] > 0) {
       lastValueMidiNotesOn[split][notenum][channel]--;
@@ -2834,7 +2834,7 @@ inline void midiSendNoteOff(byte split, byte notenum, byte channel) {
 inline void midiSendNoteOffWithVelocity(byte split, byte notenum, byte velocity, byte channel) {
   split = constrain(split, 0, 1);
   notenum = constrain(notenum, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   if (lastValueMidiNotesOn[split][notenum][channel] > 0) {
       lastValueMidiNotesOn[split][notenum][channel]--;
@@ -2880,13 +2880,13 @@ void midiSendNoteOffForAllTouches(byte split) {
 }
 
 inline boolean hasPreviousPitchBendValue(byte channel) {
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
   return lastValueMidiPB[channel] != 0x2000 && lastValueMidiPB[channel] != 0x7FFF;
 }
 
 void midiSendPitchBend(int pitchval, byte channel) {
   int bend = constrain(pitchval + 0x2000, 0, 16383);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   unsigned long now = micros();
 #ifdef DEBUG_ENABLED
@@ -2926,7 +2926,7 @@ void midiSendPitchBend(int pitchval, byte channel) {
 
 void midiSendProgramChange(byte preset, byte channel) {
   preset = constrain(preset, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
@@ -2950,7 +2950,7 @@ inline void midiSendAfterTouch(byte value, byte channel) {
 
 void midiSendAfterTouch(byte value, byte channel, boolean always) {
   value = constrain(value, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   unsigned long now = micros();
   if (!always) {
@@ -2994,7 +2994,7 @@ void midiSendPolyPressure(byte notenum, byte value, byte channel) {
   if (notenum > 127) return;
 
   value = constrain(value, 0, 127);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   unsigned long now = micros();
 #ifdef DEBUG_ENABLED
@@ -3037,7 +3037,7 @@ void midiSendPolyPressure(byte notenum, byte value, byte channel) {
 void midiSendNRPN(unsigned short number, unsigned short value, byte channel) {
   number = constrain(number, 0, 0x3fff);
   value = constrain(value, 0, 0x3fff);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
@@ -3070,7 +3070,7 @@ void midiSendNRPN(unsigned short number, unsigned short value, byte channel) {
 void midiSendRPN(unsigned short number, unsigned short value, byte channel) {
   number = constrain(number, 0, 0x3fff);
   value = constrain(value, 0, 0x3fff);
-  channel = constrain(channel-1, 0, 15);
+  channel = constrain(channel - 1, 0, 15);
 
   if (Device.serialMode) {
 #ifdef DEBUG_ENABLED
