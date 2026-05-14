@@ -345,7 +345,28 @@ void handleSlideTransferCandidate(byte siblingCol) {
       short noteAfter = transposedNote(sensorSplit, sensorCol, sensorRow);
       
       if (noteBefore != noteAfter) {
-        resetPossibleNoteCells(sensorSplit, noteBefore);
+        boolean allNotesOff = true;
+        for (byte row = 0; row < NUMROWS && allNotesOff; ++row) {
+          int32_t colsInRowTouched = colsInRowsTouched[row];
+          while (colsInRowTouched) {
+            byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
+            
+            if (!(siblingCol == touchedCol && sensorRow == row) &&
+                sensorSplit == getSplitOf(touchedCol) &&
+                cell(touchedCol, row).touched == touchedCell &&
+                cell(touchedCol, row).hasNote() &&
+                !(row == 0 && Split[getSplitOf(touchedCol)].lowRowMode != lowRowNormal) &&
+                transposedNote(sensorSplit, touchedCol, row) == noteBefore) {
+              allNotesOff = false;
+              break;
+            }
+            colsInRowTouched &= ~(1 << touchedCol);
+          }
+        }
+
+        if (allNotesOff) {
+          resetPossibleNoteCells(sensorSplit, noteBefore);
+        }
         highlightPossibleNoteCells(sensorSplit, noteAfter);
       }
     }
@@ -1790,6 +1811,7 @@ void handleTouchRelease() {
             if (!(sensorCol == touchedCol && sensorRow == row) &&
                 sp == getSplitOf(touchedCol) &&
                 cell(touchedCol, row).touched == touchedCell &&
+                cell(touchedCol, row).hasNote() &&
                 !(row == 0 && Split[getSplitOf(touchedCol)].lowRowMode != lowRowNormal) &&
                 transposedNote(sp, touchedCol, row) == currentVisualNote) {
               allNotesOff = false;
