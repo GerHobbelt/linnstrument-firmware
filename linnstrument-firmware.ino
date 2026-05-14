@@ -1482,10 +1482,10 @@ inline void modeLoopPerformance() {
   if (SWITCH_XFRAME) displayXFrame();                            // Turn on secret switch to display the X value of all cells in grid at the end of each total surface scan
   if (SWITCH_YFRAME) displayYFrame();                            // Turn on secret switch to display the Y value of all cells in grid at the end of each total surface scan
   if (SWITCH_ZFRAME) displayZFrame();                            // Turn on secret switch to display the pressure value of all cells in grid at the end of each total surface scan
+  if (SWITCH_TOUCHFRAME) displayCellTouchedFrame();              // Turn on secret switch to display the 'touched' state of all cells in grid at the end of each total surface scan
   if (SWITCH_SURFACESCAN) displaySurfaceScanTime();              // Turn on secret switch to display the total time for a total surface scan
   if (SWITCH_FREERAM) debugFreeRam();                            // Turn on secret switch to display the available free RAM
   if (SWITCH_MCU_PINS) displayDigitalPins();                     // Turn on secret switch to display the SAM3X digital pins' status
-  if (SWITCH_TOUCHFRAME) displayCellTouchedFrame();              // Turn on secret switch to display the 'touched' state of all cells in grid at the end of each total surface scan
 #endif
 
   nextSensorCell();                                              // done-- move on to the next sensor cell
