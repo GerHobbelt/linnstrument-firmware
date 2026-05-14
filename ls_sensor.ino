@@ -56,7 +56,7 @@ static const short Z_BIAS_128_SEPTEMBER2019[MAXROWS][MAXCOLS] =  {
   };
 
 
-const short Z_BIAS_MULTIPLIER = 1400;
+constexpr const int Z_BIAS_MULTIPLIER = 1400;   // see comment @ applyRawZBias() why this is an `int` type and not a `short`: code legibility.
 
 // readX:
 // Reads raw X value at the currently addressed column and row
@@ -181,8 +181,6 @@ inline short applyRawZBias(short rawZ) {
   // > In particular, arithmetic operators do not accept types smaller than int as arguments, and integral promotions are automatically applied after lvalue-to-rvalue conversion, if applicable. 
   //
   // ergo the '*' multiply operator implicitly promotes the 'short int' values involved to 'int' before executing!
-  //
-  // Things MAY get a tad hairy though if RawZ nears 4095, as the Z_BIAS_MULTIPLIER @ 1400 will then produce a 32-bit int overflow in the multiply.
   //
   // RawZ is obtained from an ADS7883 12-bit ADC chip, i.e. will carry values in the range 0..4095, so 32-bit integer overflow near the top end of that range is still a risk!
 }
@@ -338,6 +336,6 @@ inline void selectSensorCell(byte col, byte row, byte switchCode) {
     break;
   }
 
-  SPI.transfer16(SPI_SENSOR, (short)lsb<<8 | msb);    // to daisy-chained 595 (LSB)
-                                                      // to first 595 at MOSI (MSB, for both sensor columns and LED columns)
+  SPI.transfer16(SPI_SENSOR, (short)lsb << 8 | msb);    // to daisy-chained 595 (LSB)
+                                                        // to first 595 at MOSI (MSB, for both sensor columns and LED columns)
 }
