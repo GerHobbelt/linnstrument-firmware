@@ -1149,7 +1149,7 @@ boolean switchPressAtStartup(byte switchRow) {
   updateSensorCell();
   // initially we need read Z a few times for the readings to stabilize
   readZ(); readZ(); unsigned short switchZ = readZ();
-  if (switchZ > Device.sensorLoZ + 128) {
+  if (switchZ > 230) {
     return true;
   }
   return false;
@@ -1267,12 +1267,14 @@ void setup() {
   /*!!*/  digitalWrite(37, HIGH);
   /*!!*/
   /*!!*/  if (switchPressAtStartup(0)) {
-  /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
-  /*!!*/    if (switchPressAtStartup(2)) {
+  /*!!*/    // [Antigravity EDIT] Require specific pattern on Column 0 (0, 2, 4, 6 pressed, and 1, 3, 5, 7 not pressed) to trigger Global Reset.
+  /*!!*/    if (switchPressAtStartup(2) && switchPressAtStartup(4) && switchPressAtStartup(6) &&
+  /*!!*/        !switchPressAtStartup(1) && !switchPressAtStartup(3) && !switchPressAtStartup(5) &&
+  /*!!*/        !switchPressAtStartup(7)) {
   /*!!*/      globalReset = true;
   /*!!*/      dueFlashStorage.write(0, 254);
   /*!!*/    }
-  /*!!*/    // if only the global settings button is pressed at startup, activate firmware upgrade mode
+  /*!!*/    // if the global settings button is pressed at startup but the specific pattern is not matched, activate firmware upgrade mode
   /*!!*/    else {
   /*!!*/      operatingMode = modeFirmware;
   /*!!*/  
@@ -1310,8 +1312,9 @@ void setup() {
 
   // ensure that the switches that are pressed down for the global reset at boot are not taken into account any further
   if (globalReset) {
-    cellTouched(0, 0, touchedCell);
-    cellTouched(0, 2, touchedCell);
+    for (byte r = 0; r < 8; ++r) {
+      cellTouched(0, r, touchedCell);
+    }
   }
 
   // setup system timers for interval between LED column refreshes and foot switch reads
