@@ -1338,7 +1338,7 @@ boolean switchPressAtStartup(byte switchRow) {
   readZ();
   readZ();
   unsigned short switchZ = readZ();
-  if (switchZ > Device.sensorLoZ + 128) {
+  if (switchZ > 230 /* was: (Device.sensorLoZ + 128) */ ) {
     return true;
   }
   return false;
@@ -1462,12 +1462,14 @@ void setup() {
   /*!!*/  digitalWrite(37, HIGH); // clearDisplayImmediately();
   /*!!*/
   /*!!*/  if (switchPressAtStartup(GLOBAL_SETTINGS_ROW)) {
-  /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
-  /*!!*/    if (switchPressAtStartup(SWITCH_2_ROW)) {
+  /*!!*/    // [Antigravity EDIT] Require specific pattern on Column 0 (0, 2, 4, 6 pressed, and 1, 3, 5, 7 not pressed) to trigger Global Reset.
+  /*!!*/    if (switchPressAtStartup(SWITCH_2_ROW) && switchPressAtStartup(SWITCH_4_ROW) && switchPressAtStartup(SWITCH_6_ROW) &&
+  /*!!*/        !switchPressAtStartup(SWITCH_1_ROW) && !switchPressAtStartup(SWITCH_3_ROW) && !switchPressAtStartup(SWITCH_5_ROW) &&
+  /*!!*/        !switchPressAtStartup(SWITCH_7_ROW)) {
   /*!!*/      globalReset = true;
   /*!!*/      appDataFlashStorage.factoryReset();
   /*!!*/    }
-  /*!!*/    // if only the global settings button is pressed at startup, activate firmware upgrade mode
+  /*!!*/    // if the global settings button is pressed at startup but the specific pattern is not matched, activate firmware upgrade mode
   /*!!*/    else {
   /*!!*/      operatingMode = modeFirmware;
   /*!!*/  
@@ -1678,8 +1680,10 @@ uint32_t adc_get_latest_value(const Adc *p_adc)
 
   // ensure that the switches that are pressed down for the global reset at boot are not taken into account any further
   if (globalReset) {
-    cellTouched(0, GLOBAL_SETTINGS_ROW, touchedCell);
-    cellTouched(0, SWITCH_2_ROW, touchedCell);
+    // mark *all* command switches, not just 0,2,4,6:
+    for (byte r = 0 /* GLOBAL_SETTINGS_ROW */; r < 8 /* (SWITCH_7_ROW + 1) */; ++r) {
+      cellTouched(0, r, touchedCell);
+    }
   }
 
   // setup system timers for interval between LED column refreshes and foot switch reads
