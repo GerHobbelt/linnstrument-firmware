@@ -370,6 +370,10 @@ void handleSlideTransferCandidate(byte siblingCol) {
           setLed(sensorCol, sensorRow, Split[sensorSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
         }
       }
+      // the note has moved with the slide, so let the highlight follow the finger
+      else if (Split[sensorSplit].colorPlayed && Split[sensorSplit].playedTouchMode == playedSame) {
+        rebuildPlayedSameHighlight();
+      }
     }
 
     if (cell(siblingCol, sensorRow).touched != untouchedCell) {
@@ -1266,7 +1270,7 @@ void prepareNewNote(signed char notenum) {
       setLed(sensorCol, sensorRow, Split[sensorSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
     }
     else if (Split[sensorSplit].playedTouchMode == playedSame) {
-      highlightPossibleNoteCells(sensorSplit, sensorCell->note);
+      rebuildPlayedSameHighlight();
     }
     else {
       startTouchAnimation(sensorCol, sensorRow, calcTouchAnimationSpeed(Split[sensorSplit].playedTouchMode, sensorCell->velocity));
@@ -1300,7 +1304,8 @@ void sendNewNote() {
     // send row & column in CC 14 and 15
     midiSendControlChange(14, sensorRow, sensorCell->channel);
     midiSendControlChange(15, sensorCol, sensorCell->channel);
-	// send the note on
+
+    // send the note on
     midiSendNoteOn(sensorSplit, sensorCell->note, sensorCell->velocity, sensorCell->channel);
   }
 }
@@ -1815,42 +1820,10 @@ void handleTouchRelease() {
       if (Split[sensorSplit].playedTouchMode == playedCell) {
         setLed(sensorCol, sensorRow, COLOR_OFF, cellOff, LED_LAYER_PLAYED);
       }
-      // if no notes are active anymore, reset the highlighted cells
+      // this cell is no longer touched, so rebuild the highlight from the remaining touches;
+      // the cells of this note only go dark once nothing else is still holding it
       else if (Split[sensorSplit].playedTouchMode == playedSame) {
-        // calculate the difference between the octave offset when the note was turned on and the octave offset
-        // that is currently in use on the split, since the octave can change on the fly, while playing,
-        // hence changing the position of notes on the surface
-        short octaveOffsetDifference = Split[sensorSplit].transposeOctave - sensorCell->octaveOffset;
-        short realSensorNote = sensorCell->note + octaveOffsetDifference;
-
-        // ensure that no other notes of the same value are still active
-        boolean allNotesOff = true;
-
-        // iterate over all the rows
-        for (byte row = 0; row < NUMROWS && allNotesOff; ++row) {
-
-          // continue while there are touched columns in the row
-          int32_t colsInRowTouched = colsInRowsTouched[row];
-          while (colsInRowTouched) {
-            byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
-            
-            // if another touch in the same split has the same note, the lights should remain lit
-            if (!(sensorCol == touchedCol && sensorRow == row) &&
-                sensorSplit == getSplitOf(touchedCol) &&
-                cell(touchedCol, row).touched == touchedCell &&
-                cell(touchedCol, row).note + Split[sensorSplit].transposeOctave - cell(touchedCol, row).octaveOffset == realSensorNote) {
-              allNotesOff = false;
-              break;
-            }
-
-            // exclude the cell we just processed by flipping its bit
-            colsInRowTouched &= ~(1 << touchedCol);
-          }
-        }
-
-        if (allNotesOff) {
-          resetPossibleNoteCells(sensorSplit, realSensorNote);
-        }
+        rebuildPlayedSameHighlight();
       }
     }
 

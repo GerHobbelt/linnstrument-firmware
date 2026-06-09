@@ -27,6 +27,7 @@ byte lastTouchAnimRow[2];
 
 void initializeTouchAnimation() {
   initializeLedsLayer(LED_LAYER_PLAYED);
+  resetPlayedSameHighlight();
 
   prevTouchAnimTimerCount = millis();
 
