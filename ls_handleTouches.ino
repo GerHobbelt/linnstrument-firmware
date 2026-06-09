@@ -340,36 +340,6 @@ boolean hasTouchInSplitOnRow(byte split, byte row) {
 
 void handleSlideTransferCandidate(byte siblingCol) {
   if (isReadyForSlideTransfer(siblingCol)) {
-    if (!userFirmwareActive && Split[sensorSplit].colorPlayed != 0 && Split[sensorSplit].playedTouchMode == playedSame && !isLowRow()) {
-      short noteBefore = transposedNote(sensorSplit, siblingCol, sensorRow);
-      short noteAfter = transposedNote(sensorSplit, sensorCol, sensorRow);
-      
-      if (noteBefore != noteAfter) {
-        boolean allNotesOff = true;
-        for (byte row = 0; row < NUMROWS && allNotesOff; ++row) {
-          int32_t colsInRowTouched = colsInRowsTouched[row];
-          while (colsInRowTouched) {
-            byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
-            
-            if (!(siblingCol == touchedCol && sensorRow == row) &&
-                sensorSplit == getSplitOf(touchedCol) &&
-                cell(touchedCol, row).touched == touchedCell &&
-                cell(touchedCol, row).hasNote() &&
-                !(row == 0 && Split[getSplitOf(touchedCol)].lowRowMode != lowRowNormal) &&
-                transposedNote(sensorSplit, touchedCol, row) == noteBefore) {
-              allNotesOff = false;
-              break;
-            }
-            colsInRowTouched &= ~(1 << touchedCol);
-          }
-        }
-
-        if (allNotesOff) {
-          resetPossibleNoteCells(sensorSplit, noteBefore);
-        }
-        highlightPossibleNoteCells(sensorSplit, noteAfter);
-      }
-    }
     // ----------------------------------
 
     transferFromSameRowCell(siblingCol);
@@ -391,6 +361,10 @@ void handleSlideTransferCandidate(byte siblingCol) {
         if (cell(sensorCol, sensorRow).hasNote()) {
           setLed(sensorCol, sensorRow, Split[sensorSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
         }
+      }
+      // the note has moved with the slide, so let the highlight follow the finger
+      else if (Split[sensorSplit].colorPlayed && Split[sensorSplit].playedTouchMode == playedSame) {
+        rebuildPlayedSameHighlight();
       }
     }
 
@@ -1260,7 +1234,7 @@ void prepareNewNote(signed char notenum) {
       setLed(sensorCol, sensorRow, Split[sensorSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
     }
     else if (Split[sensorSplit].playedTouchMode == playedSame) {
-      highlightPossibleNoteCells(sensorSplit, sensorCell->note);
+      rebuildPlayedSameHighlight();
     }
     else {
       startTouchAnimation(sensorCol, sensorRow, calcTouchAnimationSpeed(Split[sensorSplit].playedTouchMode, sensorCell->velocity));
@@ -1797,33 +1771,10 @@ void handleTouchRelease() {
       if (Split[sensorSplit].playedTouchMode == playedCell) {
         setLed(sensorCol, sensorRow, COLOR_OFF, cellOff, LED_LAYER_PLAYED);
       }
-      // if no notes are active anymore, reset the highlighted cells
+      // this cell is no longer touched, so rebuild the highlight from the remaining touches;
+      // the cells of this note only go dark once nothing else is still holding it
       else if (Split[sensorSplit].playedTouchMode == playedSame) {
-        byte sp = sensorSplit;
-        short currentVisualNote = transposedNote(sp, sensorCol, sensorRow);
-
-        boolean allNotesOff = true;
-        for (byte row = 0; row < NUMROWS && allNotesOff; ++row) {
-          int32_t colsInRowTouched = colsInRowsTouched[row];
-          while (colsInRowTouched) {
-            byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
-            
-            if (!(sensorCol == touchedCol && sensorRow == row) &&
-                sp == getSplitOf(touchedCol) &&
-                cell(touchedCol, row).touched == touchedCell &&
-                cell(touchedCol, row).hasNote() &&
-                !(row == 0 && Split[getSplitOf(touchedCol)].lowRowMode != lowRowNormal) &&
-                transposedNote(sp, touchedCol, row) == currentVisualNote) {
-              allNotesOff = false;
-              break;
-            }
-            colsInRowTouched &= ~(1 << touchedCol);
-          }
-        }
-
-        if (allNotesOff) {
-          resetPossibleNoteCells(sp, currentVisualNote);
-        }
+        rebuildPlayedSameHighlight();
       }
     }
 

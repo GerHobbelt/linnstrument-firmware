@@ -25,6 +25,11 @@ void resetAllTouches() {
   midiSendNoteOffForAllTouches(RIGHT);
   noteTouchMapping[LEFT].initialize(LEFT);
   noteTouchMapping[RIGHT].initialize(RIGHT);
+
+  // these touches don't pass through the regular release handling, so clear the played-note
+  // highlights and their cache directly to keep the lights in sync
+  initializeLedsLayer(LED_LAYER_PLAYED);
+  resetPlayedSameHighlight();
 }
 
 boolean validNoteNumAndChannel(signed char noteNum, signed char noteChannel) {

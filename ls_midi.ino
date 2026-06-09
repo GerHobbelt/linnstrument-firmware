@@ -1750,6 +1750,76 @@ byte calculateRowPerChannelRow(byte split, byte channel) {
   }
 }
 
+// Tracks which note numbers the "same note" highlight (playedSame mode) currently has painted,
+// per split, so the rebuild below only issues the LED changes that actually differ.
+boolean playedSameLit[NUMSPLITS][128];
+
+// Rebuild the playedSame highlight from scratch based on the notes that are actually sounding.
+//
+// The ground truth is noteTouchMapping, the registry of active MIDI notes: a note is in it only
+// once its note-on has been sent and its note-off hasn't. Phantom (ghost) touches - like the
+// extra corner the hardware can't help reporting when a rectangle of cells is pressed - are
+// rejected before they ever register a note, so they're never in the registry and never light
+// anything up. Deriving the highlight statelessly from this registry - instead of incrementally
+// adding/removing highlights on each touch event - is what makes it robust: a cell lights up
+// only when a real MIDI note is sounding, a single misjudged event can't get locked in because
+// the next rebuild recomputes everything, and lifting all fingers always yields an empty set so
+// lights can never stay stuck. Each registry entry tracks its current cell (kept up to date as
+// the touch slides), so the highlight still follows the finger. Purely a lighting concern, this
+// never sends MIDI itself.
+void rebuildPlayedSameHighlight() {
+  // the highlight is only shown during normal performance display; in other states the painting
+  // is suppressed, so skip the rebuild too to keep the cache consistent with what's on screen
+  if (userFirmwareActive || displayMode != displayNormal) return;
+
+  static boolean desired[NUMSPLITS][128];
+  memset(desired, 0, sizeof(desired));
+
+  // collect the notes that the currently sounding touches should light up
+  for (byte sp = 0; sp < NUMSPLITS; ++sp) {
+    if (Split[sp].colorPlayed == 0 || Split[sp].playedTouchMode != playedSame) continue;
+
+    signed char entryNote = noteTouchMapping[sp].firstNote;
+    signed char entryChannel = noteTouchMapping[sp].firstChannel;
+    while (entryNote != -1) {
+      NoteEntry& entry = noteTouchMapping[sp].mapping[entryNote][entryChannel - 1];
+      byte col = entry.getCol();
+      byte row = entry.getRow();
+
+      // a note on the low row when it isn't a normal note row doesn't get a highlight
+      if (!(row == 0 && Split[sp].lowRowMode != lowRowNormal)) {
+        short notenum = transposedNote(sp, col, row);
+        if (notenum >= 0 && notenum <= 127) {
+          desired[sp][notenum] = true;
+        }
+      }
+
+      entryNote = entry.getNextNote();
+      entryChannel = entry.getNextChannel();
+    }
+  }
+
+  // reconcile the painted highlight toward the desired one, only changing what differs
+  for (byte sp = 0; sp < NUMSPLITS; ++sp) {
+    for (short n = 0; n < 128; ++n) {
+      if (desired[sp][n] && !playedSameLit[sp][n]) {
+        highlightPossibleNoteCells(sp, n);
+        playedSameLit[sp][n] = true;
+      }
+      else if (!desired[sp][n] && playedSameLit[sp][n]) {
+        resetPossibleNoteCells(sp, n);
+        playedSameLit[sp][n] = false;
+      }
+    }
+  }
+}
+
+// Forget which notes are painted, used when the played LED layer is cleared elsewhere so the
+// cache stays in sync with the (now blank) layer.
+void resetPlayedSameHighlight() {
+  memset(playedSameLit, 0, sizeof(playedSameLit));
+}
+
 void highlightPossibleNoteCells(byte split, byte notenum) {
   if (userFirmwareActive) return;
   if (displayMode != displayNormal) return;
