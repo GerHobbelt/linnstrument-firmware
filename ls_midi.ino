@@ -1775,6 +1775,11 @@ void rebuildPlayedSameHighlight() {
   static boolean desired[NUMSPLITS][128];
   memset(desired, 0, sizeof(desired));
 
+  // bitmask (per split) of the pitch classes (note % 12) that are sounding; drives the octave overlay
+  unsigned short sourcePitchClasses[NUMSPLITS];
+  memset(sourcePitchClasses, 0, sizeof(sourcePitchClasses));
+  boolean anyPitchClass = false;
+
   // collect the notes that the currently sounding touches should light up
   for (byte sp = 0; sp < NUMSPLITS; ++sp) {
     if (Split[sp].colorPlayed == 0 || Split[sp].playedTouchMode != playedSame) continue;
@@ -1791,6 +1796,8 @@ void rebuildPlayedSameHighlight() {
         short notenum = transposedNote(sp, col, row);
         if (notenum >= 0 && notenum <= 127) {
           desired[sp][notenum] = true;
+          sourcePitchClasses[sp] |= (1 << (notenum % 12));
+          anyPitchClass = true;
         }
       }
 
@@ -1799,7 +1806,7 @@ void rebuildPlayedSameHighlight() {
     }
   }
 
-  // reconcile the painted highlight toward the desired one, only changing what differs
+  // reconcile the exact-note highlight toward the desired one, only changing what differs
   for (byte sp = 0; sp < NUMSPLITS; ++sp) {
     for (short n = 0; n < 128; ++n) {
       if (desired[sp][n] && !playedSameLit[sp][n]) {
@@ -1812,12 +1819,49 @@ void rebuildPlayedSameHighlight() {
       }
     }
   }
+
+  // rebuild the octave overlay: every cell whose note shares a pitch class with a sounding note
+  // (i.e. the same note name in other octaves) gets the played colour stored for it. Like the
+  // exact-note highlight, it spans both splits: a cell shows its own split's notes in its own
+  // played colour, and mirrors the other split's notes (in that split's colour) under the same
+  // conditions playedSame uses for its cross-split highlight. The exact-note highlight paints
+  // opaquely on top of this; the LED refresh renders the rest as a deliberate slow blink.
+  if (!anyPitchClass) {
+    memset(octaveOverlay, 0, sizeof(octaveOverlay));
+  }
+  else {
+    for (byte col = 1; col < NUMCOLS; ++col) {
+      byte sp = getSplitOf(col);
+      byte otherSp = 1 - sp;
+      boolean ownActive = (Split[sp].colorPlayed != 0 && Split[sp].playedTouchMode == playedSame);
+      boolean mirrorActive = Global.splitActive &&
+                             !Split[sp].ccFaders && !Split[sp].sequencer && !Split[sp].strum &&
+                             Split[otherSp].colorPlayed != 0 && Split[otherSp].playedTouchMode == playedSame;
+      for (byte row = 0; row < NUMROWS; ++row) {
+        byte ovColor = COLOR_OFF;
+        if ((ownActive || mirrorActive) && !(row == 0 && Split[sp].lowRowMode != lowRowNormal)) {
+          short notenum = transposedNote(sp, col, row);
+          if (notenum >= 0 && notenum <= 127) {
+            unsigned short pcBit = (1 << (notenum % 12));
+            if (ownActive && (sourcePitchClasses[sp] & pcBit)) {
+              ovColor = Split[sp].colorPlayed;
+            }
+            else if (mirrorActive && (sourcePitchClasses[otherSp] & pcBit)) {
+              ovColor = Split[otherSp].colorPlayed;
+            }
+          }
+        }
+        octaveOverlay[col][row] = ovColor;
+      }
+    }
+  }
 }
 
 // Forget which notes are painted, used when the played LED layer is cleared elsewhere so the
 // cache stays in sync with the (now blank) layer.
 void resetPlayedSameHighlight() {
   memset(playedSameLit, 0, sizeof(playedSameLit));
+  memset(octaveOverlay, 0, sizeof(octaveOverlay));
 }
 
 void highlightPossibleNoteCells(byte split, byte notenum) {

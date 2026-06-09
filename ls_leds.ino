@@ -335,9 +335,22 @@ void refreshLedColumn(unsigned long now) {
       }
     }
 
+    // octave overlay: a cell that shares a note name with a sounding note flashes briefly in the
+    // played colour. Hardware has no alpha, so rather than blend we light it for just the first
+    // couple of the 12 sub-frames - one quick blink per cycle (~10Hz). The opaque played
+    // highlight wins: where the PLAYED layer is lit on this cell, the overlay is suppressed.
+    boolean overlayFrame = false;
+    if (octaveOverlay[actualCol][rowCount] != COLOR_OFF &&
+        displayMode == displayNormal &&
+        displayInterval[actualCol][rowCount] < 2 &&
+        (ledVisible(LED_LAYER_PLAYED, actualCol, rowCount) & B00000111) == cellOff) {
+      overlayFrame = true;
+      color = octaveOverlay[actualCol][rowCount];     // render the overlay in the played colour
+    }
+
     // if this LED is not off, process it
     // set the color bytes to the correct color
-    if (cellDisplay) {
+    if (overlayFrame || cellDisplay) {
       // construct composite colors
       if ((!Device.operatingLowPower && displayInterval[actualCol][rowCount] % 2 != 0) ||
           (Device.operatingLowPower && displayInterval[actualCol][rowCount] % 4 != 0)) {
