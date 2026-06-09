@@ -491,9 +491,32 @@ void refreshLedColumn(unsigned long now) {
       }
     }
 
+    // octave overlay: a cell that shares a note name (other octave) with a sounding note is tinted
+    // in the configured octave colour. The LED hardware has no alpha channel, so:
+    //   - over a dark cell we show the octave colour constantly (a solid extra light), and
+    //   - over an already-lit main/accent cell we alternate between the underlying colour and the
+    //     octave colour every sub-frame (~30Hz), which the eye fuses into a translucent blend.
+    // The opaque played highlight always wins: where the PLAYED layer is lit here it's suppressed.
+    boolean overlayFrame = false;
+    if (octaveOverlay[actualCol][rowCount] != COLOR_OFF &&
+        displayMode == displayNormal &&
+        (ledVisible(LED_LAYER_PLAYED, actualCol, rowCount) & B00000111) == cellOff) {
+      if (cellDisplay == cellOff) {
+        // dark underneath: solid octave colour on every sub-frame
+        overlayFrame = true;
+        color = octaveOverlay[actualCol][rowCount];
+      }
+      else if (displayInterval[actualCol][rowCount] % 2 != 0) {
+        // lit underneath: on alternating sub-frames swap in the octave colour to fake translucency,
+        // leaving the underlying colour to show on the other sub-frames
+        overlayFrame = true;
+        color = octaveOverlay[actualCol][rowCount];
+      }
+    }
+
     // if this LED is not off, process it
     // set the color bytes to the correct color
-    if (cellDisplay) {
+    if (overlayFrame || cellDisplay) {
       // construct composite colors, while we reckon with both normal and lowPower display:
       // in the latter case every odd (second) displayInterval is blanked, hence the obvious
       // 2-color toggle scheme is ABBA, which in lowPower mode will become A_B_.

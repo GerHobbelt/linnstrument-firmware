@@ -778,6 +778,7 @@ void paintPerSplitDisplay(byte side) {
   setLed(11, 6, Split[side].colorAccent, cellOn);
   setLed(11, 5, Split[side].colorPlayed, cellOn);
   setLed(11, 4, Split[side].colorLowRow, cellOn);
+  setLed(11, 3, Split[side].colorOctave, cellOn);   // playedSame octave overlay colour (off = disabled)
 
   // Set "Low row" lights
   switch (Split[side].lowRowMode) {

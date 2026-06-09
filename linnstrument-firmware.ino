@@ -520,6 +520,8 @@ int32_t rowsInColsTouched[MAXCOLS];          // keep track of which rows inside 
 int32_t colsInRowsTouched[MAXROWS];          // to makes it possible to quickly identify square formations that generate phantom presses
 unsigned short cellsTouched;                 // counts the number of active touches on cells
 
+byte octaveOverlay[MAXCOLS][MAXROWS];        // for playedSame mode: per cell, the colour to blink for an octave-equivalent (same note name) of a sounding note, or COLOR_OFF for none; shown underneath the opaque played highlight
+
 struct VirtualTouchInfo {
   boolean hasNote();                         // check if a MIDI note is active for this touch
   void clearData();                          // clear the virtual touch data
@@ -796,6 +798,7 @@ struct SplitSettings {
   byte colorAccent;                       // color for accented cells
   byte colorPlayed;                       // color for played notes
   byte colorLowRow;                       // color for low row if on
+  byte colorOctave;                       // color for the playedSame octave overlay (same note name, other octaves); COLOR_OFF disables it
   byte colorSequencerEmpty;               // color for sequencer low row step with no events
   byte colorSequencerEvent;               // color for sequencer low row step with events
   byte colorSequencerDisabled;            // color for sequencer low row step that's not being played
