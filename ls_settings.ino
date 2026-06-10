@@ -346,7 +346,7 @@ void storeSettingsToPreset(byte p) {
 // The first time after new code is loaded into the Linnstrument, this sets the initial defaults of all settings.
 // On subsequent startups, these values are overwritten by loading the settings stored in flash.
 void initializeDeviceSettings() {
-  Device.version = 17;
+  Device.version = 18;
   Device.serialMode = false;
   Device.sleepAnimationActive = false;
   Device.sleepActive = false;
@@ -631,6 +631,8 @@ void initializePresetSettings() {
         memcpy(&p.split[s].ccForFader, ccFaderDefaults, sizeof(unsigned short)*8);
         p.split[s].colorAccent = COLOR_CYAN;
         p.split[s].colorLowRow = COLOR_YELLOW;
+        p.split[s].colorOctave = COLOR_OFF;        // octave overlay disabled by default
+
         p.split[s].colorSequencerEmpty = COLOR_YELLOW;
         p.split[s].colorSequencerEvent = COLOR_ORANGE;
         p.split[s].colorSequencerDisabled = COLOR_LIME;
@@ -1376,6 +1378,10 @@ void handlePerSplitSettingNewTouch() {
           break;
         case 4:
           Split[Global.currentPerSplit].colorLowRow = colorCycle(Split[Global.currentPerSplit].colorLowRow, false);
+          break;
+        case 3:
+          // playedSame octave overlay colour; includes OFF in the cycle so black disables the feature
+          Split[Global.currentPerSplit].colorOctave = colorCycle(Split[Global.currentPerSplit].colorOctave, true);
           break;
       }
       break;

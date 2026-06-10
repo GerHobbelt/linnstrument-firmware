@@ -900,6 +900,16 @@ struct ConfigurationV16 {
   PresetSettingsV11 preset[NUMPRESETS];
   SequencerProject project;
 };
+/**************************************** Configuration V17 ****************************************
+This is the layout from before the playedSame octave-overlay colour (colorOctave) was added to the
+split settings. It is structurally identical to V16, hence still built on SplitSettingsV7.
+**************************************************************************************************/
+struct ConfigurationV17 {
+  DeviceSettings device;
+  PresetSettingsV11 settings;
+  PresetSettingsV11 preset[NUMPRESETS];
+  SequencerProject project;
+};
 /*************************************************************************************************/
 
 boolean upgradeConfigurationSettings(int32_t confSize, byte* buff2) {
@@ -1014,6 +1024,12 @@ boolean upgradeConfigurationSettings(int32_t confSize, byte* buff2) {
         break;
       // this is the v17 of the configuration configuration, apply it if the size is right
       case 17:
+        if (confSize == sizeof(ConfigurationV17)) {
+          copyConfigurationFunction = &copyConfigurationV17;
+        }
+        break;
+      // this is the v18 of the configuration configuration, apply it if the size is right
+      case 18:
         if (confSize == sizeof(Configuration)) {
           memcpy(&config, buff2, confSize);
           result = true;
@@ -1814,6 +1830,7 @@ void copySplitSettingsV5(void* target, void* source) {
   t->colorAccent = s->colorAccent;
   t->colorPlayed = s->colorPlayed;
   t->colorLowRow = s->colorLowRow;
+  t->colorOctave = COLOR_OFF;             // didn't exist before v18, default the octave overlay to disabled
   t->colorSequencerEmpty = s->colorSequencerEmpty;
   t->colorSequencerEvent = s->colorSequencerEvent;
   t->colorSequencerDisabled = s->colorSequencerDisabled;
@@ -2127,6 +2144,7 @@ void copySplitSettingsV6(void* target, void* source) {
   t->colorAccent = s->colorAccent;
   t->colorPlayed = s->colorPlayed;
   t->colorLowRow = s->colorLowRow;
+  t->colorOctave = COLOR_OFF;             // didn't exist before v18, default the octave overlay to disabled
   t->colorSequencerEmpty = s->colorSequencerEmpty;
   t->colorSequencerEvent = s->colorSequencerEvent;
   t->colorSequencerDisabled = s->colorSequencerDisabled;
@@ -2230,6 +2248,7 @@ void copySplitSettingsV7(void* target, void* source) {
   t->colorAccent = s->colorAccent;
   t->colorPlayed = s->colorPlayed;
   t->colorLowRow = s->colorLowRow;
+  t->colorOctave = COLOR_OFF;             // didn't exist before v18, default the octave overlay to disabled
   t->colorSequencerEmpty = s->colorSequencerEmpty;
   t->colorSequencerEvent = s->colorSequencerEvent;
   t->colorSequencerDisabled = s->colorSequencerDisabled;
@@ -2285,6 +2304,21 @@ void copyConfigurationV16(void* target, void* source) {
 
   memcpy(&t->device, &s->device, sizeof(DeviceSettings));
 
+  copyPresetSettingsV11(&t->settings, &s->settings);
+  for (byte p = 0; p < 6; ++p) {
+    copyPresetSettingsV11(&t->preset[p], &s->preset[p]);
+  }
+
+  memcpy(&t->project, &s->project, sizeof(SequencerProject));
+}
+
+void copyConfigurationV17(void* target, void* source) {
+  Configuration* t = (Configuration*)target;
+  ConfigurationV17* s = (ConfigurationV17*)source;
+
+  memcpy(&t->device, &s->device, sizeof(DeviceSettings));
+
+  // copyPresetSettingsV11 -> copySplitSettingsV7 copies every field and defaults the new colorOctave
   copyPresetSettingsV11(&t->settings, &s->settings);
   for (byte p = 0; p < 6; ++p) {
     copyPresetSettingsV11(&t->preset[p], &s->preset[p]);

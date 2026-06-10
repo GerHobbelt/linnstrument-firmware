@@ -1821,11 +1821,13 @@ void rebuildPlayedSameHighlight() {
   }
 
   // rebuild the octave overlay: every cell whose note shares a pitch class with a sounding note
-  // (i.e. the same note name in other octaves) gets the played colour stored for it. Like the
+  // (i.e. the same note name in other octaves) gets the configured octave colour stored for it.
+  // The feature is per split and opt-in: it only applies where colorOctave != COLOR_OFF. Like the
   // exact-note highlight, it spans both splits: a cell shows its own split's notes in its own
-  // played colour, and mirrors the other split's notes (in that split's colour) under the same
-  // conditions playedSame uses for its cross-split highlight. The exact-note highlight paints
-  // opaquely on top of this; the LED refresh renders the rest as a deliberate slow blink.
+  // octave colour, and mirrors the other split's notes (in that split's octave colour) under the
+  // same conditions playedSame uses for its cross-split highlight. The exact-note highlight paints
+  // opaquely on top of this; the LED refresh renders the rest (constant on black, blended over a
+  // lit main/accent cell).
   if (!anyPitchClass) {
     memset(octaveOverlay, 0, sizeof(octaveOverlay));
   }
@@ -1833,21 +1835,25 @@ void rebuildPlayedSameHighlight() {
     for (byte col = 1; col < NUMCOLS; ++col) {
       byte sp = getSplitOf(col);
       byte otherSp = 1 - sp;
-      boolean ownActive = (Split[sp].colorPlayed != 0 && Split[sp].playedTouchMode == playedSame);
+      boolean ownActive = (Split[sp].colorPlayed != 0 && Split[sp].playedTouchMode == playedSame &&
+                           Split[sp].colorOctave != COLOR_OFF);
       boolean mirrorActive = Global.splitActive &&
                              !Split[sp].ccFaders && !Split[sp].sequencer && !Split[sp].strum &&
-                             Split[otherSp].colorPlayed != 0 && Split[otherSp].playedTouchMode == playedSame;
+                             Split[otherSp].colorPlayed != 0 && Split[otherSp].playedTouchMode == playedSame &&
+                             Split[otherSp].colorOctave != COLOR_OFF;
       for (byte row = 0; row < NUMROWS; ++row) {
         byte ovColor = COLOR_OFF;
         if ((ownActive || mirrorActive) && !(row == 0 && Split[sp].lowRowMode != lowRowNormal)) {
           short notenum = transposedNote(sp, col, row);
           if (notenum >= 0 && notenum <= 127) {
             unsigned short pcBit = (1 << (notenum % 12));
-            if (ownActive && (sourcePitchClasses[sp] & pcBit)) {
-              ovColor = Split[sp].colorPlayed;
+            // an exact sounding note (desired) belongs entirely to the opaque playedSame highlight,
+            // so it never gets an octave overlay - the played colour covers it, it isn't blended
+            if (ownActive && (sourcePitchClasses[sp] & pcBit) && !desired[sp][notenum]) {
+              ovColor = Split[sp].colorOctave;
             }
-            else if (mirrorActive && (sourcePitchClasses[otherSp] & pcBit)) {
-              ovColor = Split[otherSp].colorPlayed;
+            else if (mirrorActive && (sourcePitchClasses[otherSp] & pcBit) && !desired[otherSp][notenum]) {
+              ovColor = Split[otherSp].colorOctave;
             }
           }
         }

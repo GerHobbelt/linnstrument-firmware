@@ -645,6 +645,7 @@ struct SplitSettings {
   byte colorAccent;                       // color for accented cells
   byte colorPlayed;                       // color for played notes
   byte colorLowRow;                       // color for low row if on
+  byte colorOctave;                       // color for the playedSame octave overlay (same note name, other octaves); COLOR_OFF disables it
   byte colorSequencerEmpty;               // color for sequencer low row step with no events
   byte colorSequencerEvent;               // color for sequencer low row step with events
   byte colorSequencerDisabled;            // color for sequencer low row step that's not being played
