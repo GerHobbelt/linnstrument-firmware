@@ -542,6 +542,7 @@ struct NoteEntry {
   signed char nextNote;
   signed char previousNote;
   byte nextPreviousChannel;
+  byte touchCount;                                           // how many touches currently hold this exact note+channel (e.g. same note name pressed twice in one-channel mode)
 
   inline boolean hasColRow(byte, byte);
   inline void setColRow(byte, byte);

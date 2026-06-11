@@ -103,6 +103,7 @@ void NoteTouchMapping::initialize(byte mappedSplit) {
       mapping[n][c].nextNote = -1;
       mapping[n][c].previousNote = -1;
       mapping[n][c].nextPreviousChannel = 0;
+      mapping[n][c].touchCount = 0;
     }
     performContinuousTasks();
   }
@@ -131,6 +132,9 @@ void NoteTouchMapping::releaseLatched() {
       else {
         midiSendNoteOffWithVelocity(split, entryNote, entry_cell->velocity, entryChannel);
       }
+      // a latched note has no live touches left, so force a full teardown regardless of how many
+      // touches originally held it (one MIDI note off was already sent for it above)
+      entry.touchCount = 1;
       noteOff(entryNote, entryChannel);
     }
 
@@ -175,6 +179,7 @@ void NoteTouchMapping::noteOn(signed char noteNum, signed char noteChannel, byte
 
   if (!mapping[noteNum][channel].hasTouch()) {
     noteCount++;
+    mapping[noteNum][channel].touchCount = 1;     // first touch holding this exact note+channel
 
     // no notes are in the chain yet, add this one as the first note
     if (-1 == firstNote) {
@@ -240,6 +245,12 @@ void NoteTouchMapping::noteOn(signed char noteNum, signed char noteChannel, byte
       }
     }
   }
+  else {
+    // this exact note+channel is already sounding from another touch (e.g. the same note name
+    // pressed at a second cell in one-channel mode); just register the extra holding touch so the
+    // note isn't torn down until every finger holding it has lifted
+    mapping[noteNum][channel].touchCount++;
+  }
 
   mapping[noteNum][channel].setColRow(col, row);
 
@@ -270,6 +281,13 @@ void NoteTouchMapping::noteOff(signed char noteNum, signed char noteChannel) {
   musicalTouchCount[channel] -= 1;
 
   if (hasTouch(noteNum, noteChannel)) {
+    // more than one touch is holding this exact note+channel: just drop the extra holding touch,
+    // keep the note (and its highlight) alive until the last finger releases
+    if (mapping[noteNum][channel].touchCount > 1) {
+      mapping[noteNum][channel].touchCount -= 1;
+      return;
+    }
+
     noteCount--;
 
     // if this is the first note that is active, point the first note/channel
@@ -332,6 +350,7 @@ void NoteTouchMapping::noteOff(signed char noteNum, signed char noteChannel) {
     mapping[noteNum][channel].nextNote = -1;
     mapping[noteNum][channel].previousNote = -1;
     mapping[noteNum][channel].nextPreviousChannel = 0;
+    mapping[noteNum][channel].touchCount = 0;
   }
 
   DEBUGPRINT((1,"noteOff"));
