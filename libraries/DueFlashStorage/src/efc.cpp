@@ -40,6 +40,10 @@
  * \asf_license_stop
  *
  */
+ 
+// WARNING: (edited) copy of SAM package file: 
+//
+//   C:\Users\<User>\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\system\libsam\source\efc.c
 
 #include "efc.h"
 #include "ramfunc_attr.h"
@@ -82,8 +86,8 @@ extern "C" {
  * Local function declaration.
  * Because they are RAM functions, they need 'extern' declaration.
  */
-extern void efc_write_fmr(Efc *p_efc, uint32_t ul_fmr);
-extern uint32_t efc_perform_fcr(Efc *p_efc, uint32_t ul_fcr);
+RAMFUNC extern void efc_write_fmr(Efc *p_efc, uint32_t ul_fmr);
+RAMFUNC extern uint32_t efc_perform_fcr(Efc *p_efc, uint32_t ul_fcr);
 
 /**
  * \brief Initialize the EFC controller.
@@ -185,6 +189,21 @@ uint32_t efc_get_wait_state(Efc *p_efc)
  * \note This function will automatically choose to use IAP function.
  *
  * \return 0 if successful, otherwise returns an error code.
+ *
+ * Notes:
+ *
+ * See also Atmel/Microchip SAM3x8 datasheet, page 322:
+ *
+ * 20.4.4  In Application Programming (IAP) Feature
+ *
+The IAP feature is a function located in ROM that can be called by any software application.
+When called, this function sends the desired FLASH command to the EEFC and waits for the Flash to be ready
+(looping while the FRDY bit is not set in the EEFC_FSR).
+Since this function is executed from ROM, this allows Flash programming (such as sector write) to be done by
+code running in Flash.
+The IAP function entry point is retrieved by reading the NMI vector in ROM (0x00100008).
+This function takes one argument in parameter: the command to be sent to the EEFC.
+This function returns the value of the EEFC_FSR.
  */
 uint32_t efc_perform_command(Efc *p_efc, uint32_t ul_command,
 		uint32_t ul_argument)
@@ -245,6 +264,7 @@ uint32_t efc_get_result(Efc *p_efc)
  *
  * \return 0 if successful, otherwise returns an error code.
  */
+RAMFUNC 
 uint32_t efc_perform_read_sequence(Efc *p_efc,
 		uint32_t ul_cmd_st, uint32_t ul_cmd_sp,
 		uint32_t *p_ul_buf, uint32_t ul_size)
@@ -302,6 +322,7 @@ uint32_t efc_perform_read_sequence(Efc *p_efc,
  * \param p_efc Pointer to an EFC instance.
  * \param ul_fmr Value of mode register
  */
+RAMFUNC 
 void efc_write_fmr(Efc *p_efc, uint32_t ul_fmr)
 {
 	p_efc->EEFC_FMR = ul_fmr;
@@ -315,6 +336,7 @@ void efc_write_fmr(Efc *p_efc, uint32_t ul_fmr)
  *
  * \return The current status.
  */
+RAMFUNC 
 uint32_t efc_perform_fcr(Efc *p_efc, uint32_t ul_fcr)
 {
 	volatile uint32_t ul_status;

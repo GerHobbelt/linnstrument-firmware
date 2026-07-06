@@ -35,7 +35,7 @@ result:
 
 FQBN: arduino:sam:arduino_due_x_dbg
 Using board 'arduino_due_x_dbg' from platform in folder: C:\Users\Ger\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12
-Using core 'arduino' from platform in folder: C:\Users\Ger\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12
+Using core 'arduino' from platform in folder:            C:\Users\Ger\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12
 
 Detecting libraries used...
 C:\Users\Ger\AppData\Local\Arduino15\packages\arduino\tools\arm-none-eabi-gcc\4.8.3-2014q1/bin/arm-none-eabi-g++ -c -g -Os -w -std=gnu++11 -ffunction-sections -fdata-sections -nostdlib -fno-threadsafe-statics --param max-inline-insns-single=500 -fno-rtti -fno-exceptions -w -x c++ -E -CC -mcpu=cortex-m3 -mthumb -DF_CPU=84000000L -DARDUINO=10607 -DARDUINO_SAM_DUE -DARDUINO_ARCH_SAM -D__SAM3X8E__ -mthumb -DUSB_VID=0x2341 -DUSB_PID=0x003e -DUSBCON -DUSB_MANUFACTURER="Arduino LLC" -DUSB_PRODUCT="Arduino Due" -IC:\Users\Ger\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\system/libsam -IC:\Users\Ger\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\system/CMSIS/CMSIS/Include/ -IC:\Users\Ger\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\system/CMSIS/Device/ATMEL/ -IC:\Users\Ger\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\cores\arduino -IC:\Users\Ger\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\variants\arduino_due_x C:\Users\Ger\AppData\Local\arduino\sketches\3A25C2FDE09FC88530F07BF006A93646\sketch\linnstrument-firmware.ino.cpp -o nul
