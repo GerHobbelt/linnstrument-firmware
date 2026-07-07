@@ -2378,7 +2378,7 @@ void handleSensorSensitivityZRelease() {
 inline void handleSensorLoZNewTouch() {
   DEBUGPRINT_FUNCNAME();
 
-  handleNumericDataNewTouchCol(Device.sensorLoZ, max(100, Device.sensorFeatherZ), 1024, false);
+  handleNumericDataNewTouchCol(Device.sensorLoZ, max(DEFAULT_SENSOR_LO_Z, Device.sensorFeatherZ), 1024, false);
 }
 
 inline void handleSensorLoZRelease() {
@@ -2390,7 +2390,7 @@ inline void handleSensorLoZRelease() {
 inline void handleSensorFeatherZNewTouch() {
   DEBUGPRINT_FUNCNAME();
 
-  handleNumericDataNewTouchCol(Device.sensorFeatherZ, 65, min(1024, Device.sensorLoZ), false);
+  handleNumericDataNewTouchCol(Device.sensorFeatherZ, DEFAULT_SENSOR_FEATHER_Z, min(1024, Device.sensorLoZ), false);
 }
 
 inline void handleSensorFeatherZRelease() {

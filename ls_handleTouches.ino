@@ -461,12 +461,12 @@ boolean handleNewTouch() {
       case displayVolume:                                            // it's a volume change
 
         // check if the new touch could be an ongoing slide to the right
-        if (potentialSlideTransferCandidate(sensorCol-1)) {
-          handleSlideTransferCandidate(sensorCol-1);
+        if (potentialSlideTransferCandidate(sensorCol - 1)) {
+          handleSlideTransferCandidate(sensorCol - 1);
         }
         // check if the new touch could be an ongoing slide to the left
-        else if (potentialSlideTransferCandidate(sensorCol+1)) {
-          handleSlideTransferCandidate(sensorCol+1);
+        else if (potentialSlideTransferCandidate(sensorCol + 1)) {
+          handleSlideTransferCandidate(sensorCol + 1);
         }
         // only allow a certain number of touches in a single column to prevent cross talk
         else if (countTouchesInColumn() > MAX_TOUCHES_IN_COLUMN) {
@@ -1347,7 +1347,7 @@ void handleNewUserFirmwareTouch() {
   DEBUGPRINT_FUNCNAME();
 
   sensorCell->note = sensorCol;
-  sensorCell->channel = sensorRow+1;
+  sensorCell->channel = sensorRow + 1;
   midiSendNoteOn(LEFT, sensorCell->note, sensorCell->velocity, sensorCell->channel);
 }
 
@@ -1360,7 +1360,7 @@ void handleNewControlModeTouch() {
   Serial.write("\n");
 
   sensorCell->note = sensorCol;
-  sensorCell->channel = sensorRow+1;
+  sensorCell->channel = sensorRow + 1;
 
   setLed(sensorCol, sensorRow, Split[Global.currentPerSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
 }
@@ -1372,11 +1372,11 @@ unsigned short handleZExpression() {
 
   // handle pressure transition between adjacent cells if they are not playing their own note
   unsigned short adjacentZ = 0;
-  if (cell(sensorCol-1, sensorRow).currentRawZ && !cell(sensorCol-1, sensorRow).hasNote()) {
-    adjacentZ = cell(sensorCol-1, sensorRow).currentRawZ;
+  if (cell(sensorCol - 1, sensorRow).currentRawZ && !cell(sensorCol - 1, sensorRow).hasNote()) {
+    adjacentZ = cell(sensorCol - 1, sensorRow).currentRawZ;
   }
-  else if (cell(sensorCol+1, sensorRow).currentRawZ && !cell(sensorCol+1, sensorRow).hasNote()) {
-    adjacentZ = cell(sensorCol+1, sensorRow).currentRawZ;
+  else if (cell(sensorCol + 1, sensorRow).currentRawZ && !cell(sensorCol + 1, sensorRow).hasNote()) {
+    adjacentZ = cell(sensorCol + 1, sensorRow).currentRawZ;
   }
   // the adjacent Z value is added the active cell's pressure to make
   // up for the pressure differential while moving across cells
@@ -1419,11 +1419,11 @@ short handleXExpression() {
 
   // determine if a slide transfer is in progress and which column it is with
   short transferCol = 0;
-  if (cell(sensorCol-1, sensorRow).touched == transferCell) {
-    transferCol = sensorCol-1;
+  if (cell(sensorCol - 1, sensorRow).touched == transferCell) {
+    transferCol = sensorCol - 1;
   }
-  else if (cell(sensorCol+1, sensorRow).touched == transferCell) {
-    transferCol = sensorCol+1;
+  else if (cell(sensorCol + 1, sensorRow).touched == transferCell) {
+    transferCol = sensorCol + 1;
   }
 
   // if there is a slide transfer column, interpolate the X position based on the relative pressure
