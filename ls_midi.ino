@@ -1901,6 +1901,8 @@ void resetPlayedSameHighlight() {
 }
 
 static inline void highlightPossibleNoteCellsInSingleSplitPanel(byte split, byte notenum, const byte display_layer) {
+  if (userFirmwareActive) return;
+  if (displayMode != displayNormal) return;
   if (isVisibleSequencerForSplit(split)) return;
 
   byte row = 0;
@@ -1911,6 +1913,23 @@ static inline void highlightPossibleNoteCellsInSingleSplitPanel(byte split, byte
     short col = getNoteNumColumn(split, notenum, row);
     if (col > 0) {
       setLed(col, row, Split[split].colorPlayed, cellOn, display_layer);
+    }
+  }
+  // light the other half of the split too
+  byte o_split = 1 - split;
+  if (!Global.splitActive || Split[o_split].ccFaders || Split[o_split].sequencer || Split[o_split].strum) {
+    return;
+  }
+  if (Split[o_split].lowRowMode != lowRowNormal) {
+    row = 1;
+  }
+  else {
+    row = 0;
+  }
+  for (; row < NUMROWS; ++row) {
+    short col = getNoteNumColumn(o_split, notenum, row);
+    if (col > 0) {
+      setLed(col, row, Split[split].colorPlayed, cellOn, LED_LAYER_CUSTOM1);
     }
   }
 }
@@ -1960,6 +1979,23 @@ static inline void resetPossibleNoteCellsInSingleSplitPanel(byte split, byte not
     short col = getNoteNumColumn(split, notenum, row);
     if (col > 0) {
       setLed(col, row, COLOR_OFF, cellOff, display_layer);
+    }
+  }
+  // reset the other half of the split too
+  byte o_split = 1 - split;
+  if (!Global.splitActive || Split[o_split].ccFaders || Split[o_split].sequencer || Split[o_split].strum) {
+    return;
+  }
+  if (Split[o_split].lowRowMode != lowRowNormal) {
+    row = 1;
+  }
+  else {
+    row = 0;
+  }
+  for (; row < NUMROWS; ++row) {
+    short col = getNoteNumColumn(o_split, notenum, row);
+    if (col > 0) {
+      setLed(col, row, COLOR_OFF, cellOff, LED_LAYER_CUSTOM1);
     }
   }
 }
