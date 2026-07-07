@@ -23,6 +23,7 @@ void playPromoAnimation() {
   storeSettings();
 
   setDisplayMode(displayAnimation);
+  clearFullDisplay();
 
   while (!stopAnimation) {
     clearFullDisplay();
@@ -208,7 +209,7 @@ void playPromoAnimation() {
   clearFullDisplay();
   Device.sleepAnimationActive = false;
   storeSettings();
-  
+
   lastTouchMoment = millis();
   setDisplayMode(displayNormal);
   updateDisplay();

@@ -80,17 +80,17 @@ typedef enum flash_rc {
   take effect according to errata and EPA8/EPA16 must module 8/16 page addresses.*/
 //! @{
 typedef enum flash_farg_page_num {
-	/* 4 of pages to be erased with EPA command*/
-	IFLASH_ERASE_PAGES_4=0,
-	/* 8 of pages to be erased with EPA command*/
+	/* 4 of pages to be erased with EPA command */
+	IFLASH_ERASE_PAGES_4 = 0,
+	/* 8 of pages to be erased with EPA command */
 	IFLASH_ERASE_PAGES_8,
-	/* 16 of pages to be erased with EPA command*/
+	/* 16 of pages to be erased with EPA command */
 	IFLASH_ERASE_PAGES_16,
-	/* 32 of pages to be erased with EPA command*/
+	/* 32 of pages to be erased with EPA command */
 	IFLASH_ERASE_PAGES_32,
 	/* Parameter is not support */
 	IFLASH_ERASE_PAGES_INVALID,
-}flash_farg_page_num_t;
+} flash_farg_page_num_t;
 //! @}
 
 /*! \name Flash access mode */
@@ -138,6 +138,17 @@ uint32_t flash_read_user_signature(uint32_t *p_data, uint32_t ul_size);
 uint32_t flash_write_user_signature(uint32_t ul_address, const void *p_buffer,
 		uint32_t ul_size);
 uint32_t flash_erase_user_signature(void);
+#endif
+
+#ifndef FLASH_DEBUG
+//  FLASH_DEBUG can be enabled to get debugging information displayed.
+#define FLASH_DEBUG 1
+#endif
+
+#if FLASH_DEBUG
+extern void flash_debug(int level, const char *message);
+#else
+#define flash_debug(level, message)  /**/
 #endif
 
 /// @cond 0

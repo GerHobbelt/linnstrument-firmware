@@ -74,9 +74,6 @@ inline boolean checkUpdateClock(unsigned long now) {
       lastInternalClockCount = (lastInternalClockCount + 1) % 24;
       lastInternalClockMoment += ((now - lastInternalClockMoment) / clockUnit) * clockUnit;
 
-      // flash the tempo led in the global display when it is on
-      updateGlobalSettingsFlashTempo(now);
-
       if (previousInternalClockCount == lastInternalClockCount) {
         return false;
       }

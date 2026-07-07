@@ -86,7 +86,7 @@ void handleFaderTouch(boolean newVelocity, byte faderLeft, byte faderLength) {
   }
 }
 
-void handleFaderRelease() {
+inline void handleFaderRelease() {
   byte faderLeft, faderLength;
   determineFaderBoundaries(sensorSplit, faderLeft, faderLength);
   handleFaderRelease(faderLeft, faderLength);

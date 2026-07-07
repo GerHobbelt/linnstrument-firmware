@@ -78,7 +78,8 @@ inline void performContinuousTasks(unsigned long nowMicros) {
 
   static boolean continuousSerialIO = false;
 
-  boolean ledsRefreshed = false;
+  boolean ledsRefreshed = false;  // TODO [GHo]
+  
   static boolean continuousRefreshLeds = false;
   if (!continuousRefreshLeds && !continuousSerialIO) {
     continuousRefreshLeds = true;
@@ -115,13 +116,6 @@ inline void performContinuousTasks(unsigned long nowMicros) {
       continuousFootSwitches = true;
       checkTimeToReadFootSwitches(nowMicros);
       continuousFootSwitches = false;
-    }
-
-    static boolean continuousRefreshGlobalSettingsDisplay = false;
-    if (!continuousRefreshGlobalSettingsDisplay) {
-      continuousRefreshGlobalSettingsDisplay = true;
-      checkRefreshGlobalSettingsDisplay(nowMicros);
-      continuousRefreshGlobalSettingsDisplay = false;
     }
 
     static boolean continuousSleep = false;
@@ -197,15 +191,6 @@ inline void checkTimeToReadFootSwitches(unsigned long now) {
   }
 }
 
-// checks to see if it's time to refresh the global settings display, and if so, does it
-inline void checkRefreshGlobalSettingsDisplay(unsigned long now) {
-  if ((displayMode == displayGlobal || displayMode == displayGlobalWithTempo) &&
-      calcTimeDelta(now, prevGlobalSettingsDisplayTimerCount) > 30000) {                                      // is it time to refresh the global settings display
-    paintGlobalSettingsFlashTempo(now);                                                                       // yes, refresh the display...
-    prevGlobalSettingsDisplayTimerCount = now;                                                                // and reset the timer count to current time
-  }
-}
-
 void playSleepAnimation() {
   DEBUGPRINT((3,"playSleepAnimation: type="));
   DEBUGPRINT((3,Device.sleepAnimationType));
@@ -249,7 +234,7 @@ inline void checkStopBlinkingLeds(unsigned long now) {
         if (p == Device.lastLoadedPreset) {
           color = COLOR_CYAN;
         }
-        int row = p+2;
+        int row = p + 2;
         if (row >= 6) row -= 6;
         setLed(getPresetDisplayColumn(), row, color, cellOn);
         presetBlinkStart[p] = 0;
@@ -265,7 +250,7 @@ inline void checkStopBlinkingLeds(unsigned long now) {
         if (p == Device.lastLoadedProject) {
           color = COLOR_CYAN;
         }
-        setLed(6 + p%4, 2 + p/4, color, cellOn);
+        setLed(6 + p % 4, 2 + p / 4, color, cellOn);
         projectBlinkStart[p] = 0;
       }
     }

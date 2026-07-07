@@ -20,55 +20,19 @@ Assorted debug functions.
 
 
 static void debugPrint1(const char* msg) {
-  unsigned int msgLen = strlen(msg);
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.print(msg);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 static void debugPrintln1(const char* msg) {
-  unsigned int msgLen = strlen(msg);
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.println(msg);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 static void debugPrint1(int val) {
-  const unsigned int msgLen = 2;
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.print(val);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 static void debugPrintln1(int val) {
-  const unsigned int msgLen = 2;
-  boolean shouldBlank = (debugContentWritten > 10);
-  debugContentWritten += msgLen;
-  if (shouldBlank)
-    beginPreventBrightLedFlash();
-
   Serial.println(val);
-
-  if (shouldBlank)
-    endPreventBrightLedFlash();
 }
 
 inline void debugPrint(int level, const char* msg) {
@@ -95,12 +59,84 @@ inline void debugPrintln(int level, int val) {
   }
 }
 
+void debugprint_funcname(const char *fname) {
+  if (SWITCH_SURFACESCAN) {
+    static const char *touchInfoStr[] = { "untouched", "ignored", "transfer", "touched" };
+
+    DEBUGPRINT((2,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((2, align_ws - l));
+    }
+    DEBUGPRINT((2,": col="));DEBUGPRINT((2,(int)sensorCol));
+    DEBUGPRINT((2," row="));DEBUGPRINT((2,(int)sensorRow));
+    DEBUGPRINT((2," veloZ="));DEBUGPRINT((2,(int)sensorCell->velocityZ));
+    DEBUGPRINT((2," pressZ="));DEBUGPRINT((2,(int)sensorCell->pressureZ));
+    DEBUGPRINT((2," velo="));DEBUGPRINT((2,(int)sensorCell->velocity));
+    DEBUGPRINT((2," touch="));DEBUGPRINT((2,touchInfoStr[int(sensorCell->touched)]));
+    DEBUGPRINT((2,"\n"));
+  }
+}
+
+void debugprint_funcname_L5(const char *fname) {
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((4,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((4, align_ws - l));
+    }
+    DEBUGPRINT((4,": anim="));
+    DEBUGPRINT((4,int(animationActive)));
+    DEBUGPRINT((4," mode="));
+    DEBUGPRINT((4,int(displayMode)));
+    DEBUGPRINT((4,"\n"));
+  }
+}
+
+void debugprint_funcname_L5(const char *fname, const char *addenda) {
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((4,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((4, align_ws - l));
+    }
+    DEBUGPRINT((4,": anim="));
+    DEBUGPRINT((4,int(animationActive)));
+    DEBUGPRINT((4," mode="));
+    DEBUGPRINT((4,int(displayMode)));
+    DEBUGPRINT((4,", "));
+    DEBUGPRINT((4,addenda));
+    DEBUGPRINT((4,"\n"));
+  }
+}
+
+void debugprint_funcname_L0(const char *fname) {
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((0,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((0, align_ws - l));
+    }
+    DEBUGPRINT((0,": anim="));
+    DEBUGPRINT((0,int(animationActive)));
+    DEBUGPRINT((0," mode="));
+    DEBUGPRINT((0,int(displayMode)));
+    DEBUGPRINT((0,"\n"));
+  }
+}
+
 void displayDigitalPins() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
 
     Serial.println();
@@ -108,8 +144,6 @@ void displayDigitalPins() {
     displayDigitalPins(0, 27);
     Serial.println();
     displayDigitalPins(27, 54);
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -171,8 +205,6 @@ void displayXFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
 
     Serial.println();
@@ -184,16 +216,14 @@ void displayXFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        if (cell(x, y-1).touched == touchedCell) {
-          Serial.print("#_");
-        }
         Serial.print(cell(x, y-1).currentRawX);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -207,8 +237,6 @@ void displayYFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
     
     Serial.println();
@@ -220,16 +248,14 @@ void displayYFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        if (cell(x, y-1).touched == touchedCell) {
-          Serial.print("#_");
-        }
         Serial.print(cell(x, y-1).currentRawY);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -239,8 +265,6 @@ void displayZFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
     
     Serial.println();
@@ -252,16 +276,14 @@ void displayZFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
-        if (cell(x, y-1).touched == touchedCell) {
-          Serial.print("#_");
-        }
         Serial.print(cell(x, y-1).currentRawZ);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -292,8 +314,6 @@ void displayCellTouchedFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
   if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
-    beginPreventBrightLedFlash();
-
     lastFrame = now;
 
     Serial.println();
@@ -324,8 +344,6 @@ void displayCellTouchedFrame() {
       }
       Serial.println();
     }
-
-    endPreventBrightLedFlash();
   }
 }
 
@@ -423,10 +441,29 @@ void modeLoopManufacturingTest() {
 
 #ifdef DEBUG_ENABLED
 
-#include <malloc.h>
+/*
+ COMMON         0x200842ac        0x4 
+                0x200842ac                errno
+                0x200842b0                . = ALIGN (0x4)
+                0x200842b0                _ebss = .
+                0x200842b0                _ezero = .
+                0x200842b0                . = ALIGN (0x4)
+                0x200842b0                _end = .
 
+.stack_dummy    0x200842b0        0x0
+ *(.stack*)
+                0x20088000                __StackTop = (ORIGIN (ram) + 0x18000)
+                0x20088000                __StackLimit = (__StackTop - SIZEOF (.stack_dummy))
+                0x20088000                PROVIDE (_sstack, __StackLimit)
+                0x20088000                PROVIDE (_estack, __StackTop)
+*/
+
+extern char _ebss;
+extern char _ezero;
 extern char _end;
-extern "C" char* sbrk(int i);
+extern char _sstack;
+extern char _estack;
+
 char* ramstart = (char*)0x20070000;
 char* ramend = (char*)0x20088000;
 
@@ -436,15 +473,118 @@ void debugFreeRam() {
   if (Device.serialMode && sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
     lastFrame = now;
 
-    char* heapend = sbrk(0);
     register char* stack_ptr asm ("sp");
-    struct mallinfo mi = mallinfo();
-    Serial.print("RAM dynamic:");
-    Serial.print(mi.uordblks);
-    Serial.print(" static:");
+    Serial.print("RAM static:");
     Serial.print(&_end - ramstart);
+    Serial.print(" stack:");
+    Serial.print(ramend - stack_ptr);
+    Serial.print(" stacksize:");
+    Serial.print(ramend - &_sstack);
+    Serial.print(" stacksize:");
+    Serial.print(ramend - &_estack);
+    Serial.print(" stacksize:");
+    Serial.print(&_sstack - &_estack);
     Serial.print(" free:");
-    Serial.println(stack_ptr - heapend + mi.fordblks);
+    Serial.print(stack_ptr - &_end);
+    Serial.print("\n");
+
+    // read RTT (Real Time Timer) value (seconds elapsed):
+    const RoReg& rtt_vr = REG_RTT_VR;
+    Serial.print("Real Time Timer: RTT_VR:");
+    Serial.print(rtt_vr);
+    Serial.print("\n");
+
+    Serial.print("Chip Identifier: 	CHIPID_CIDR:");
+    const RoReg& cidr = REG_CHIPID_CIDR;
+    const RoReg& cidr_ext = REG_CHIPID_EXID;
+    const auto v = cidr;
+    const auto ext = v >> 31;
+    const auto nvptyp = (v >> 28) & 0b0111;
+    const auto arch = (v >> 20) & 0b11111111;
+    const auto sramsiz = (v >> 16) & 0b1111;
+    const auto nvpsiz2 = (v >> 12) & 0b1111;
+    const auto nvpsiz1 = (v >> 8) & 0b1111;
+    const auto eproc = (v >> 5) & 0b0111;
+    const auto version = (v >> 0) & 0b00011111;
+    Serial.print(v, 16);
+    Serial.print(" EXT:");
+    Serial.print(ext, 16);
+    Serial.print(" NVPTYP:");
+    Serial.print(nvptyp, 16);
+    Serial.print(" ARCH:");
+    Serial.print(arch, 16);
+    Serial.print(" SRAMSIZ:");
+    Serial.print(sramsiz, 16);
+    Serial.print(" NVPSIZ2:");
+    Serial.print(nvpsiz2, 16);
+    Serial.print(" NVPSIZ1:");
+    Serial.print(nvpsiz1, 16);
+    Serial.print(" EPROC:");
+    Serial.print(eproc, 16);
+    Serial.print(" VERSION:");
+    Serial.print(version, 16);
+
+    Serial.print("    CIDR_EXT:");
+    Serial.print(cidr_ext, 16);
+    Serial.print("\n");
+
+    // TC_hitcount
+    Serial.print("TC_hitcount: t=");
+    Serial.print(millis() / 1000);
+    auto ck_en = pmc_is_periph_clk_enabled(ID_TC1);
+    Serial.print(" TC1.clock_enable=");
+    Serial.print(ck_en);
+
+    for (byte i = 0; i <= 8; i++) {
+      Serial.print(" [");
+      Serial.print(i);
+      Serial.print("]=");
+      Serial.print(TC_hitcount[i]);
+      
+      static Tc * const idToTC[] = {
+        TC0, TC0, TC0, 
+        TC1, TC1, TC1, 
+        TC2, TC2, TC2 };
+
+      auto v = TC_ReadCV(idToTC[i], i % 3);
+      Serial.print(" / CV=");
+      Serial.print(v);
+    }
+    Serial.print("\n");
+
+    Tc *tc = TC1;
+    Serial.print("TC1: CCR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_CCR, 16); // Write-only
+    Serial.print(" CMR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_CMR, 16);
+    Serial.print(" SMMR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_SMMR, 16);
+    Serial.print(" CV=");
+    Serial.print(tc->TC_CHANNEL[0].TC_CV, 16);
+    Serial.print(" RA=");
+    Serial.print(tc->TC_CHANNEL[0].TC_RA, 16);
+    Serial.print(" RB=");
+    Serial.print(tc->TC_CHANNEL[0].TC_RB, 16);
+    Serial.print(" RC=");
+    Serial.print(tc->TC_CHANNEL[0].TC_RC, 16);
+    Serial.print(" SR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_SR, 16);
+    Serial.print(" IER=");
+    Serial.print(tc->TC_CHANNEL[0].TC_IER, 16); // Write-only
+    Serial.print(" IDR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_IDR, 16); // Write-only
+    Serial.print(" IMR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_IMR, 16);
+
+    Serial.print("   TC_BCR=");
+    Serial.print(tc->TC_BCR, 16);
+    Serial.print(" TC_BMR=");
+    Serial.print(tc->TC_BMR, 16);
+    Serial.print(" TC_FMR=");
+    Serial.print(tc->TC_FMR, 16);
+    Serial.print(" TC_WPMR=");
+    Serial.print(tc->TC_WPMR, 16);
+    Serial.print("\n");
   }
 }
 

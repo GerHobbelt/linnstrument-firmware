@@ -1,4 +1,4 @@
-/************************** ls_prevent_bright_flash: LinnStrument debugging and testing ***************************
+/*********************************** ls_chipTemperature: LinnStrument LEDS ***********************************
 Copyright 2023 Roger Linn Design (https://www.rogerlinndesign.com)
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,9 +13,8 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ***************************************************************************************************
-Assorted debug functions. 
+Read/display the CPU temperature (monitoring).
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
 
-// ...

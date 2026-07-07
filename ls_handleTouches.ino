@@ -23,7 +23,7 @@ inline void cellTouched(TouchState state) {
   cellTouched(sensorCol, sensorRow, state);
 };
 void cellTouched(byte col, byte row, TouchState state) {
-  // turn on the bit that correspond to the column and row of this cell,
+  // turn on the bit that corresponds to the column and row of this cell,
   // this allows us to very quickly find other touched cells and detect
   // phantom key presses without having to evaluate every cell on the board
   if (state != untouchedCell &&
@@ -341,6 +341,8 @@ boolean hasTouchInSplitOnRow(byte split, byte row) {
 }
 
 void handleSlideTransferCandidate(byte siblingCol) {
+  DEBUGPRINT_FUNCNAME();
+
   // if the pressure gets higher than adjacent cell, the slide is transitioning over
   if (isReadyForSlideTransfer(siblingCol)) {
     transferFromSameRowCell(siblingCol);
@@ -383,12 +385,7 @@ void handleSlideTransferCandidate(byte siblingCol) {
 }
 
 boolean handleNewTouch() {
-  DEBUGPRINT((1,"handleNewTouch"));
-  DEBUGPRINT((1," col="));DEBUGPRINT((1,(int)sensorCol));
-  DEBUGPRINT((1," row="));DEBUGPRINT((1,(int)sensorRow));
-  DEBUGPRINT((1," velocityZ="));DEBUGPRINT((1,(int)sensorCell->velocityZ));
-  DEBUGPRINT((1," pressureZ="));DEBUGPRINT((1,(int)sensorCell->pressureZ));
-  DEBUGPRINT((1,"\n"));
+  DEBUGPRINT_FUNCNAME();
 
   lastTouchMoment = millis();
   
@@ -405,11 +402,15 @@ boolean handleNewTouch() {
     return false;
   }
 
-  // any touch will wake up LinnStrument again, and should be ignored
+  // any touch (of any of the switches) will wake up LinnStrument again, and should be ignored
+  //
+  // Note: we ignore any touch on the pad grid: only touching the switches will awaken your Linn!
   if (displayMode == displaySleep) {
-    cellTouched(ignoredCell);
-    setDisplayMode(displayNormal);
-    updateDisplay();
+    if (sensorCol == 0) {
+      cellTouched(ignoredCell);
+      setDisplayMode(displayNormal);
+      updateDisplay();
+    }
     return false;
   }
 
@@ -460,12 +461,12 @@ boolean handleNewTouch() {
       case displayVolume:                                            // it's a volume change
 
         // check if the new touch could be an ongoing slide to the right
-        if (potentialSlideTransferCandidate(sensorCol-1)) {
-          handleSlideTransferCandidate(sensorCol-1);
+        if (potentialSlideTransferCandidate(sensorCol - 1)) {
+          handleSlideTransferCandidate(sensorCol - 1);
         }
         // check if the new touch could be an ongoing slide to the left
-        else if (potentialSlideTransferCandidate(sensorCol+1)) {
-          handleSlideTransferCandidate(sensorCol+1);
+        else if (potentialSlideTransferCandidate(sensorCol + 1)) {
+          handleSlideTransferCandidate(sensorCol + 1);
         }
         // only allow a certain number of touches in a single column to prevent cross talk
         else if (countTouchesInColumn() > MAX_TOUCHES_IN_COLUMN) {
@@ -477,6 +478,12 @@ boolean handleNewTouch() {
           initVelocity();
           calcVelocity(sensorCell->velocityZ);
           result = true;
+
+          // Autoselect the current split when playing
+          if (Global.splitActive && Global.currentPerSplit != sensorSplit) {
+            Global.currentPerSplit = sensorSplit;
+            updateSwitchLeds();
+          }
         }
         else {
           cellTouched(untouchedCell);
@@ -579,7 +586,10 @@ byte takeChannel(byte split, byte row) {
 }
 
 void handleNonPlayingTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   switch (displayMode) {
+    default:
     case displayNormal:
     case displaySplitPoint:
     case displayVolume:
@@ -723,7 +733,17 @@ boolean handleXYZupdate() {
   // if this data point serves as a calibration sample, return immediately
   if (handleCalibrationSample()) return false;
 
+  //DEBUGPRINT_FUNCNAME();
+
   // some features need hold functionality
+  //
+  // Note: the idiom inside (almost all) these functions is:
+  //
+  //     if (isCellPastEditHoldWait()) {
+  //       sensorCell->lastTouch = 0;     // mark the hold as finished.
+  //       DoTheWork();
+  //     }
+  //
   if (sensorCell->velocity) {
     switch (displayMode) {
       case displayPerSplit:
@@ -795,6 +815,8 @@ boolean handleXYZupdate() {
       break;
   }
 
+  DEBUGPRINT_FUNCNAME();
+
   // only continue if the active display modes require finger tracking
   if (displayMode != displayNormal &&
       displayMode != displayVolume &&
@@ -806,13 +828,6 @@ boolean handleXYZupdate() {
     }
     return false;
   }
-
-  DEBUGPRINT((2,"handleXYZupdate"));
-  DEBUGPRINT((2," col="));DEBUGPRINT((2,(int)sensorCol));
-  DEBUGPRINT((2," row="));DEBUGPRINT((2,(int)sensorRow));
-  DEBUGPRINT((2," velocityZ="));DEBUGPRINT((2,(int)sensorCell->velocityZ));
-  DEBUGPRINT((2," pressureZ="));DEBUGPRINT((2,(int)sensorCell->pressureZ));
-  DEBUGPRINT((2,"\n"));
 
   lastTouchMoment = millis();
     
@@ -1080,6 +1095,8 @@ boolean handleXYZupdate() {
 }
 
 void handleSplitStrum() {
+  DEBUGPRINT_FUNCNAME();
+
   // handle open strings by checking if no cells are touched in the strummed split,
   // this corresponds to checking of a fret is pushed down on a string, in which case is can't be open
   if (!hasTouchInSplitOnRow(otherSplit(), sensorRow)) {
@@ -1092,6 +1109,8 @@ void handleSplitStrum() {
 }
 
 void handleStrummedOpenRow(byte split, byte velocity) {
+  DEBUGPRINT_FUNCNAME();
+
   // if a note is already playing for this open string, turn it off so that the exact same note
   // can be played, but with a different velocity
   if (virtualCell().hasNote()) {
@@ -1125,6 +1144,8 @@ void handleStrummedOpenRow(byte split, byte velocity) {
 }
 
 void handleStrummedRowChange(boolean newFretting, byte velocity) {
+  DEBUGPRINT_FUNCNAME();
+
   // we use the bitmask of the touched columns in the current row, and turn off all the columns
   // that belong to the strumming split
   int32_t colsInSensorRowTouched = colsInRowsTouched[sensorRow];
@@ -1276,7 +1297,10 @@ void sendNewNote() {
       midiSendNoteOff(sensorSplit, sensorCell->note, sensorCell->channel);
     }
 
-    // send the note on
+    // send row & column in CC 14 and 15
+    midiSendControlChange(14, sensorRow, sensorCell->channel);
+    midiSendControlChange(15, sensorCol, sensorCell->channel);
+	// send the note on
     midiSendNoteOn(sensorSplit, sensorCell->note, sensorCell->velocity, sensorCell->channel);
   }
 }
@@ -1316,33 +1340,39 @@ void sendReleasedNote() {
 }
 
 void handleNewUserFirmwareTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   sensorCell->note = sensorCol;
-  sensorCell->channel = sensorRow+1;
+  sensorCell->channel = sensorRow + 1;
   midiSendNoteOn(LEFT, sensorCell->note, sensorCell->velocity, sensorCell->channel);
 }
 
 void handleNewControlModeTouch() {
+  DEBUGPRINT_FUNCNAME();
+
   Serial.write((byte)1);
   Serial.write((byte)sensorCol);
   Serial.write((byte)sensorRow);
   Serial.write("\n");
 
   sensorCell->note = sensorCol;
-  sensorCell->channel = sensorRow+1;
+  sensorCell->channel = sensorRow + 1;
 
   setLed(sensorCol, sensorRow, Split[Global.currentPerSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
 }
 
 unsigned short handleZExpression() {
+  DEBUGPRINT_FUNCNAME();
+
   unsigned short preferredPressure = sensorCell->pressureZ;
 
   // handle pressure transition between adjacent cells if they are not playing their own note
   unsigned short adjacentZ = 0;
-  if (cell(sensorCol-1, sensorRow).currentRawZ && !cell(sensorCol-1, sensorRow).hasNote()) {
-    adjacentZ = cell(sensorCol-1, sensorRow).currentRawZ;
+  if (cell(sensorCol - 1, sensorRow).currentRawZ && !cell(sensorCol - 1, sensorRow).hasNote()) {
+    adjacentZ = cell(sensorCol - 1, sensorRow).currentRawZ;
   }
-  else if (cell(sensorCol+1, sensorRow).currentRawZ && !cell(sensorCol+1, sensorRow).hasNote()) {
-    adjacentZ = cell(sensorCol+1, sensorRow).currentRawZ;
+  else if (cell(sensorCol + 1, sensorRow).currentRawZ && !cell(sensorCol + 1, sensorRow).hasNote()) {
+    adjacentZ = cell(sensorCol + 1, sensorRow).currentRawZ;
   }
   // the adjacent Z value is added the active cell's pressure to make
   // up for the pressure differential while moving across cells
@@ -1376,6 +1406,8 @@ unsigned short handleZExpression() {
 constexpr const int32_t fxdRateXSamples = FXD_FROM_INT(5);    // the number of samples over which the average rate of change of X is calculated
 
 short handleXExpression() {
+  DEBUGPRINT_FUNCNAME();
+
   sensorCell->refreshX();
 
   short movedX;
@@ -1383,11 +1415,11 @@ short handleXExpression() {
 
   // determine if a slide transfer is in progress and which column it is with
   short transferCol = 0;
-  if (cell(sensorCol-1, sensorRow).touched == transferCell) {
-    transferCol = sensorCol-1;
+  if (cell(sensorCol - 1, sensorRow).touched == transferCell) {
+    transferCol = sensorCol - 1;
   }
-  else if (cell(sensorCol+1, sensorRow).touched == transferCell) {
-    transferCol = sensorCol+1;
+  else if (cell(sensorCol + 1, sensorRow).touched == transferCell) {
+    transferCol = sensorCol + 1;
   }
 
   // if there is a slide transfer column, interpolate the X position based on the relative pressure
@@ -1502,6 +1534,8 @@ inline boolean isQuantizeHoldStable() {
 }
 
 short handleYExpression() {
+  DEBUGPRINT_FUNCNAME();
+
   sensorCell->refreshY();
 
   short preferredTimbre = INVALID_DATA;
@@ -1537,6 +1571,8 @@ inline void releaseChannel(byte split, byte channel) {
 }
 
 boolean handleNonPlayingRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (sensorCell->velocity) {
     switch (displayMode) {
       case displayPerSplit:
@@ -1667,10 +1703,7 @@ boolean handleNonPlayingRelease() {
 
 // Called when a touch is released to handle note off or other release events
 void handleTouchRelease() {
-  DEBUGPRINT((1,"handleTouchRelease"));
-  DEBUGPRINT((1," col="));DEBUGPRINT((1,(int)sensorCol));
-  DEBUGPRINT((1," row="));DEBUGPRINT((1,(int)sensorRow));
-  DEBUGPRINT((1,"\n"));
+  DEBUGPRINT_FUNCNAME();
 
   // if a release is pending, decrease the counter
   if (sensorCell->pendingReleaseCount > 0) {
@@ -1841,6 +1874,8 @@ void handleTouchRelease() {
 }
 
 inline void postTouchRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   sensorCell->clearAllPhantoms();
 
   // reset velocity calculations
@@ -1854,6 +1889,8 @@ inline void postTouchRelease() {
 }
 
 inline void handleOpenStringsRelease() {
+  DEBUGPRINT_FUNCNAME();
+
   if (cellsTouched == 0) {
     // turn off all the notes of sounding open strings since no touches are active at all anymore
     for (byte row = 0; row < NUMROWS; ++row) {
@@ -1870,7 +1907,7 @@ byte CELLCOUNT = MAX_CELLCOUNT;
 //byte SCANNED_CELLS[MAX_CELLCOUNT][2];
 
 // Columns and rows are scanned in non-sequential order to minimize sensor crosstalk
-LS_CONST byte SCANNED_CELLS_200[MAX_CELLCOUNT][2] = {
+static const byte SCANNED_CELLS_200[MAX_CELLCOUNT][2] = {
   {0, 0},
   {3, 4}, {7, 1}, {10, 5}, {13, 2}, {17, 6}, {20, 3}, {24, 7}, {1, 4}, {4, 0}, {8, 5}, {11, 1}, {14, 6}, {18, 2}, {21, 7}, {25, 3}, {2, 0}, {5, 4}, {9, 1}, {12, 5}, {15, 2}, {19, 6}, {22, 3}, {6, 7}, {16, 4}, {23, 0},
   {3, 0}, {7, 5}, {10, 1}, {13, 6}, {17, 2}, {20, 7}, {24, 3}, {1, 0}, {4, 4}, {8, 1}, {11, 5}, {14, 2}, {18, 6}, {21, 3}, {25, 7}, {2, 4}, {5, 0}, {9, 5}, {12, 1}, {15, 6}, {19, 2}, {22, 7}, {6, 3}, {16, 0}, {23, 4},
@@ -1881,7 +1918,7 @@ LS_CONST byte SCANNED_CELLS_200[MAX_CELLCOUNT][2] = {
   {3, 7}, {7, 4}, {10, 0}, {13, 5}, {17, 1}, {20, 6}, {24, 2}, {1, 7}, {4, 3}, {8, 0}, {11, 4}, {14, 1}, {18, 5}, {21, 2}, {25, 6}, {2, 3}, {5, 7}, {9, 4}, {12, 0}, {15, 5}, {19, 1}, {22, 6}, {6, 2}, {16, 7}, {23, 3},
   {3, 3}, {7, 0}, {10, 4}, {13, 1}, {17, 5}, {20, 2}, {24, 6}, {1, 3}, {4, 7}, {8, 4}, {11, 0}, {14, 5}, {18, 1}, {21, 6}, {25, 2}, {2, 7}, {5, 3}, {9, 0}, {12, 4}, {15, 1}, {19, 5}, {22, 2}, {6, 6}, {16, 3}, {23, 7}
 };
-LS_CONST byte SCANNED_CELLS_128[MAX_CELLCOUNT][2] = {
+static const byte SCANNED_CELLS_128[MAX_CELLCOUNT][2] = {
   {0, 0},
   {3, 4}, {7, 1}, {10, 5}, {13, 2}, {1, 4}, {4, 0}, {8, 5}, {11, 1}, {14, 6}, {2, 0}, {5, 4}, {9, 1}, {12, 5}, {15, 2}, {6, 7}, {16, 4},
   {3, 0}, {7, 5}, {10, 1}, {13, 6}, {1, 0}, {4, 4}, {8, 1}, {11, 5}, {14, 2}, {2, 4}, {5, 0}, {9, 5}, {12, 1}, {15, 6}, {6, 3}, {16, 0},

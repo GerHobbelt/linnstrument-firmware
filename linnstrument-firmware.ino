@@ -28,7 +28,6 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 =======================================================================================================================
 =====================================================================================================================*/
 
-
 /*
  * DUE Board pin   |  PORT  | Label
  * ----------------+--------+-------
@@ -131,16 +130,16 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 #include "ls_debug.h"
 #include "ls_channelbucket.h"
 #include "ls_midi.h"
-
+#include "ls_alignToWord.h"
 
 /******************************************** CONSTANTS ******************************************/
 
-LS_CONST struct OSinfo {
+static const struct OSinfo {
   const char* OSVersion;
   const char* OSVersionBuild;
 } OSinfo = {
   .OSVersion = "234.",
-  .OSVersionBuild = ".074",
+  .OSVersionBuild = ".075",
 };
 
 // SPI addresses
@@ -155,7 +154,7 @@ LS_CONST struct OSinfo {
 //#define DISPLAY_XFRAME_AT_LAUNCH
 //#define DISPLAY_YFRAME_AT_LAUNCH
 //#define DISPLAY_ZFRAME_AT_LAUNCH
-//#define DISPLAY_SURFACESCAN_AT_LAUNCH
+#define DISPLAY_SURFACESCAN_AT_LAUNCH
 #define DISPLAY_FREERAM_AT_LAUNCH
 #define DISPLAY_DEBUGMIDI_AT_LAUNCH
 //#define TESTING_SENSOR_DISABLE
@@ -182,7 +181,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define READ_Y  1
 #define READ_Z  2
 
-// Supported colors:
+// Supported colors (5 bits, hence max 32 ids available including COLOR_OFF):
 //
 // RGB led ==>
 // - Red
@@ -194,25 +193,56 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 // - Cyan           : Green + Blue
 // - White          : Red + Green + Blue
 // - Black          : all OFF
-// Then there's also the 50% duty cycle remixes: half the time color A, the other half its color B:
+// Then there's also the 50% duty cycle remixes: half the time color A, the other half it's color B:
 // a.k.a. 'composite colors':
-// - Orange         : Yellow + Red
-// - Pink           : Purple/Magenta + Yellow
-// - Lime           : Yellow + Green
-// - (Cold) White   : White + Cyan
 //
-#define COLOR_OFF      0
-#define COLOR_RED      1
-#define COLOR_YELLOW   2
-#define COLOR_GREEN    3
-#define COLOR_CYAN     4
-#define COLOR_BLUE     5
-#define COLOR_MAGENTA  6
-#define COLOR_BLACK    7
-#define COLOR_WHITE    8
-#define COLOR_ORANGE   9
-#define COLOR_LIME     10
-#define COLOR_PINK     11
+//                  : Red            : Green          : Blue           : Yellow         : Purple/Magenta : Cyan           : White          : 
+// -----------------:----------------:----------------:----------------:----------------:----------------:----------------:----------------:
+// - Red            : (Red)          : Yellow/2       : Purple/2       : Orange         : ?R+RB  Wine    : ?RGB  WhiteX/2 : Rosa           :
+// - Green          :                : (Green)        : Cyan/2         : Lime           : ?RGB/2 WhiteA/2: ?G+GB Malachite: Mint           :
+// - Blue           :                :                : (Blue)         : ?RGB/2 WhiteB/2: ?RB+B DeepPrple: ?GB+B  Lapis   : Turquoise      :
+// - Yellow         :                :                :                : (Yellow)       : Pink           : ?RG+GB Lettuce : Warm White     :
+// - Purple/Magenta :                :                :                :                : (Magenta)      : ?RB+GB Sky     : Cold Pink      :
+// - Cyan           :                :                :                :                :                : (Cyan)         : Cold White     :
+// - White          :                :                :                :                :                :                : (White)        :
+//                  :                :                :                :                :                :                :                :
+// - Black          : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       :
+//
+// ==> 1(OFF) + 3 + 5 + (6+5+4+3+2+1) = 30 colors total: 0..29
+//
+#define COLOR_OFF         0
+#define COLOR_RED         1
+#define COLOR_YELLOW      2
+#define COLOR_GREEN       3
+#define COLOR_CYAN        4
+#define COLOR_BLUE        5
+#define COLOR_MAGENTA     6
+#define COLOR_BLACK       7
+#define COLOR_WHITE       8
+
+#define COLOR_ORANGE      9
+#define COLOR_LIME        10
+#define COLOR_PINK        11
+#define COLOR_COLD_WHITE  12
+#define COLOR_WARM_WHITE  13
+#define COLOR_ROSA        14
+#define COLOR_MINT        15
+#define COLOR_SKY         16
+#define COLOR_COLD_PINK   17
+#define COLOR_LAPIS       18
+#define COLOR_MALACHITE   19
+#define COLOR_LETTUCE     20
+#define COLOR_DEEP_PURPLE 21
+#define COLOR_WINE        22
+#define COLOR_PURPLE_2    23
+#define COLOR_YELLOW_2    24
+#define COLOR_CYAN_2      25
+#define COLOR_WHITE_X2    26
+#define COLOR_WHITE_A2    27
+#define COLOR_WHITE_B2    28
+#define COLOR_TURQUOISE   29
+
+#define COLOR_LAST        29
 
 // Special row offset values, for legacy reasons
 #define ROWOFFSET_NOOVERLAP        0x00
@@ -220,10 +250,8 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define ROWOFFSET_GUITAR           0x0d
 #define ROWOFFSET_ZERO             0x7f
 
-#define LED_FLASH_DELAY  500000        // the time before a led is turned off when flashing or pulsing, in microseconds
-
 #define DEFAULT_MAINLOOP_DIVIDER      2
-#define DEFAULT_LED_REFRESH           333
+#define DEFAULT_LED_REFRESH           333      // microseconds per column (was 333) — lower reduces flicker
 #define DEFAULT_MIDI_DECIMATION       8000
 #define DEFAULT_MIDI_INTERVAL         235
 
@@ -237,8 +265,8 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 // Values related to the Z sensor, continuous pressure
 #define DEFAULT_SENSOR_SENSITIVITY_Z  75       // by default the sensor Z sensitivity is unchanged, ie. 75%
-#define DEFAULT_SENSOR_LO_Z           120      // lowest acceptable raw Z value to start a touch
-#define DEFAULT_SENSOR_FEATHER_Z      80       // lowest acceptable raw Z value to continue a touch
+#define DEFAULT_SENSOR_LO_Z           40       // lowest acceptable raw Z value to start a touch (was 100/120)
+#define DEFAULT_SENSOR_FEATHER_Z      20       // lowest acceptable raw Z value to continue a touch (was 65/80)
 #define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
 #define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure
 
@@ -280,6 +308,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define LED_LAYER_PLAYED    4
 #define LED_LAYER_SEQUENCER 5
 #define LED_LAYER_COMBINED  6
+
 #define MAX_LED_LAYERS      6
 
 // The values here MUST be the same as the row numbers of the cells in GlobalSettings
@@ -336,7 +365,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 #define TEMPO_ARP_SIXTEENTH_SWING 0xff
 
-LS_CONST unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+static const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
 constexpr const int LED_PATTERNS = 3;
 
@@ -345,7 +374,7 @@ constexpr const int LED_PATTERNS = 3;
 // bits 3-6: 4 bits to select the color: 0:off, 1:red, 2:yellow, 3:green, 4:cyan, 5:blue, 6:magenta, etc.
 // bits 0-2: 0:off, 1: on, 2: pulse
 const unsigned long LED_LAYER_SIZE = MAXCOLS * MAXROWS;
-const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS+1) * LED_LAYER_SIZE;
+const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS + 1) * LED_LAYER_SIZE;
 
 /******************************************** VELOCITY *******************************************/
 
@@ -391,9 +420,9 @@ byte sensorSplit = 0;                       // the split of the currently read t
 // saved as the specific column and row for the focus cell.
 // If in 1Ch/Poly mode, continuous X and Y messages are sent only from movements within the focused cell.
 // If in 1Ch/Chan mode, continuous X, Y and Z messages are sent only from movements within the focused cell.
-struct __attribute__ ((packed)) FocusCell {
-  byte col:5;
-  byte row:3;
+struct __attribute__((packed)) FocusCell {
+  byte col : 5;
+  byte row : 3;
 };
 FocusCell focusCell[NUMSPLITS][16];             // 2 splits and 16 MIDI channels for each split
 
@@ -410,7 +439,7 @@ enum TouchState {
   touchedCell = 3
 };
 
-struct __attribute__ ((packed)) TouchInfo {
+struct __attribute__((packed)) TouchInfo {
   void shouldRefreshData();                  // indicate that the X, Y and Z data should be refreshed
   unsigned short rawX();                     // ensure that X is updated to the latest scan and return its raw value
   short calibratedX();                       // ensure that X is updated to the latest scan and return its calibrated value
@@ -556,7 +585,8 @@ enum CellDisplay {
   cellOn = 1,
   cellFastPulse = 2,
   cellSlowPulse = 3,
-  cellFocusPulse = 4
+  cellFocusPulse = 4,
+  cellTempoPulse = 5
 };
 
 enum DisplayMode {
@@ -619,13 +649,13 @@ enum CalibrationPhase {
 };
 byte calibrationPhase = calibrationInactive;
 
-struct __attribute__ ((packed)) CalibrationSample {
-  unsigned short minValue:12;
-  unsigned short maxValue:12;
-  byte pass:4;
+struct __attribute__((packed)) CalibrationSample {
+  unsigned short minValue : 12;
+  unsigned short maxValue : 12;
+  byte pass : 4;
 };
-CalibrationSample calSampleRows[MAXCOLS][4]; // store four rows of calibration measurements
-CalibrationSample calSampleCols[9][MAXROWS]; // store nine columns of calibration measurements
+CalibrationSample calSampleRows[MAXCOLS][4];  // store four rows of calibration measurements
+CalibrationSample calSampleCols[9][MAXROWS];  // store nine columns of calibration measurements
 
 struct CalibrationX {
   int32_t fxdMeasuredX;
@@ -633,9 +663,9 @@ struct CalibrationX {
   int32_t fxdRatio;
 };
 
-struct __attribute__ ((packed)) CalibrationY {
-  unsigned short minY:12;
-  unsigned short maxY:12;
+struct __attribute__((packed)) CalibrationY {
+  unsigned short minY : 12;
+  unsigned short maxY : 12;
   int32_t fxdRatio;
 };
 
@@ -680,6 +710,13 @@ enum LowRowBendBehavior {
 enum LowRowCCBehavior {
   lowRowCCHold = 0,
   lowRowCCFader = 1
+};
+
+enum SeqFaderRowBehavior {
+  seqFaderTimbre = 0,
+  seqFaderPitchOffset = 1,
+  seqFaderDuration = 2,
+  seqFaderVelocity = 3,
 };
 
 enum MidiMode {
@@ -799,7 +836,7 @@ enum SplitHandednessType {
 struct DeviceSettings {
   byte version;                                   // the version of the configuration format
   boolean serialMode;                             // 0 = normal MIDI I/O, 1 = Arduino serial mode for OS update and serial monitor
-  CalibrationX calRows[MAXCOLS+1][4];             // store four rows of calibration data
+  CalibrationX calRows[MAXCOLS + 1][4];           // store four rows of calibration data
   CalibrationY calCols[9][MAXROWS];               // store nine columns of calibration data
   uint32_t calCrc;                                // the CRC check value of the calibration data to see if it's still valid
   boolean calCrcCalculated;                       // indicates whether the CRC of the calibration was calculated, previous firmware versions didn't
@@ -910,10 +947,15 @@ enum SequencerStepSize {
   StepFourthTriplet = 16,
   StepEighthDotted = 18,
   StepFourth = 24,
-  StepFourthDotted = 36
+  StepFourthDotted = 36,
+  StepTwosTriplet = 32,
+  StepTwos = 48,
+  StepTwosDotted = 72,
+  StepOnesTriplet = 64,
+  StepOnes = 96,
 };
 
-struct StepEvent {
+struct __attribute__((packed)) StepEvent {
   boolean hasData();
   void clear();
 
@@ -940,38 +982,86 @@ struct StepEvent {
   void operator=(const StepEvent& e);
 
   // the bit-wise arrangement is like below,
-  // we can't rely on structure packing since
-  // it will align each element on byte boundaries
-  // byte note:7;                // 0 to 127
-  // byte duration:10;           // 1 to 768 in 24 PPQ ticks
-  // byte velocity:7;            // 1 to 127
-  // signed char pitchOffset:8;  // -96 to 96 semitones
-  // byte timbre:7;              // 0 to 127
-  // byte row:3;                 // 1 to 7
-  byte data[6];
+  // while the struct hierarchy is marked as 'packed' as well
+  // to ensure that each StepEvent in any array is placed at a
+  // BYTE boundary, rather than the default word boundary for classes.
+  struct __attribute__((packed)) StepEventData {
+    unsigned short note : 7;       // 0 to 127
+    unsigned short duration : 10;  // 1 to 768 in 24 PPQ ticks
+    unsigned short velocity : 7;   // 1 to 127
+    signed short pitchOffset : 8;  // -96 to 96 semitones
+    unsigned short timbre : 7;     // 0 to 127
+    unsigned short row : 3;        // 1 to 7
+                                   // ^^^^^^^^^ total: 42 bits (5.25 bytes => cost: 6 bytes)
+
+#if 0  // TODO / future music
+
+    unsigned short probability : 3;         // a la Novation MK4 & Circuit Tracks Groovebox: 12.5% steps: 100% .. 12.5%
+    unsigned short microstepOffset : 3;     // novation has 6 microsteps per step; I prefer 12 or more but we are running at SequencerStepSize, which is 1/6th of a 1/16th, so exactly like Novation.
+    unsigned short legato : 1;              // legato with next note. NOTE: could also be encoded as a 'magic value' in duration field?
+    // unsigned short sostenuto : 1;        // sustain playing(!) notes <-- this is a global config setting; it's results while recording should become visible in the recorded note durations...
+    unsigned short aftertouchEnvelope : 5;  // selected ADSR envelope for aftertouch output: 0(none), 1..31
+    unsigned short isChord : 2;             // 0: no chord. 1: `timbre`+`legato`+`microstepOffset` determine the chord pattern to play, based at `note` in `Sequence.Scale`: chord X, inversion I, bank B. 
+                                            // NOTE: technically, our chords and arps are (mini-)sequences, thus interchangeable.
+                                            // 2: ditto as 1, but now it's an ARP pattern we want played for the duration.
+    // ^^^^^^^^^ total: 42+14=56 bits => cost: 7 bytes per note step record.
+
+#endif
+  };
+
+#if 0  // TODO / future music
+
+  struct __attribute__ ((packed)) ChordEventData {
+    unsigned short rootNote : 7;            // 0 to 127
+    unsigned short duration : 10;           // 1 to 768 in 24 PPQ ticks
+    unsigned short velocity : 7;            // 1 to 127
+    signed short   pitchOffset : 8;         // -96 to 96 semitones
+    unsigned short row : 3;                 // 1 to 7
+
+    unsigned short chordId : 56 - 45;       // # of the chord/arp in the chord/arp pattern bank; high numbers are patterns in ROM.
+
+    unsigned short probability : 3;         // a la Novation MK4 & Circuit Tracks Groovebox: 12.5% steps: 100% .. 12.5%
+    unsigned short aftertouchEnvelope : 5;  // selected ADSR envelope for aftertouch output: 0(none), 1..31
+    unsigned short isChord : 2;             // 0: no chord. 1: `timbre`+`legato`+`microstepOffset` determine the chord pattern to play, based at `note` in `Sequence.Scale`: chord X, inversion I, bank B. 
+                                            // NOTE: technically, our chords and arps are (mini-)sequences, thus interchangeable.
+                                            // 2: ditto as 1, but now it's an ARP pattern we want played for the duration.
+    // ^^^^^^^^^ total: 56 bits => cost: 7 bytes per note step record.
+  };
+
+  union  __attribute__ ((packed)) EventData {
+    StepEventData  note;
+    ChordEventData chord;
+  } data;
+
+#else
+
+  StepEventData data;
+
+#endif
 };
-struct StepData {
+struct __attribute__((packed)) StepData {
   void clear();
 
   void operator=(const StepData& d);
-  
+
   StepEvent events[MAX_SEQUENCER_STEP_EVENTS];  // the events for each step
 };
-struct SequencerPattern {
+struct __attribute__((packed)) SequencerPattern {
   void clear();
 
   void operator=(const SequencerPattern& p);
 
   StepData steps[MAX_SEQUENCER_STEPS];
-  SequencerStepSize stepSize;             // see SequencerStepSize
-  SequencerDirection sequencerDirection;  // see SequencerDirection
-  boolean loopScreen;                     // on or off
-  boolean swing;                          // on or off
-  byte length;                            // between 1 to 32 steps
+
+  SequencerStepSize stepSize : 7;             // see SequencerStepSize, 1..96
+  boolean loopScreen : 1;                     // on or off
+  SequencerDirection sequencerDirection : 2;  // see SequencerDirection, 0..2
+  boolean swing : 1;                          // on or off
+  byte length : 5;                            // between 1 to 32 steps
 };
 struct StepSequencer {
   SequencerPattern patterns[MAX_SEQUENCER_PATTERNS];  // patterns available for each sequencer
-  byte seqDrumNotes[SEQ_DRUM_NOTES];                  // note numbers from 0 to 127
+  byte seqDrumNotes[SEQ_DRUM_NOTES];                  // note numbers from 0 to 127, mapping drum notes to MIDI notes
 };
 struct SequencerProject {
   StepSequencer sequencer[MAX_SEQUENCERS];            // the sequencers available in a project
@@ -983,7 +1073,7 @@ struct SequencerProject {
 struct Configuration {
   DeviceSettings device;
   PresetSettings settings;
-  PresetSettings preset[NUMPRESETS];
+  PresetSettings preset[NUMPRESETS];  // TODO: move off to flash, load as necessary...
   SequencerProject project;
 };
 struct Configuration config;
@@ -1000,7 +1090,7 @@ struct Configuration config;
 #define SWITCH_MCU_PINS    secretSwitch[6]
 #define SWITCH_TOUCHFRAME  secretSwitch[7] 
 
-boolean secretSwitch[SECRET_SWITCHES] = {0};  // The secretSwitch* values are controlled by cells in column 18
+boolean secretSwitch[SECRET_SWITCHES] = { 0 };  // The secretSwitch* values are controlled by cells in column 18
 
 
 /***************************************** OPERATING MODE ****************************************/
@@ -1015,47 +1105,26 @@ OperatingMode operatingMode = modePerformance;
 
 /************************************** FLASH STORAGE LAYOUT *************************************/
 
-static constexpr inline int alignToWord32Boundary(int value) {
-#if 0
-  if (value % 4 == 0) {
-    return value;
-  }
-
-  return ((value / 4) + 1) * 4;
-#else
-  return int((value + 3) / 4) * 4;
-#endif
-}
-
-constexpr const int PROJECTS_OFFSET = 4;
-constexpr const int PROJECT_VERSION_MARKER_SIZE = 4;
-constexpr const int PROJECT_INDEXES_COUNT = 20;
-constexpr const int PROJECTS_MARKERS_SIZE = alignToWord32Boundary(PROJECT_VERSION_MARKER_SIZE + 2 * PROJECT_INDEXES_COUNT);    // one version marker, two series on indexes for project references
 constexpr const int SINGLE_PROJECT_SIZE = alignToWord32Boundary(sizeof(SequencerProject));
-constexpr const int ALL_PROJECTS_SIZE = PROJECTS_MARKERS_SIZE + (MAX_PROJECTS + 1)*SINGLE_PROJECT_SIZE;
-constexpr const int SETTINGS_OFFSET = PROJECTS_OFFSET + alignToWord32Boundary(ALL_PROJECTS_SIZE);
-
-#define PROJECT_INDEX_OFFSET(marker, index)   (PROJECTS_OFFSET + PROJECT_VERSION_MARKER_SIZE + marker * PROJECT_INDEXES_COUNT + index)
 
 
 /**************************************** FIXED POINT MATH ***************************************/
 
 #define FXD_FBITS        8
 #define FXD_FROM_INT(a)  (int32_t)((a) << FXD_FBITS)
-#define FXD_MAKE(a)      (int32_t)((a*(1 << FXD_FBITS)))
+#define FXD_MAKE(a)      (int32_t)((a * (1 << FXD_FBITS)))
 
 inline int FXD_TO_INT(int32_t a) {
-  a = a + ((a & (int32_t)1 << (FXD_FBITS-1)) << 1);   // rounding instead of truncation
-  return ((a) >> FXD_FBITS);
+  a += ((a & (int32_t)1 << (FXD_FBITS - 1)) << 1);  // rounding instead of truncation
+  return (a >> FXD_FBITS);
 }
 
 inline int32_t FXD_MUL(int32_t a, int32_t b) {
   int32_t t = a * b;
-  t = t + ((t & (int32_t)1 << (FXD_FBITS-1)) << 1);   // rounding instead of truncation
-  return t >> FXD_FBITS;
+  return FXD_TO_INT(t);
 }
 
-inline int32_t FXD_DIV(int32_t a, int32_t b) {
+constexpr inline int32_t FXD_DIV(int32_t a, int32_t b) {
   return ((int32_t)a << FXD_FBITS) / (int32_t)b;
 }
 
@@ -1063,17 +1132,16 @@ inline int32_t FXD_DIV(int32_t a, int32_t b) {
 
 #define FXD4_FBITS        4
 #define FXD4_FROM_INT(a)  (int32_t)((a) << FXD4_FBITS)
-#define FXD4_MAKE(a)      (int32_t)((a*(1 << FXD4_FBITS)))
+#define FXD4_MAKE(a)      (int32_t)((a * (1 << FXD4_FBITS)))
 
 inline int FXD4_TO_INT(int32_t a) {
-  a = a + ((a & (int32_t)1 << (FXD4_FBITS-1)) << 1);   // rounding instead of truncation
-  return ((a) >> FXD4_FBITS);
+  a += ((a & (int32_t)1 << (FXD4_FBITS - 1)) << 1);  // rounding instead of truncation
+  return (a >> FXD4_FBITS);
 }
 
 inline int32_t FXD4_MUL(int32_t a, int32_t b) {
   int32_t t = a * b;
-  t = t + ((t & (int32_t)1 << (FXD4_FBITS-1)) << 1);   // rounding instead of truncation
-  return t >> FXD4_FBITS;
+  return FXD4_TO_INT(t);
 }
 
 inline int32_t FXD4_DIV(int32_t a, int32_t b) {
@@ -1092,7 +1160,7 @@ const int32_t FXD_CONST_1016 = FXD_FROM_INT(1016);
 
 const int CALX_VALUE_MARGIN = 85;                         // 4095 / 48
 const int32_t FXD_CALX_HALF_UNIT = FXD_MAKE(85.3125);     // 4095 / 48
-const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(128);     // 4095 / 32
+const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(170);     // full cell width (~4095 / 24), accept any X within cell bounds
 const int32_t FXD_CALX_FULL_UNIT = FXD_MAKE(170.625);     // 4095 / 24
 const int32_t CALX_QUARTER_UNIT = FXD_TO_INT(FXD_CALX_FULL_UNIT) / 4;
 
@@ -1101,7 +1169,7 @@ const int32_t FXD_CALY_FULL_UNIT = FXD_FROM_INT(127);     // range of 7-bit CC
 
 /*************************************** OTHER RUNTIME STATE *************************************/
 
-DueFlashStorage dueFlashStorage;                    // access to the persistent flash storage
+AppDataFlashStorage appDataFlashStorage;  // access to the persistent flash storage
 
 boolean setupDone = false;                          // indicates whether the setup routine is finished
 
@@ -1125,12 +1193,9 @@ unsigned long lastControlPress[MAXROWS];
 byte mainLoopDivider = DEFAULT_MAINLOOP_DIVIDER;         // loop divider at which continuous tasks are ran
 unsigned long ledRefreshInterval = DEFAULT_LED_REFRESH;  // LED timing
 unsigned long prevLedTimerCount;                         // timer for refreshing leds
-unsigned long prevGlobalSettingsDisplayTimerCount;       // timer for refreshing the global settings display
 unsigned long prevTouchAnimTimerCount;                   // timer for refreshing the touch animation
 
 boolean customLedPatternActive = false;                  // was a custom led pattern loaded from flash
-
-unsigned long tempoLedOn = 0;                       // indicates when the tempo clock led was turned on
 
 ChannelBucket splitChannels[NUMSPLITS];             // the MIDI channels that are being handed out
 unsigned short midiPreset[NUMSPLITS];               // preset number 0-127
@@ -1204,8 +1269,6 @@ short guitarTuningPreviewChannel = -1;              // active channel that is pr
 
 byte customLedColor = COLOR_GREEN;                  // color is used for drawing in the custom LED editor
 
-unsigned int debugContentWritten = 0;
-
 /************************* FUNCTION DECLARATIONS TO WORK AROUND COMPILER *************************/
 
 inline void selectSensorCell(byte col, byte row, byte switchCode);
@@ -1272,7 +1335,9 @@ boolean switchPressAtStartup(byte switchRow) {
   sensorRow = switchRow;
   updateSensorCell();
   // initially we need read Z a few times for the readings to stabilize
-  readZ(); readZ(); unsigned short switchZ = readZ();
+  readZ();
+  readZ();
+  unsigned short switchZ = readZ();
   if (switchZ > Device.sensorLoZ + 128) {
     return true;
   }
@@ -1281,7 +1346,7 @@ boolean switchPressAtStartup(byte switchRow) {
 
 void activateSleepMode() {
   clearSwitches();
-  disableLedDisplay(); // clearDisplayImmediately();
+  disableLedDisplay();  // clearDisplayImmediately();
   setDisplayMode(displaySleep);
 }
 
@@ -1290,8 +1355,7 @@ void applyLedInterval() {
   if (Device.operatingLowPower) {
     mainLoopDivider = LOWPOWER_MAINLOOP_DIVIDER;
     ledRefreshInterval = LOWPOWER_LED_REFRESH;
-  }
-  else {
+  } else {
     mainLoopDivider = DEFAULT_MAINLOOP_DIVIDER;
     ledRefreshInterval = DEFAULT_LED_REFRESH;
   }
@@ -1301,8 +1365,7 @@ void applyMidiInterval() {
   if (isMidiUsingDIN()) {
     // 256 microseconds between bytes on Serial ports
     midiMinimumInterval = 256;
-  }
-  else {
+  } else {
     midiMinimumInterval = Device.minUSBMIDIInterval;
   }
 
@@ -1373,28 +1436,36 @@ void setup() {
   /*!!*/  // initialize the SPI port for setting one column of LEDs
   /*!!*/  SPI.begin(SPI_LEDS);
   /*!!*/  SPI.setDataMode(SPI_LEDS, SPI_MODE0);
+  SPI.setDataWidth(SPI_LEDS, SPI_CSR_BITS_16_BIT);
   /*!!*/  SPI.setClockDivider(SPI_LEDS, 4);                   // max clock is about 20 mHz. 4 = 21 mHz. Transferring all 4 bytes takes 1.9 uS.
   /*!!*/
+
+  startHFLEDpaintTimer(1 /* Hz */);
+
   /*!!*/  // initialize the SPI port for setting analog switches in touch sensor
   /*!!*/  SPI.begin(SPI_SENSOR);
   /*!!*/  SPI.setDataMode(SPI_SENSOR, SPI_MODE0);
   /*!!*/  SPI.setClockDivider(SPI_SENSOR, 4);                 // set clock speed to 84/4 = 21 mHz. Max clock is 25mHz @ 4.5v
   /*!!*/  selectSensorCell(0, 0, READ_Z);                     // set its analog switches to read column 0, row 0 and to read pressure
+  SPI.setDataWidth(SPI_SENSOR, SPI_CSR_BITS_16_BIT);
+
   /*!!*/
   /*!!*/  // initialize the SPI input port for reading the TI ADS7883 ADC
   /*!!*/  SPI.begin(SPI_ADC);
   /*!!*/  SPI.setDataMode(SPI_ADC, SPI_MODE0);
   /*!!*/  SPI.setClockDivider(SPI_ADC, 4);                    // set speed to 84/4 = 21 mHz. Max clock for ADC is 32 mHz @ 2.7-4.5v, 48mHz @ 4.5-5.5v
   /*!!*/
+  SPI.setDataWidth(SPI_ADC, SPI_CSR_BITS_16_BIT);
+
   /*!!*/  // Initialize the output enable line for the 2 LED display chips
   /*!!*/  pinMode(37, OUTPUT);
-  /*!!*/  digitalWrite(37, HIGH);
+  /*!!*/  digitalWrite(37, HIGH); // clearDisplayImmediately();
   /*!!*/
   /*!!*/  if (switchPressAtStartup(GLOBAL_SETTINGS_ROW)) {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
   /*!!*/    if (switchPressAtStartup(SWITCH_2_ROW)) {
   /*!!*/      globalReset = true;
-  /*!!*/      dueFlashStorage.write(0, 254);
+  /*!!*/      appDataFlashStorage.factoryReset();
   /*!!*/    }
   /*!!*/    // if only the global settings button is pressed at startup, activate firmware upgrade mode
   /*!!*/    else {
@@ -1417,10 +1488,183 @@ void setup() {
   /*!!*/
   //*************************************************************************************************************************************************
 
+
+
+
+
+
+
+
+#if 0
+
+  /*
+     43.5.4:: Temperature Sensor
+
+     The temperature sensor is connected to Channel 15 of the ADC.
+     The temperature sensor provides an output voltage VT that is proportional to absolute temperature (PTAT). To
+     activate the temperature sensor, TSON bit (ADC_ACR) needs to be set.
+
+     Note: ADC_ACR: This register can only be written if the WPEN bit is cleared in “ADC Write Protect Mode Register” on page 1353.
+
+     Notes: 
+     1. Use ADC_ACR.IBCTL = 00 for sampling frequency below 500 kHz.
+     2. Use ADC_ACR.IBCTL = 01 for sampling frequency between 500 kHz and 1 MHz.
+
+     45.8:: Temperature Sensor
+
+     The temperature sensor is connected to channel 15 of the ADC.
+     The temperature sensor provides an output voltage (VO_TS) that is proportional to absolute temperature (PTAT).
+     VO_TS linearly varies with a temperature slope dVO_TS/dT = 2.65 mV/°C.
+     VO_TS equals 0.8V at TA 27°C, with a ±15% accuracy. The VO_TS slope versus temperature dVO_TS/dT = 2.65
+     mV/°C only shows a ±5% slight variation over process, mismatch and supply voltage.
+     The user needs to calibrate it (offset calibration) at ambient temperature to eliminate the VO_TS spread at ambient
+     temperature (±15%).
+
+     Table 45-39 :: Temperature Sensor Characteristics
+     Symbol              Parameter                 Conditions      Min      Typ      Max       Unit
+     VO_TS               Output Voltage            TA = 27° C               0.800              V
+     VO_TS(accuracy)     Output Voltage Accuracy   TA = 27° C      -15               +15       %
+     dVO_TS/dT           Temperature Sensitivity (Slope Voltage vs Temperature)
+                                                                            2.65               mV/°C
+                         Slope accuracy                            -5                +5        %
+                         Temperature accuracy
+                         After offset calibration
+                         Over temperature range -40 to 85 °C       -5                +5        °C
+                         After offset calibration
+                         Over temperature range 0 to 80 °C         -3                +3        °C
+     tSTART              Startup Time              After ADC_ACR.TSON=1
+                                                                   20                40        µs
+
+     43.5.3:: Analog Inputs
+
+     The analog input pins can be multiplexed with PIO lines. In this case, the assignment of the ADC input is
+     automatically done as soon as the corresponding channel is enabled by writing the register ADC_CHER. By
+     default, after reset, the PIO line is configured as input with its pull-up enabled and the ADC input is connected to
+     the GND.                                                                   
+  */
+  REG_ADC_WPMR = (0x414443 << 8) | 0;       // WPEN = 0: enable write access
+  REG_ADC_ACR = 0 | (0b00 << 8) | (1 << 4); // IBCTL = 00, TSON = 1 :: TSON: Temperature Sensor On
+  REG_ADC_WPMR = (0x414443 << 8) | 1;       // WPEN = 1: disable write
+
+#if 0
+// GerH: if *I* read the datasheet correctly, this anolog I/O activity requires REG_ADC_WPMR access to be set to write-OK iff
+// we want to configure our ADC clock and/or set up a ADC channel like this.
+//
+// Incidentally, the adc code pasted/cludged together below does not set up the ADC module nor the ADC clock, which are mandatory
+// for proper operations, so the question is: where does the default core code do that bit of chip fiddling?!
+
+  //uint32_t analogRead(uint32_t ulPin)
+{
+  //uint32_t ulPin = ADC15;
+  uint32_t ulValue = 0;
+  const uint32_t ulChannel = 15;
+
+#if 0
+  if (ulPin < A0)
+    ulPin += A0;
+
+  ulChannel = g_APinDescription[ulPin].ulADCChannelNumber ;
+#endif
+
+//#if defined __SAM3X8E__ || defined __SAM3X8H__
+	//static uint32_t latestSelectedChannel = -1;
+	//switch ( g_APinDescription[ulPin].ulAnalogChannel )
+	{
+		// Handling ADC 12 bits channels
+		//case ADC15 :
+
+			// Enable the corresponding channel
+uint32_t adc_get_channel_status(const Adc *p_adc, const enum adc_channel_num_t adc_ch)
+{
+	return p_adc->ADC_CHSR & (1 << adc_ch);
+}
+			if (adc_get_channel_status(ADC, ulChannel) != 1) {
+void adc_enable_channel(Adc *p_adc, const enum adc_channel_num_t adc_ch)
+{
+	p_adc->ADC_CHER = 1 << adc_ch;
+}
+				adc_enable_channel( ADC, ulChannel );
+				//if ( latestSelectedChannel != (uint32_t)-1 && ulChannel != latestSelectedChannel)
+				//	adc_disable_channel( ADC, latestSelectedChannel );
+				//latestSelectedChannel = ulChannel;
+				g_pinStatus[ulPin] = (g_pinStatus[ulPin] & 0xF0) | PIN_STATUS_ANALOG;
+			}
+
+			// Start the ADC
+void adc_start(Adc *p_adc)
+{
+	p_adc->ADC_CR = ADC_CR_START;
+}
+			adc_start( ADC );
+
+			// Wait for end of conversion
+uint32_t adc_get_status(const Adc *p_adc)
+{
+	return p_adc->ADC_ISR;
+}
+			while ((adc_get_status(ADC) & ADC_ISR_DRDY) != ADC_ISR_DRDY)
+				;
+
+
+uint32_t adc_get_channel_status(const Adc *p_adc, const enum adc_channel_num_t adc_ch)
+{
+	return p_adc->ADC_CHSR & (1 << adc_ch);
+}
+uint32_t adc_get_channel_value(const Adc *p_adc, const enum adc_channel_num_t adc_ch)
+{
+	uint32_t ul_data = 0;
+
+	if (15 >= adc_ch) {
+		ul_data = *(p_adc->ADC_CDR + adc_ch);
+	}
+
+	return ul_data;
+}
+uint32_t adc_get_latest_value(const Adc *p_adc)
+{
+	return p_adc->ADC_LCDR;
+}
+void adc_enable_tag(Adc *p_adc)
+{
+	p_adc->ADC_EMR |= ADC_EMR_TAG;
+}
+enum adc_channel_num_t adc_get_tag(const Adc *p_adc)
+{
+	return (p_adc->ADC_LCDR & ADC_LCDR_CHNB_Msk) >> ADC_LCDR_CHNB_Pos;
+}
+
+
+			// Read the value
+uint32_t adc_get_latest_value(const Adc *p_adc)
+{
+	return p_adc->ADC_LCDR;
+}
+			ulValue = adc_get_latest_value(ADC);
+			ulValue = mapResolution(ulValue, ADC_RESOLUTION, _readResolution);
+	}
+
+	return ulValue;
+}
+#endif  // 0
+
+
+#endif  // 0
+
+
+
+
+
+
+
+
+
+
+
+
   // initialize input pins for 2 foot switches
   pinMode(FOOT_SW_LEFT, INPUT_PULLUP);
   pinMode(FOOT_SW_RIGHT, INPUT_PULLUP);
-  
+
   // initialize the calibration data for it to be a no-op, unless it's loaded from a previous calibration sample result
   initializeCalibrationData();
 
@@ -1439,7 +1683,7 @@ void setup() {
   }
 
   // setup system timers for interval between LED column refreshes and foot switch reads
-  prevLedTimerCount = prevFootSwitchTimerCount = prevGlobalSettingsDisplayTimerCount = micros();
+  prevLedTimerCount = prevFootSwitchTimerCount = micros();
 
   // perform some initialization
   initializeCalibrationSamples();
@@ -1495,37 +1739,37 @@ void setup() {
   }
 
 #ifdef DISPLAY_XFRAME_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_XFRAME = true;
 #endif
 
 #ifdef DISPLAY_YFRAME_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_YFRAME = true;
 #endif
 
 #ifdef DISPLAY_ZFRAME_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_ZFRAME = true;
 #endif
 
 #ifdef DISPLAY_SURFACESCAN_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_SURFACESCAN = true;
 #endif
 
 #ifdef DISPLAY_FREERAM_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_FREERAM = true;
 #endif
 
 #ifdef DISPLAY_DEBUGMIDI_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_DEBUGMIDI = true;
   debugLevel = 5;
@@ -1570,8 +1814,7 @@ inline void modeLoopPerformance() {
       setDisplayMode(displayNormal);                             // this should make the reset operation feel more predictable
       updateDisplay();
     }
-  }
-  else {
+  } else {
     TouchState previousTouch = sensorCell->touched;                              // get previous touch status of this cell
 
     boolean canShortCircuit = false;
@@ -1579,13 +1822,11 @@ inline void modeLoopPerformance() {
     if (previousTouch != touchedCell && previousTouch != ignoredCell &&
         sensorCell->isMeaningfulTouch()) {                                       // if touched now but not before, it's a new touch
       canShortCircuit = handleNewTouch();
-    }
-    else if (previousTouch == touchedCell && sensorCell->isActiveTouch()) {      // if touched now and touched before
-      canShortCircuit = handleXYZupdate();                                       // handle any X, Y or Z movements
-    }
-    else if (previousTouch != untouchedCell && !sensorCell->isActiveTouch() &&   // if not touched now but touched before, it's been released
-             sensorCell->isPastDebounceDelay()) {
-        handleTouchRelease();
+    } else if (previousTouch == touchedCell && sensorCell->isActiveTouch()) {     // if touched now and touched before
+      canShortCircuit = handleXYZupdate();                                        // handle any X, Y or Z movements
+    } else if (previousTouch != untouchedCell && !sensorCell->isActiveTouch() &&  // if not touched now but touched before, it's been released
+               sensorCell->isPastDebounceDelay()) {
+      handleTouchRelease();
     }
 
     if (canShortCircuit) {
