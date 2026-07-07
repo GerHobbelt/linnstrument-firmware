@@ -183,7 +183,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define READ_Y  1
 #define READ_Z  2
 
-// Supported colors:
+// Supported colors (5 bits, hence max 32 ids available including COLOR_OFF):
 //
 // RGB led ==>
 // - Red
@@ -197,26 +197,54 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 // - Black          : all OFF
 // Then there's also the 50% duty cycle remixes: half the time color A, the other half it's color B:
 // a.k.a. 'composite colors':
-// - Orange         : Yellow + Red
-// - Pink           : Purple/Magenta + Yellow
-// - Lime           : Yellow + Green
-// - (Cold) White   : White + Cyan
 //
-#define COLOR_OFF      0
-#define COLOR_RED      1
-#define COLOR_YELLOW   2
-#define COLOR_GREEN    3
-#define COLOR_CYAN     4
-#define COLOR_BLUE     5
-#define COLOR_MAGENTA  6
-#define COLOR_BLACK    7
-#define COLOR_WHITE    8
-#define COLOR_ORANGE   9
-#define COLOR_LIME     10
-#define COLOR_PINK     11
-#define COLOR_VIOLET   12
-#define COLOR_LAST     12
-#define COLOR_DIMGREEN 16    // only used in microLinn's note lights display, so violet is still in effect the last color
+//                  : Red            : Green          : Blue           : Yellow         : Purple/Magenta : Cyan           : White          : 
+// -----------------:----------------:----------------:----------------:----------------:----------------:----------------:----------------:
+// - Red            : (Red)          : Yellow/2       : Purple/2       : Orange         : ?R+RB  Wine    : ?RGB  WhiteX/2 : Rosa           :
+// - Green          :                : (Green)        : Cyan/2         : Lime           : ?RGB/2 WhiteA/2: ?G+GB Malachite: Mint           :
+// - Blue           :                :                : (Blue)         : ?RGB/2 WhiteB/2: ?RB+B DeepPrple: ?GB+B  Lapis   : Turquoise      :
+// - Yellow         :                :                :                : (Yellow)       : Pink           : ?RG+GB Lettuce : Warm White     :
+// - Purple/Magenta :                :                :                :                : (Magenta)      : ?RB+GB Sky     : Cold Pink      :
+// - Cyan           :                :                :                :                :                : (Cyan)         : Cold White     :
+// - White          :                :                :                :                :                :                : (White)        :
+//                  :                :                :                :                :                :                :                :
+// - Black          : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       :
+//
+// ==> 1(OFF) + 3 + 5 + (6+5+4+3+2+1) = 30 colors total: 0..29
+//
+#define COLOR_OFF         0
+#define COLOR_RED         1
+#define COLOR_YELLOW      2
+#define COLOR_GREEN       3
+#define COLOR_CYAN        4
+#define COLOR_BLUE        5
+#define COLOR_MAGENTA     6
+#define COLOR_BLACK       7
+#define COLOR_WHITE       8
+
+#define COLOR_ORANGE      9
+#define COLOR_LIME        10
+#define COLOR_PINK        11
+#define COLOR_COLD_WHITE  12
+#define COLOR_WARM_WHITE  13
+#define COLOR_ROSA        14
+#define COLOR_MINT        15
+#define COLOR_SKY         16
+#define COLOR_COLD_PINK   17
+#define COLOR_LAPIS       18
+#define COLOR_MALACHITE   19
+#define COLOR_LETTUCE     20
+#define COLOR_DEEP_PURPLE 21
+#define COLOR_WINE        22
+#define COLOR_PURPLE_2    23
+#define COLOR_YELLOW_2    24
+#define COLOR_CYAN_2      25
+#define COLOR_WHITE_X2    26
+#define COLOR_WHITE_A2    27
+#define COLOR_WHITE_B2    28
+#define COLOR_TURQUOISE   29
+
+#define COLOR_LAST        29
 
 // Special row offset values, for legacy reasons
 #define ROWOFFSET_NOOVERLAP        0x00
@@ -282,6 +310,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define LED_LAYER_PLAYED    4
 #define LED_LAYER_SEQUENCER 5
 #define LED_LAYER_COMBINED  6
+
 #define MAX_LED_LAYERS      6
 
 // The values here MUST be the same as the row numbers of the cells in GlobalSettings

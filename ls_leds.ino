@@ -415,10 +415,15 @@ void refreshLedColumn(unsigned long now) {
 
    // Initialize bytes to send to LEDs over SPI. Each bit represents a single LED on or off
   for (byte rowCount = 0; rowCount < NUMROWS; ++rowCount) {       // step through the 8 rows
-    byte color = (ledVisible(actualCol, rowCount) & B11111000) >> 3;    // set temp value 'color' to 4 color bits of this LED within array
+    byte color = (ledVisible(actualCol, rowCount) & B11111000) >> 3;    // set temp value 'color' to 5 color bits of this LED within array
     byte cellDisplay = ledVisible(actualCol, rowCount) & B00000111;     // get cell display value
     
     switch (cellDisplay) {
+      case cellOn:
+      case cellOff:
+      default:
+        break;
+        
       case cellFastPulse:
       case cellSlowPulse:
         numberOfPulsarsInColumn++;
@@ -494,61 +499,126 @@ void refreshLedColumn(unsigned long now) {
       // 2-color toggle scheme is ABBA, which in lowPower mode will become A_B_.
       const uint16_t intervalBit = uint16_t(1U) << displayInterval;
       if (0b100110011001 & intervalBit) {
+        // RGB led ==>
+        // - Red
+        // - Green
+        // - Blue
+        // plus all its permutations:
+        // - Yellow         : Red + Green
+        // - Purple/Magenta : Red + Blue
+        // - Cyan           : Green + Blue
+        // - White          : Red + Green + Blue
+        // - Black          : all OFF
+        // Then there's also the 50% duty cycle remixes: half the time color A, the other half it's color B:
+        // a.k.a. 'composite colors':
+        //
+        //                  : Red            : Green          : Blue           : Yellow         : Purple/Magenta : Cyan           : White          : 
+        // -----------------:----------------:----------------:----------------:----------------:----------------:----------------:----------------:
+        // - Red            : (Red)          : Yellow/2       : Purple/2       : Orange         : ?R+RB  Wine    : ?RGB  WhiteX/2 : Rosa           :
+        // - Green          :                : (Green)        : Cyan/2         : Lime           : ?RGB/2 WhiteA/2: ?G+GB Malachite: Mint           :
+        // - Blue           :                :                : (Blue)         : ?RGB/2 WhiteB/2: ?RB+B DeepPrple: ?GB+B  Lapis   : Turquoise      :
+        // - Yellow         :                :                :                : (Yellow)       : Pink           : ?RG+GB Lettuce : Warm White     :
+        // - Purple/Magenta :                :                :                :                : (Magenta)      : ?RB+GB Sky     : Cold Pink      :
+        // - Cyan           :                :                :                :                :                : (Cyan)         : Cold White     :
+        // - White          :                :                :                :                :                :                : (White)        :
+        //                  :                :                :                :                :                :                :                :
+        // - Black          : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       :
+        //
         switch (color)
         {
-          case COLOR_WHITE:
-            color = COLOR_CYAN;
+          case COLOR_COLD_PINK:
+          case COLOR_SKY:
+            color = COLOR_MAGENTA;
             break;
-          case COLOR_ORANGE:
-            color = COLOR_YELLOW;
-            break;
-          case COLOR_LIME:
-            color = COLOR_GREEN;
-            break;
+          case COLOR_WARM_WHITE:
+          case COLOR_LETTUCE:
           case COLOR_PINK:
             color = COLOR_YELLOW;
             break;
-          case COLOR_VIOLET:
+          case COLOR_COLD_WHITE:
+            color = COLOR_CYAN;
+            break;
+          case COLOR_TURQUOISE:
+          case COLOR_LAPIS:
+          case COLOR_DEEP_PURPLE:
+          case COLOR_WHITE_B2:
             color = COLOR_BLUE;
             break;
-          case COLOR_DIMGREEN:
-            color = COLOR_BLACK;
+          case COLOR_ROSA:
+          case COLOR_WHITE_X2:
+          case COLOR_WINE:
+          case COLOR_ORANGE:
+          case COLOR_PURPLE_2:
+          case COLOR_YELLOW_2:
+            color = COLOR_RED;
+            break;
+          case COLOR_MINT:
+          case COLOR_MALACHITE:
+          case COLOR_WHITE_A2:
+          case COLOR_LIME:
+          case COLOR_CYAN_2:
+            color = COLOR_GREEN;
             break;
         }
       }
 
       switch (color)
       {
+        //                  : Red            : Green          : Blue           : Yellow         : Purple/Magenta : Cyan           : White          : 
+        // -----------------:----------------:----------------:----------------:----------------:----------------:----------------:----------------:
+        // - Red            : (Red)          : Yellow/2       : Purple/2       : Orange         : ?R+RB  Wine    : ?RGB  WhiteX/2 : Rosa           :
+        // - Green          :                : (Green)        : Cyan/2         : Lime           : ?RGB/2 WhiteA/2: ?G+GB Malachite: Mint           :
+        // - Blue           :                :                : (Blue)         : ?RGB/2 WhiteB/2: ?RB+B DeepPrple: ?GB+B  Lapis   : Turquoise      :
+        // - Yellow         :                :                :                : (Yellow)       : Pink           : ?RG+GB Lettuce : Warm White     :
+        // - Purple/Magenta :                :                :                :                : (Magenta)      : ?RB+GB Sky     : Cold Pink      :
+        // - Cyan           :                :                :                :                :                : (Cyan)         : Cold White     :
+        // - White          :                :                :                :                :                :                : (White)        :
         case COLOR_OFF:
         case COLOR_BLACK:
           break;
         case COLOR_RED:
-        case COLOR_ORANGE:
           red = red | (B00000001 << rowCount);
           break;
         case COLOR_YELLOW:
+        case COLOR_ORANGE:
         case COLOR_LIME:
+        case COLOR_WHITE_B2:
           red = red | (B00000001 << rowCount);
           green = green | (B00000001 << rowCount);
           break;
         case COLOR_GREEN:
-        case COLOR_DIMGREEN:
+        case COLOR_YELLOW_2:
           green = green | (B00000001 << rowCount);
           break;
         case COLOR_CYAN:
+        case COLOR_WHITE_X2:
+        case COLOR_MALACHITE:
+        case COLOR_LAPIS:
+        case COLOR_LETTUCE:
+        case COLOR_SKY:
           green = green | (B00000001 << rowCount);
           blue = blue | (B00000001 << rowCount);
           break;
         case COLOR_BLUE:
+        case COLOR_PURPLE_2:
+        case COLOR_CYAN_2:
           blue = blue | (B00000001 << rowCount);
           break;
         case COLOR_MAGENTA:
-        case COLOR_VIOLET:
+        case COLOR_WINE:
+        case COLOR_WHITE_A2:
+        case COLOR_DEEP_PURPLE:
         case COLOR_PINK:
           blue = blue | (B00000001 << rowCount);
           red = red | (B00000001 << rowCount);
           break;
         case COLOR_WHITE:
+        case COLOR_ROSA:
+        case COLOR_MINT:
+        case COLOR_TURQUOISE:
+        case COLOR_WARM_WHITE:
+        case COLOR_COLD_PINK:
+        case COLOR_COLD_WHITE:
           blue = blue | (B00000001 << rowCount);
           red = red | (B00000001 << rowCount);
           green = green | (B00000001 << rowCount);

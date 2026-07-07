@@ -80,17 +80,17 @@ typedef enum flash_rc {
   take effect according to errata and EPA8/EPA16 must module 8/16 page addresses.*/
 //! @{
 typedef enum flash_farg_page_num {
-	/* 4 of pages to be erased with EPA command*/
-	IFLASH_ERASE_PAGES_4=0,
-	/* 8 of pages to be erased with EPA command*/
+	/* 4 of pages to be erased with EPA command */
+	IFLASH_ERASE_PAGES_4 = 0,
+	/* 8 of pages to be erased with EPA command */
 	IFLASH_ERASE_PAGES_8,
-	/* 16 of pages to be erased with EPA command*/
+	/* 16 of pages to be erased with EPA command */
 	IFLASH_ERASE_PAGES_16,
-	/* 32 of pages to be erased with EPA command*/
+	/* 32 of pages to be erased with EPA command */
 	IFLASH_ERASE_PAGES_32,
 	/* Parameter is not support */
 	IFLASH_ERASE_PAGES_INVALID,
-}flash_farg_page_num_t;
+} flash_farg_page_num_t;
 //! @}
 
 /*! \name Flash access mode */
