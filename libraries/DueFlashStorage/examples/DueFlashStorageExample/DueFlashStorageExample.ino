@@ -10,7 +10,7 @@ void setup() {
   uint8_t b2 = 1;
   dueFlashStorage.write(0,b1);
   dueFlashStorage.write(1,b2);
-  //dueFlashStorage.write(2,b2);
+  dueFlashStorage.write(2,b2);
 }
 
 void loop() {
