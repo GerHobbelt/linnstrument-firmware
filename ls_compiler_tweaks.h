@@ -62,4 +62,7 @@ static inline T max(T a, T b) {
 #define LS_PACKED           
 #endif
 
+// lack of break here is purposeful, we want to fall through...
+#define FALLTHROUGH         __attribute__ ((fallthrough))
+
 #endif // LS_COMPILER_TWEAKS_H

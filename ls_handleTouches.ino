@@ -456,6 +456,7 @@ boolean handleNewTouch() {
         }
         // If we get here, we're displaying in displaySplitPoint mode, but we've just gotten a normal new touch.
         // THE FALL THROUGH HERE (no break statement) IS PURPOSEFUL!
+        FALLTHROUGH; // fall through
 
       case displayNormal:                                            // it's normal performance mode
       case displayVolume:                                            // it's a volume change
@@ -488,8 +489,8 @@ boolean handleNewTouch() {
         else {
           cellTouched(untouchedCell);
         }
-
         break;
+        
       default:
         initVelocity();
         calcVelocity(sensorCell->velocityZ);
