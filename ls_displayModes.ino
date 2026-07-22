@@ -1995,7 +1995,7 @@ void paintGlobalSettingsDisplay() {
 
   if (displayMode == displayGlobalWithTempo) {
     byte color = Split[LEFT].colorMain;
-    char str[4];
+    char str[12];
     snprintf(str, sizeof(str), "%3d", FXD4_TO_INT(fxd4CurrentTempo));
     tinyfont_draw_string(0, 4, str, color);
   }

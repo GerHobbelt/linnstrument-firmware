@@ -60,8 +60,8 @@ void display_flash_debug_messages() {
 #define IRAM0_SIZE (0x10000u)
 #define IRAM1_SIZE (0x8000u)
 #define NFCRAM_SIZE (0x1000u)
-#define IFLASH_SIZE (IFLASH0_SIZE + IFLASH1_SIZE)
-#define IRAM_SIZE (IRAM0_SIZE + IRAM1_SIZE)
+//#define IFLASH_SIZE (IFLASH0_SIZE + IFLASH1_SIZE)
+//#define IRAM_SIZE (IRAM0_SIZE + IRAM1_SIZE)
 
 byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
 
@@ -122,7 +122,7 @@ AppDataFlashStorage::AppDataFlashStorage()
   : DueFlashStorage(),
     activeBlockStartOffset(0) {}
 
-#if 0
+#if 01
 
 void AppDataFlashStorage::factoryReset() {
 }
