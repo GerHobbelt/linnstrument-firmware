@@ -43,15 +43,15 @@ Since ACLE only supports the Arm architecture, this macro would always be define
 Note that the __ARM_ARCH macro is defined even for cores which only support the T32 instruction set.
 
  Instruction set architecture (A32/T32/A64) ^
-__ARM_ARCH_ISA_ARM is defined to 1 if the core supports the Arm instruction set. It is not defined for M-profile cores.
+__ARM_ARCH_ISA_ARM core supports the Arm instruction set. It is not defined for M-profile cores.
 
-__ARM_ARCH_ISA_THUMB is defined to 1 if the core supports the original T32 instruction set (including the v6-M architecture) and 2 if it supports the T32 instruction set as found in the v6T2 architecture and all v7 architectures.
+__ARM_ARCH_ISA_THUMB core supports the original T32 instruction set (including the v6-M architecture) and 2 if it supports the T32 instruction set as found in the v6T2 architecture and all v7 architectures.
 
-__ARM_ARCH_ISA_A64 is defined to 1 if the core supports AArch64’s A64 instruction set.
+__ARM_ARCH_ISA_A64 core supports AArch64’s A64 instruction set.
 
-__ARM_32BIT_STATE is defined to 1 if code is being generated for AArch32.
+__ARM_32BIT_STATE code is being generated for AArch32.
 
-__ARM_64BIT_STATE is defined to 1 if code is being generated for AArch64.
+__ARM_64BIT_STATE code is being generated for AArch64.
 
  Architectural profile (A, R, M or pre-Cortex) ^
 __ARM_ARCH_PROFILE is defined to be one of the char literals 'A', 'R', 'M' or 'S', or unset, according to the architectural profile of the target. 'S' indicates the common subset of the A and R profiles. The common subset of the A, R and M profiles is indicated by
@@ -62,99 +62,99 @@ This macro corresponds to the Tag_CPU_arch_profile object build attribute. It ma
 The macro is undefined for architectural targets which predate the use of architectural profiles.
 
  Unaligned access supported in hardware ^
-__ARM_FEATURE_UNALIGNED is defined if the target supports unaligned access in hardware, at least to the extent of being able to load or store an integer word at any alignment with a single instruction. (There may be restrictions on load-multiple and floating-point accesses.) Note that whether a code generation target permits unaligned access will in general depend on the settings of system register bits, so an implementation should define this macro to match the user’s expectations and intentions. For example, a command-line option might be provided to disable the use of unaligned access, in which case this macro would not be defined.
+__ARM_FEATURE_UNALIGNED the target supports unaligned access in hardware, at least to the extent of being able to load or store an integer word at any alignment with a single instruction. (There may be restrictions on load-multiple and floating-point accesses.) Note that whether a code generation target permits unaligned access will in general depend on the settings of system register bits, so an implementation should define this macro to match the user’s expectations and intentions. For example, a command-line option might be provided to disable the use of unaligned access, in which case this macro would not be defined.
 
  LDREX/STREX ^
 This feature was deprecated in ACLE 2.0. It is strongly recommended that C11/C++11 atomics be used instead. (See also Synchronization, barrier, and hint intrinsics.)
 
-__ARM_FEATURE_LDREX is defined if the load/store-exclusive instructions (LDREX/STREX) are supported. Its value is a set of bits indicating available widths of the access, as powers of 2. The following bits are used:
+__ARM_FEATURE_LDREX the load/store-exclusive instructions (LDREX/STREX) are supported. Its value is a set of bits indicating available widths of the access, as powers of 2. The following bits are used:
 
-Bit	Value	Access width	Instruction
-0	0x01	byte	LDREXB/STREXB
-1	0x02	halfword	LDREXH/STREXH
-2	0x04	word	LDREX/STREX
-3	0x08	doubleword	LDREXD/STREXD
+Bit Value   Access width    Instruction
+0   0x01    byte    LDREXB/STREXB
+1   0x02    halfword    LDREXH/STREXH
+2   0x04    word    LDREX/STREX
+3   0x08    doubleword  LDREXD/STREXD
 Other bits are reserved.
 
 The following values of __ARM_FEATURE_LDREX may occur:
 
-Macro value	Access widths	Example architecture
-(undefined)	none	Armv5, Armv6-M
-0x04	word	Armv6
-0x07	word, halfword, byte	Armv7-M
-0x0F	doubleword, word, halfword, byte	Armv6K, Armv7-A/R
+Macro value Access widths   Example architecture
+(undefined) none    Armv5, Armv6-M
+0x04    word    Armv6
+0x07    word, halfword, byte    Armv7-M
+0x0F    doubleword, word, halfword, byte    Armv6K, Armv7-A/R
 Other values are reserved.
 
 The LDREX/STREX instructions are introduced in recent versions of the Arm architecture and supersede the SWP instruction. Where both are available, Arm strongly recommends programmers to use LDREX/STREX rather than SWP. Note that platforms may choose to make SWP unavailable in user mode and emulate it through a trap to a platform routine, or fault it.
 
  CLZ ^
-__ARM_FEATURE_CLZ is defined to 1 if the CLZ (count leading zeroes) instruction is supported in hardware. Note that ACLE provides the __clz() family of intrinsics (see Miscellaneous data-processing intrinsics) even when __ARM_FEATURE_CLZ is not defined.
+__ARM_FEATURE_CLZ CLZ (count leading zeroes) instruction is supported in hardware. Note that ACLE provides the __clz() family of intrinsics (see Miscellaneous data-processing intrinsics) even when __ARM_FEATURE_CLZ is not defined.
 
  Q (saturation) flag ^
-__ARM_FEATURE_QBIT is defined to 1 if the Q (saturation) global flag exists and the intrinsics defined in The Q (saturation) flag are available. This flag is used with the DSP saturating-arithmetic instructions (such as QADD) and the width-specified saturating instructions (SSAT and USAT). Note that either of these classes of instructions may exist without the other: for example, v5E has only QADD while v7-M has only SSAT.
+__ARM_FEATURE_QBIT Q (saturation) global flag exists and the intrinsics defined in The Q (saturation) flag are available. This flag is used with the DSP saturating-arithmetic instructions (such as QADD) and the width-specified saturating instructions (SSAT and USAT). Note that either of these classes of instructions may exist without the other: for example, v5E has only QADD while v7-M has only SSAT.
 
 Intrinsics associated with the Q-bit and their feature macro __ARM_FEATURE_QBIT are deprecated in ACLE 2.0 for A-profile. They are fully supported for M-profile and R-profile. This macro is defined for AArch32 only.
 
  DSP instructions ^
-__ARM_FEATURE_DSP is defined to 1 if the DSP (v5E) instructions are supported and the intrinsics defined in Saturating intrinsics are available. These instructions include QADD, SMULBB and others. This feature also implies support for the Q flag.
+__ARM_FEATURE_DSP DSP (v5E) instructions are supported and the intrinsics defined in Saturating intrinsics are available. These instructions include QADD, SMULBB and others. This feature also implies support for the Q flag.
 
 __ARM_FEATURE_DSP and its associated intrinsics are deprecated in ACLE 2.0 for A-profile. They are fully supported for M and R-profiles. This macro is defined for AArch32 only.
 
  Saturation instructions ^
-__ARM_FEATURE_SAT is defined to 1 if the SSAT and USAT instructions are supported and the intrinsics defined in Width-specified saturation intrinsics are available. This feature also implies support for the Q flag.
+__ARM_FEATURE_SAT SSAT and USAT instructions are supported and the intrinsics defined in Width-specified saturation intrinsics are available. This feature also implies support for the Q flag.
 
 __ARM_FEATURE_SAT and its associated intrinsics are deprecated in ACLE 2.0 for A-profile. They are fully supported for M and R-profiles. This macro is defined for AArch32 only.
 
 
  32-bit SIMD instructions ^
-__ARM_FEATURE_SIMD32 is defined to 1 if the 32-bit SIMD instructions are supported and the intrinsics defined in 32-bit SIMD Operations are available. This also implies support for the GE global flags which indicate byte-by-byte comparison results.
+__ARM_FEATURE_SIMD32 32-bit SIMD instructions are supported and the intrinsics defined in 32-bit SIMD Operations are available. This also implies support for the GE global flags which indicate byte-by-byte comparison results.
 
 __ARM_FEATURE_SIMD32 is deprecated in ACLE 2.0 for A-profile. Users are encouraged to use Neon Intrinsics as an equivalent for the 32-bit SIMD intrinsics functionality. However they are fully supported for M and R-profiles. This is defined for AArch32 only.
 
  Hardware integer divide ^
-__ARM_FEATURE_IDIV is defined to 1 if the target has hardware support for 32-bit integer division in all available instruction sets. Signed and unsigned versions are both assumed to be available. The intention is to allow programmers to choose alternative algorithm implementations depending on the likely speed of integer division.
+__ARM_FEATURE_IDIV target has hardware support for 32-bit integer division in all available instruction sets. Signed and unsigned versions are both assumed to be available. The intention is to allow programmers to choose alternative algorithm implementations depending on the likely speed of integer division.
 
 Some older R-profile targets have hardware divide available in the T32 instruction set only. This can be tested for using the following test:
 
     #if __ARM_FEATURE_IDIV || (__ARM_ARCH_PROFILE == 'R')
  CRC32 extension ^
-__ARM_FEATURE_CRC32 is defined to 1 if the CRC32 instructions are supported and the intrinsics defined in CRC32 intrinsics are available. These instructions include CRC32B, CRC32H and others. This is only available when __ARM_ARCH >= 8.
+__ARM_FEATURE_CRC32 CRC32 instructions are supported and the intrinsics defined in CRC32 intrinsics are available. These instructions include CRC32B, CRC32H and others. This is only available when __ARM_ARCH >= 8.
 
  Random Number Generation Extension ^
-__ARM_FEATURE_RNG is defined to 1 if the Random Number Generation instructions are supported and the intrinsics defined in Random number generation intrinsics are available.
+__ARM_FEATURE_RNG Random Number Generation instructions are supported and the intrinsics defined in Random number generation intrinsics are available.
 
  Branch Target Identification ^
-__ARM_FEATURE_BTI_DEFAULT is defined to 1 if the Branch Target Identification extension is used to protect branch destinations by default. The protection applied to any particular function may be overridden by mechanisms such as function attributes.
+__ARM_FEATURE_BTI_DEFAULT Branch Target Identification extension is used to protect branch destinations by default. The protection applied to any particular function may be overridden by mechanisms such as function attributes.
 
-__ARM_FEATURE_BTI is defined to 1 if Branch Target Identification extension is available on the target. It is undefined otherwise.
+__ARM_FEATURE_BTI Branch Target Identification extension is available on the target. It is undefined otherwise.
 
  Pointer Authentication ^
 __ARM_FEATURE_PAC_DEFAULT is defined as a bitmap to indicate the use of the Pointer Authentication extension to protect code against code reuse attacks by default. The bits are defined as follows:
 
-Bit	Meaning
-0	Protection using the A key
-1	Protection using the B key
-2	Protection including leaf functions
-3	Protection using PC as a diversifier
+Bit Meaning
+0   Protection using the A key
+1   Protection using the B key
+2   Protection including leaf functions
+3   Protection using PC as a diversifier
 For example, a value of 0x5 indicates that the Pointer Authentication extension is used to protect function entry points, including leaf functions, using the A key for signing. The protection applied to any particular function may be overridden by mechanisms such as function attributes.
 
-__ARM_FEATURE_PAUTH is defined to 1 if Pointer Authentication extension (FEAT_PAuth) is available on the target. It is undefined otherwise.
+__ARM_FEATURE_PAUTH Pointer Authentication extension (FEAT_PAuth) is available on the target. It is undefined otherwise.
 
-__ARM_FEATURE_PAUTH_LR is defined to 1 if Armv9.5-A enhancements to the Pointer Authentication extension (FEAT_PAuth_LR) are available on the target. It is undefined otherwise.
+__ARM_FEATURE_PAUTH_LR Armv9.5-A enhancements to the Pointer Authentication extension (FEAT_PAuth_LR) are available on the target. It is undefined otherwise.
 
  Guarded Control Stack ^
-__ARM_FEATURE_GCS_DEFAULT is defined to 1 if the code generation is compatible with enabling the Guarded Control Stack (GCS) extension based protection. It is undefined otherwise.
+__ARM_FEATURE_GCS_DEFAULT code generation is compatible with enabling the Guarded Control Stack (GCS) extension based protection. It is undefined otherwise.
 
-__ARM_FEATURE_GCS is defined to 1 if the Guarded Control Stack (GCS) extension is available on the target. It is undefined otherwise.
+__ARM_FEATURE_GCS Guarded Control Stack (GCS) extension is available on the target. It is undefined otherwise.
 
  Large System Extensions ^
-__ARM_FEATURE_ATOMICS is defined if the Large System Extensions introduced in the Armv8.1-A [ARMARMv81] architecture are supported on this target. Note: It is strongly recommended that standardized C11/C++11 atomics are used to implement atomic operations in user code.
+__ARM_FEATURE_ATOMICS the Large System Extensions introduced in the Armv8.1-A [ARMARMv81] architecture are supported on this target. Note: It is strongly recommended that standardized C11/C++11 atomics are used to implement atomic operations in user code.
 
  Transactional Memory Extension ^
-__ARM_FEATURE_TME is defined to 1 if the Transactional Memory Extension instructions are supported in hardware and intrinsics defined in Transactional Memory Extension (TME) intrinsics are available.
+__ARM_FEATURE_TME Transactional Memory Extension instructions are supported in hardware and intrinsics defined in Transactional Memory Extension (TME) intrinsics are available.
 
  Armv8.7-A Load/Store 64 Byte extension ^
-__ARM_FEATURE_LS64 is defined to 1 if the Armv8.7-A LD64B, ST64B, ST64BV and ST64BV0 instructions for atomic 64-byte access to device memory are supported. This macro may only ever be defined in the AArch64 execution state. Intrinsics for using these instructions are specified in Load/store 64 Byte intrinsics.
+__ARM_FEATURE_LS64 Armv8.7-A LD64B, ST64B, ST64BV and ST64BV0 instructions for atomic 64-byte access to device memory are supported. This macro may only ever be defined in the AArch64 execution state. Intrinsics for using these instructions are specified in Load/store 64 Byte intrinsics.
 
  memcpy family of memory operations standarization instructions - MOPS ^
 If the CPYF*, CPY*, SET* and SETG* instructions are supported, __ARM_FEATURE_MOPS is defined to 1. These instructions were introduced in the Armv8.8-A and Armv9.3-A architecture updates for standardization of memcpy, memset, and memmove family of memory operations (MOPS).
@@ -166,10 +166,10 @@ __ARM_FEATURE_RCPC is set if the weaker RCpc (Release Consistent processor consi
 
 If defined, the value of __ARM_FEATURE_RCPC remains consistent with the decimal value of LRCPC field (bits [23:20]) in the ID_AA64ISAR1_EL1 register. For convenience these are shown below:
 
-Value	Feature	Instructions	Availability
-1	FEAT_LRCPC	LDAPR* instructions	Armv8.3, optional Armv8.2
-2	FEAT_LRCPC2	LDAPUR* and STLUR* instructions	Armv8.4, optional Armv8.2
-3	FEAT_LRCPC3	See FEAT_LRCPC3 documentation	Armv8.9, optional Armv8.2
+Value   Feature Instructions    Availability
+1   FEAT_LRCPC  LDAPR* instructions Armv8.3, optional Armv8.2
+2   FEAT_LRCPC2 LDAPUR* and STLUR* instructions Armv8.4, optional Armv8.2
+3   FEAT_LRCPC3 See FEAT_LRCPC3 documentation   Armv8.9, optional Armv8.2
 The __ARM_FEATURE_RCPC macro can only be implemented in the AArch64 execution state.
 
  128-bit system registers ^
@@ -181,20 +181,20 @@ The __ARM_FEATURE_SYSREG128 macro can only be implemented in the AArch64 executi
  Hardware floating point ^
 __ARM_FP is set if hardware floating-point is available. The value is a set of bits indicating the floating-point precisions supported. The following bits are used:
 
-Bit	Value	Precision
-1	0x02	half (16-bit) data type only
-2	0x04	single (32-bit)
-3	0x08	double (64-bit)
+Bit Value   Precision
+1   0x02    half (16-bit) data type only
+2   0x04    single (32-bit)
+3   0x08    double (64-bit)
 Bits 0 and 4..31 are reserved
 
 Currently, the following values of __ARM_FP may occur (assuming the processor configuration option for hardware floating-point support is selected where available):
 
-Value	Precisions	Example processor
-(undefined)	none	any processor without hardware floating-point support
-0x04	single	Cortex-R5 when configured with SP only
-0x06	single, half	Cortex-M4.fp
-0x0C	double, single	Arm9, Arm11, Cortex-A8, Cortex-R4
-0x0E	double, single, half	Cortex-A9, Cortex-A15, Cortex-R7
+Value   Precisions  Example processor
+(undefined) none    any processor without hardware floating-point support
+0x04    single  Cortex-R5 when configured with SP only
+0x06    single, half    Cortex-M4.fp
+0x0C    double, single  Arm9, Arm11, Cortex-A8, Cortex-R4
+0x0E    double, single, half    Cortex-A9, Cortex-A15, Cortex-R7
 Other values are reserved.
 
 Standard C implementations support single and double precision floating-point irrespective of whether floating-point hardware is available. However, an implementation might choose to offer a mode to diagnose or fault use of floating-point arithmetic at a precision not supported in hardware.
@@ -202,14 +202,14 @@ Standard C implementations support single and double precision floating-point ir
 Support for 16-bit floating-point language or 16-bit brain floating-point language extensions (see Half-precision (16-bit) floating-point format and Brain 16-bit floating-point support) is only required if supported in hardware.
 
  Half-precision (16-bit) floating-point format ^
-__ARM_FP16_FORMAT_IEEE is defined to 1 if the IEEE 754-2008 [IEEE-FP] 16-bit floating-point format is used.
+__ARM_FP16_FORMAT_IEEE IEEE 754-2008 [IEEE-FP] 16-bit floating-point format is used.
 
-__ARM_FP16_FORMAT_ALTERNATIVE is defined to 1 if the Arm alternative [ARMARM] 16-bit floating-point format is used. This format removes support for infinities and NaNs in order to provide an additional binade.
+__ARM_FP16_FORMAT_ALTERNATIVE Arm alternative [ARMARM] 16-bit floating-point format is used. This format removes support for infinities and NaNs in order to provide an additional binade.
 
 At most one of these macros will be defined. See Half-precision floating-point for details of half-precision floating-point types.
 
  Half-precision argument and result ^
-__ARM_FP16_ARGS is defined to 1 if __fp16 can be used as an argument and result.
+__ARM_FP16_ARGS __fp16 can be used as an argument and result.
 
  Vector extensions ^
  Advanced SIMD architecture extension (Neon) ^
@@ -227,7 +227,7 @@ Current AArch32 Neon implementations do not support double-precision floating-po
 If __ARM_FEATURE_FMA and __ARM_NEON_FP are both defined, fused-multiply instructions are available in Neon also.
 
  Scalable Vector Extension (SVE) ^
-__ARM_FEATURE_SVE is defined to 1 if there is hardware support for the FEAT_SVE instructions and if the associated ACLE features are available. This implies that __ARM_NEON and __ARM_NEON_FP are both nonzero.
+__ARM_FEATURE_SVE hardware support for the FEAT_SVE instructions and if the associated ACLE features are available. This implies that __ARM_NEON and __ARM_NEON_FP are both nonzero.
 
 The following macros indicate the presence of various optional SVE language extensions:
 
@@ -248,32 +248,32 @@ N >= 1 indicates that applying the arm_sve_vector_bits attribute to svbool_t cre
 N >= 2 indicates that the built-in vector operations described above additionally work on svbool_t. The availability of operators on svbool_t is independent of __ARM_FEATURE_SVE_BITS.
 
  SVE2 ^
-__ARM_FEATURE_SVE2 is defined to 1 if there is hardware support for the Armv9-A SVE2 extension (FEAT_SVE2) and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_SVE is nonzero.
+__ARM_FEATURE_SVE2 hardware support for the Armv9-A SVE2 extension (FEAT_SVE2) available. This implies that __ARM_FEATURE_SVE is nonzero.
 
-__ARM_FEATURE_SVE2p1 is defined to 1 if the FEAT_SVE2p1 instructions are available and if the associated [ACLE features] (#sme-language-extensions-and-intrinsics) are supported.
+__ARM_FEATURE_SVE2p1 FEAT_SVE2p1 instructions are available and if the associated [ACLE features] (#sme-language-extensions-and-intrinsics) are supported.
 
  NEON-SVE Bridge macro ^
-__ARM_NEON_SVE_BRIDGE is defined to 1 if the <arm_neon_sve_bridge.h> header file is available.
+__ARM_NEON_SVE_BRIDGE <arm_neon_sve_bridge.h> header file is available.
 
  Scalable Matrix Extension (SME) ^
 The specification for SME2.1 is in Beta state and the specification for the rest of SME is in Beta state. The specifications may change or be extended in the future.
 
 ACLE provides features for accessing the Scalable Matrix Extension (SME). Each revision of SME has an associated preprocessor macro, given in the table below:
 
-Feature	Macro
-FEAT_SME	__ARM_FEATURE_SME
-FEAT_SME2	__ARM_FEATURE_SME2
-FEAT_SME2p1	__ARM_FEATURE_SME2p1
-Each macro is defined if there is hardware support for the associated architecture feature and if all of the ACLE features that are conditional on the macro are supported.
+Feature Macro
+FEAT_SME    __ARM_FEATURE_SME
+FEAT_SME2   __ARM_FEATURE_SME2
+FEAT_SME2p1 __ARM_FEATURE_SME2p1
+Each macro there is hardware support for the associated architecture feature and if all of the ACLE features that are conditional on the macro are supported.
 
-In addition, __ARM_FEATURE_LOCALLY_STREAMING is defined to 1 if the arm_locally_streaming attribute is available.
+In addition, __ARM_FEATURE_LOCALLY_STREAMING arm_locally_streaming attribute is available.
 
  M-profile Vector Extension ^
 __ARM_FEATURE_MVE is defined as a bitmap to indicate M-profile Vector Extension (MVE) support.
 
-Bit	Value	Support
-0	0x01	Integer MVE
-1	0x02	Floating-point MVE
+Bit Value   Support
+0   0x01    Integer MVE
+1   0x02    Floating-point MVE
  Wireless MMX ^
 If Wireless MMX operations are available on the target, __ARM_WMMX is defined to a value that indicates the level of support, corresponding to the Tag_WMMX_arch build attribute.
 
@@ -282,40 +282,40 @@ This specification does not further define source-language features to support W
  16-bit floating-point extensions ^
 
  16-bit floating-point data processing operations ^
-__ARM_FEATURE_FP16_SCALAR_ARITHMETIC is defined to 1 if the 16-bit floating-point arithmetic instructions are supported in hardware and the associated scalar intrinsics defined by ACLE are available. Note that this implies:
+__ARM_FEATURE_FP16_SCALAR_ARITHMETIC 16-bit floating-point arithmetic instructions are supported in hardware and the associated scalar intrinsics defined by ACLE are available. Note that this implies:
 
 __ARM_FP16_FORMAT_IEEE == 1
 __ARM_FP16_FORMAT_ALTERNATIVE == 0
 __ARM_FP & 0x02 == 1
-__ARM_FEATURE_FP16_VECTOR_ARITHMETIC is defined to 1 if the 16-bit floating-point arithmetic instructions are supported in hardware and the associated vector intrinsics defined by ACLE are available. Note that this implies:
+__ARM_FEATURE_FP16_VECTOR_ARITHMETIC 16-bit floating-point arithmetic instructions are supported in hardware and the associated vector intrinsics defined by ACLE are available. Note that this implies:
 
 __ARM_FP16_FORMAT_IEEE == 1
 __ARM_FP16_FORMAT_ALTERNATIVE == 0
 __ARM_FP & 0x02 == 1
 __ARM_NEON_FP & 0x02 == 1
  FP16 FML extension ^
-__ARM_FEATURE_FP16_FML is defined to 1 if the FP16 multiplication variant instructions from Armv8.2-A are supported and intrinsics targeting them are available. This implies that __ARM_FEATURE_FP16_SCALAR_ARITHMETIC is defined to a nonzero value.
+__ARM_FEATURE_FP16_FML FP16 multiplication variant instructions from Armv8.2-A are supported and intrinsics targeting them are available. This implies that __ARM_FEATURE_FP16_SCALAR_ARITHMETIC is defined to a nonzero value.
 
  Half-precision floating-point SME intrinsics ^
 The specification for SME2.1 is in Beta state and might change or be extended in the future.
 
-__ARM_FEATURE_SME_F16F16 is defined to 1 if there is hardware support for the SME2 half-precision (FEAT_SME_F16F16) instructions and if their associated intrinsics are available.
+__ARM_FEATURE_SME_F16F16 hardware support for the SME2 half-precision (FEAT_SME_F16F16) instructions available.
 
  Brain 16-bit floating-point support ^
-__ARM_BF16_FORMAT_ALTERNATIVE is defined to 1 if the Arm alternative [ARMARM] 16-bit brain floating-point format is used. This format closely resembles the IEEE 754 single-precision format. As such a brain half-precision floating point value can be converted to an IEEE 754 single-floating point format by appending 16 zero bits at the end.
+__ARM_BF16_FORMAT_ALTERNATIVE Arm alternative [ARMARM] 16-bit brain floating-point format is used. This format closely resembles the IEEE 754 single-precision format. As such a brain half-precision floating point value can be converted to an IEEE 754 single-floating point format by appending 16 zero bits at the end.
 
-__ARM_FEATURE_BF16_VECTOR_ARITHMETIC is defined to 1 if there is hardware support for the Advanced SIMD brain 16-bit floating-point arithmetic instructions and if the associated ACLE vector intrinsics are available. This implies:
+__ARM_FEATURE_BF16_VECTOR_ARITHMETIC hardware support for the Advanced SIMD brain 16-bit floating-point arithmetic instructions and if the associated ACLE vector intrinsics are available. This implies:
 
 __ARM_FP & 0x02 == 1
 __ARM_NEON_FP & 0x02 == 1
-Similarly, __ARM_FEATURE_SVE_BF16 is defined to 1 if there is hardware support for the SVE BF16 extensions and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_BF16_VECTOR_ARITHMETIC and __ARM_FEATURE_SVE are both nonzero.
+Similarly, __ARM_FEATURE_SVE_BF16 hardware support for the SVE BF16 extensions available. This implies that __ARM_FEATURE_BF16_VECTOR_ARITHMETIC and __ARM_FEATURE_SVE are both nonzero.
 
 See Half-precision brain floating-point for details of half-precision brain floating-point types.
 
  Non-widening brain 16-bit floating-point support ^
 The specification for B16B16 is in Alpha state and might change or be extended in the future.
 
-__ARM_FEATURE_SVE_B16B16 is defined to 1 if there is hardware support for the FEAT_SVE_B16B16 instructions and if their associated intrinsics are available. Specifically, if this macro is defined to 1, then:
+__ARM_FEATURE_SVE_B16B16 hardware support for the FEAT_SVE_B16B16 instructions available. Specifically, if this macro is defined to 1, then:
 
 the SVE subset of the FEAT_SVE_B16B16 intrinsics are available in non-streaming statements if __ARM_FEATURE_SVE is nonzero.
 
@@ -323,337 +323,1252 @@ the SVE subset of the FEAT_SVE_B16B16 intrinsics are available in streaming-comp
 
 all FEAT_SVE_B16B16 intrinsics are available in streaming statements if __ARM_FEATURE_SME is nonzero.
 
-__ARM_FEATURE_SME_B16B16 is defined to 1 if there is hardware support for the FEAT_SME_B16B16 instructions and if their associated intrinsics are available.
+__ARM_FEATURE_SME_B16B16 hardware support for the FEAT_SME_B16B16 instructions available.
 
  Cryptographic extensions ^
  “Crypto” extension ^
 NOTE: The __ARM_FEATURE_CRYPTO macro is deprecated in favor of the finer grained feature macros described below.
 
-__ARM_FEATURE_CRYPTO is defined to 1 if the Armv8-A Crypto instructions are supported and intrinsics targeting them are available. These instructions include AES{E, D}, SHA1{C, P, M} and others. This also implies __ARM_FEATURE_AES and __ARM_FEATURE_SHA2.
+__ARM_FEATURE_CRYPTO Armv8-A Crypto instructions are supported and intrinsics targeting them are available. These instructions include AES{E, D}, SHA1{C, P, M} and others. This also implies __ARM_FEATURE_AES and __ARM_FEATURE_SHA2.
 
  AES extension ^
-__ARM_FEATURE_AES is defined to 1 if there is hardware support for the Advanced SIMD AES Crypto instructions from Armv8-A and if the associated ACLE intrinsics are available. These instructions are identified by FEAT_AES and FEAT_PMULL in [ARMARMv8], and they include AES{E, D}, AESMC, AESIMC and others.
+__ARM_FEATURE_AES hardware support for the Advanced SIMD AES Crypto instructions from Armv8-A available. These instructions are identified by FEAT_AES and FEAT_PMULL in [ARMARMv8], and they include AES{E, D}, AESMC, AESIMC and others.
 
-In addition, __ARM_FEATURE_SVE2_AES is defined to 1 if there is hardware support for the SVE2 AES (FEAT_SVE_AES) instructions and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_AES and __ARM_FEATURE_SVE2 are both nonzero.
+In addition, __ARM_FEATURE_SVE2_AES hardware support for the SVE2 AES (FEAT_SVE_AES) instructions available. This implies that __ARM_FEATURE_AES and __ARM_FEATURE_SVE2 are both nonzero.
 
  SHA2 extension ^
-__ARM_FEATURE_SHA2 is defined to 1 if the SHA1 & SHA2-256 Crypto instructions from Armv8-A are supported and intrinsics targeting them are available. These instructions are identified by FEAT_SHA1 and FEAT_SHA256 in [ARMARMv8], and they include SHA1{C, P, M}, SHA256H, SHA256H2… and others.
+__ARM_FEATURE_SHA2 SHA1 & SHA2-256 Crypto instructions from Armv8-A are supported and intrinsics targeting them are available. These instructions are identified by FEAT_SHA1 and FEAT_SHA256 in [ARMARMv8], and they include SHA1{C, P, M}, SHA256H, SHA256H2… and others.
 
  SHA512 extension ^
-__ARM_FEATURE_SHA512 is defined to 1 if the SHA2-512 Crypto instructions from Armv8.2-A are supported and intrinsics targeting them are available. These instructions are identified by FEAT_SHA512 in [ARMARMv82], and they include SHA1{C, P, M}, SHA256H, SHA256H2, …, SHA512H, SHA512H2, SHA512SU0… and others. Note: FEAT_SHA512 requires both FEAT_SHA1 and FEAT_SHA256.
+__ARM_FEATURE_SHA512 SHA2-512 Crypto instructions from Armv8.2-A are supported and intrinsics targeting them are available. These instructions are identified by FEAT_SHA512 in [ARMARMv82], and they include SHA1{C, P, M}, SHA256H, SHA256H2, …, SHA512H, SHA512H2, SHA512SU0… and others. Note: FEAT_SHA512 requires both FEAT_SHA1 and FEAT_SHA256.
 
  SHA3 extension ^
-__ARM_FEATURE_SHA3 is defined to 1 if there is hardware support for the Advanced SIMD SHA1 & SHA2 Crypto instructions from Armv8-A and the SHA2 and SHA3 instructions from Armv8.2-A and newer and if the associated ACLE intrinsics are available. These instructions include AES{E, D}, SHA1{C, P, M}, RAX, and others.
+__ARM_FEATURE_SHA3 hardware support for the Advanced SIMD SHA1 & SHA2 Crypto instructions from Armv8-A and the SHA2 and SHA3 instructions from Armv8.2-A and newer available. These instructions include AES{E, D}, SHA1{C, P, M}, RAX, and others.
 
-In addition, __ARM_FEATURE_SVE2_SHA3 is defined to 1 if there is hardware support for the SVE2 SHA3 (FEAT_SVE_SHA3) instructions and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_SHA3 and __ARM_FEATURE_SVE2 are both nonzero.
+In addition, __ARM_FEATURE_SVE2_SHA3 hardware support for the SVE2 SHA3 (FEAT_SVE_SHA3) instructions available. This implies that __ARM_FEATURE_SHA3 and __ARM_FEATURE_SVE2 are both nonzero.
 
  SM3 extension ^
-__ARM_FEATURE_SM3 is defined to 1 if there is hardware support for Advanced SIMD SM3 Crypto instructions from Armv8.2-A and if the associated ACLE intrinsics are available. These instructions include SM3{TT1A, TT1B}, and others.
+__ARM_FEATURE_SM3 hardware support for Advanced SIMD SM3 Crypto instructions from Armv8.2-A available. These instructions include SM3{TT1A, TT1B}, and others.
 
-In addition, __ARM_FEATURE_SVE2_SM3 is defined to 1 if there is hardware support for the SVE2 SM3 (FEAT_SVE_SM3) instructions and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_SM3 and __ARM_FEATURE_SVE2 are both nonzero.
+In addition, __ARM_FEATURE_SVE2_SM3 hardware support for the SVE2 SM3 (FEAT_SVE_SM3) instructions available. This implies that __ARM_FEATURE_SM3 and __ARM_FEATURE_SVE2 are both nonzero.
 
  SM4 extension ^
-__ARM_FEATURE_SM4 is defined to 1 if there is hardware support for the Advanced SIMD SM4 Crypto instructions from Armv8.2-A and if the associated ACLE intrinsics are available. These instructions include SM4{E, EKEY} and others.
+__ARM_FEATURE_SM4 hardware support for the Advanced SIMD SM4 Crypto instructions from Armv8.2-A available. These instructions include SM4{E, EKEY} and others.
 
-In addition, __ARM_FEATURE_SVE2_SM4 is defined to 1 if there is hardware support for the SVE2 SM4 (FEAT_SVE_SM4) instructions and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_SM4 and __ARM_FEATURE_SVE2 are both nonzero.
+In addition, __ARM_FEATURE_SVE2_SM4 hardware support for the SVE2 SM4 (FEAT_SVE_SM4) instructions available. This implies that __ARM_FEATURE_SM4 and __ARM_FEATURE_SVE2 are both nonzero.
 
  Floating-point absolute minimum and maximum extension ^
-__ARM_FEATURE_FAMINMAX is defined to 1 if there is hardware support for floating-point absolute minimum and maximum instructions (FEAT_FAMINMAX) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_FAMINMAX hardware support for floating-point absolute minimum and maximum instructions (FEAT_FAMINMAX) available.
 
  Lookup table extensions ^
-__ARM_FEATURE_LUT is defined to 1 if there is hardware support for lookup table instructions with 2-bit and 4-bit indices (FEAT_LUT) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_LUT hardware support for lookup table instructions with 2-bit and 4-bit indices (FEAT_LUT) available.
 
-__ARM_FEATURE_SME_LUTv2 is defined to 1 if there is hardware support for lookup table instructions with 4-bit indices and 8-bit elements (FEAT_SME_LUTv2) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_SME_LUTv2 hardware support for lookup table instructions with 4-bit indices and 8-bit elements (FEAT_SME_LUTv2) available.
 
  Modal 8-bit floating point extensions ^
-__ARM_FEATURE_FP8 is defined to 1 if there is hardware support for FP8 conversion instructions (FEAT_FP8) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_FP8 hardware support for FP8 conversion instructions (FEAT_FP8) available.
 
-__ARM_FEATURE_FP8FMA is defined to 1 if there is hardware support for FP8 multiply-accumulate to half-precision and single-precision instructions (FEAT_FP8FMA) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_FP8FMA hardware support for FP8 multiply-accumulate to half-precision and single-precision instructions (FEAT_FP8FMA) available.
 
-__ARM_FEATURE_FP8DOT2 is defined to 1 if there is hardware support for FP8 2-way dot product to half-precision instructions (FEAT_FP8DOT2) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_FP8DOT2 hardware support for FP8 2-way dot product to half-precision instructions (FEAT_FP8DOT2) available.
 
-__ARM_FEATURE_FP8DOT4 is defined to 1 if there is hardware support for FP8 4-way dot product to single-precision instructions (FEAT_FP8DOT4) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_FP8DOT4 hardware support for FP8 4-way dot product to single-precision instructions (FEAT_FP8DOT4) available.
 
-__ARM_FEATURE_SSVE_FP8DOT4 is defined to 1 if there is hardware support for SVE2 FP8 4-way dot product to single-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8DOT4) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_SSVE_FP8DOT4 hardware support for SVE2 FP8 4-way dot product to single-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8DOT4) available.
 
-__ARM_FEATURE_SSVE_FP8DOT2 is defined to 1 if there is hardware support for SVE2 FP8 2-way dot product to half-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8DOT2) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_SSVE_FP8DOT2 hardware support for SVE2 FP8 2-way dot product to half-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8DOT2) available.
 
-__ARM_FEATURE_SSVE_FP8FMA is defined to 1 if there is hardware support for SVE2 FP8 multiply-accumulate to half-precision and single-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8FMA) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_SSVE_FP8FMA hardware support for SVE2 FP8 multiply-accumulate to half-precision and single-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8FMA) available.
 
-__ARM_FEATURE_SME_F8F32 is defined to 1 if there is hardware support for SME2 FP8 dot product, multiply-accumulate, and outer product to single-precision instructions (FEAT_SME_F8F32) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_SME_F8F32 hardware support for SME2 FP8 dot product, multiply-accumulate, and outer product to single-precision instructions (FEAT_SME_F8F32) available.
 
-__ARM_FEATURE_SME_F8F16 is defined to 1 if there is hardware support for SME2 FP8 dot product, multiply-accumulate, and outer product to half-precision instructions (FEAT_SME_F8F16) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_SME_F8F16 hardware support for SME2 FP8 dot product, multiply-accumulate, and outer product to half-precision instructions (FEAT_SME_F8F16) available.
 
  Other floating-point and vector extensions ^
  Fused multiply-accumulate (FMA) ^
-__ARM_FEATURE_FMA is defined to 1 if the hardware floating-point architecture supports fused floating-point multiply-accumulate, that is, without intermediate rounding. Note that C implementations are encouraged [C99] (7.12) to ensure that defines `FP_FAST_FMAF` or `FP_FAST_FMA`, which can be tested by portable C code. A C implementation on Arm might define these macros by testing `__ARM_FEATURE_FMA` and `__ARM_FP`.
+__ARM_FEATURE_FMA hardware floating-point architecture supports fused floating-point multiply-accumulate, that is, without intermediate rounding. Note that C implementations are encouraged [C99] (7.12) to ensure that defines `FP_FAST_FMAF` or `FP_FAST_FMA`, which can be tested by portable C code. A C implementation on Arm might define these macros by testing `__ARM_FEATURE_FMA` and `__ARM_FP`.
 
 This macro implies support for floating-point instructions but it does not in itself imply support for vector instructions. See Neon floating-point for the conditions under which vector fused multiply-accumulate operations are available.
 
  Directed rounding ^
-__ARM_FEATURE_DIRECTED_ROUNDING is defined to 1 if the directed rounding and conversion vector instructions are supported and rounding and conversion intrinsics are available. This is only available when __ARM_ARCH >= 8.
+__ARM_FEATURE_DIRECTED_ROUNDING directed rounding and conversion vector instructions are supported and rounding and conversion intrinsics are available. This is only available when __ARM_ARCH >= 8.
 
  Armv8.5-A Floating-point rounding extension ^
-__ARM_FEATURE_FRINT is defined to 1 if the Armv8.5-A rounding number instructions are supported and the scalar and vector intrinsics are available. This macro may only ever be defined in the AArch64 execution state. The scalar intrinsics are specified in Floating-point data-processing intrinsics and are not expected to be for general use. They are defined for uses that require the specialist rounding behavior of the relevant instructions. The vector intrinsics are specified in the Arm Neon Intrinsics Reference Architecture Specification [Neon].
+__ARM_FEATURE_FRINT Armv8.5-A rounding number instructions are supported and the scalar and vector intrinsics are available. This macro may only ever be defined in the AArch64 execution state. The scalar intrinsics are specified in Floating-point data-processing intrinsics and are not expected to be for general use. They are defined for uses that require the specialist rounding behavior of the relevant instructions. The vector intrinsics are specified in the Arm Neon Intrinsics Reference Architecture Specification [Neon].
 
  Javascript floating-point conversion ^
-__ARM_FEATURE_JCVT is defined to 1 if the FJCVTZS (AArch64) or VJCVT (AArch32) instruction and the associated intrinsic are available.
+__ARM_FEATURE_JCVT FJCVTZS (AArch64) or VJCVT (AArch32) instruction and the associated intrinsic are available.
 
  Numeric maximum and minimum ^
-__ARM_FEATURE_NUMERIC_MAXMIN is defined to 1 if the IEEE 754-2008 compliant floating point maximum and minimum vector instructions are supported and intrinsics targeting these instructions are available. This is only available when __ARM_ARCH >= 8.
+__ARM_FEATURE_NUMERIC_MAXMIN IEEE 754-2008 compliant floating point maximum and minimum vector instructions are supported and intrinsics targeting these instructions are available. This is only available when __ARM_ARCH >= 8.
 
  Rounding doubling multiplies ^
-__ARM_FEATURE_QRDMX is defined to 1 if SQRDMLAH and SQRDMLSH instructions and their associated intrinsics are available.
+__ARM_FEATURE_QRDMX SQRDMLAH and SQRDMLSH instructions available.
 
  Dot Product extension ^
-__ARM_FEATURE_DOTPROD is defined if the dot product data manipulation instructions are supported and the vector intrinsics are available. Note that this implies:
+__ARM_FEATURE_DOTPROD the dot product data manipulation instructions are supported available. Note that this implies:
 
 __ARM_NEON == 1
  Complex number intrinsics ^
-__ARM_FEATURE_COMPLEX is defined if the complex addition and complex multiply-accumulate vector instructions are supported. Note that this implies:
+__ARM_FEATURE_COMPLEX the complex addition and complex multiply-accumulate vector instructions are supported. Note that this implies:
 
 __ARM_NEON == 1
 These instructions require that the input vectors are organized such that the real and imaginary parts of the complex number are stored in alternating sequences: real, imag, real, imag, … etc.
 
  Matrix Multiply Intrinsics ^
  Multiplication of 8-bit integer matrices ^
-__ARM_FEATURE_MATMUL_INT8 is defined to 1 if there is hardware support for the Advanced SIMD integer matrix multiply instructions are if the associated ACLE intrinsics are available. This implies that __ARM_NEON is nonzero.
+__ARM_FEATURE_MATMUL_INT8 hardware support for the Advanced SIMD integer matrix multiply instructions available. This implies that __ARM_NEON is nonzero.
 
-In addition, __ARM_FEATURE_SVE_MATMUL_INT8 is defined to 1 if there is hardware support for the SVE forms of these instructions and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_MATMUL_INT8 and __ARM_FEATURE_SVE are both nonzero.
+In addition, __ARM_FEATURE_SVE_MATMUL_INT8 hardware support for the SVE forms of these instructions available. This implies that __ARM_FEATURE_MATMUL_INT8 and __ARM_FEATURE_SVE are both nonzero.
 
  Multiplication of 32-bit floating-point matrices ^
-__ARM_FEATURE_SVE_MATMUL_FP32 is defined to 1 if there is hardware support for the SVE 32-bit floating-point matrix multiply (FEAT_F32MM) instructions and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_SVE is nonzero.
+__ARM_FEATURE_SVE_MATMUL_FP32 hardware support for the SVE 32-bit floating-point matrix multiply (FEAT_F32MM) instructions available. This implies that __ARM_FEATURE_SVE is nonzero.
 
  Multiplication of 64-bit floating-point matrices ^
-__ARM_FEATURE_SVE_MATMUL_FP64 is defined to 1 if there is hardware support for the SVE 64-bit floating-point matrix multiply (FEAT_F64MM) instructions and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_SVE is nonzero.
+__ARM_FEATURE_SVE_MATMUL_FP64 hardware support for the SVE 64-bit floating-point matrix multiply (FEAT_F64MM) instructions available. This implies that __ARM_FEATURE_SVE is nonzero.
 
  Bit permute extension ^
-__ARM_FEATURE_SVE2_BITPERM is defined to 1 if there is hardware support for the SVE2 bit permute (FEAT_SVE_BitPerm) instructions and if the associated ACLE intrinsics are available. This implies that __ARM_FEATURE_SVE2 is nonzero.
+__ARM_FEATURE_SVE2_BITPERM hardware support for the SVE2 bit permute (FEAT_SVE_BitPerm) instructions available. This implies that __ARM_FEATURE_SVE2 is nonzero.
 
-__ARM_FEATURE_SSVE_BITPERM is defined to 1 if there is hardware support for the SVE2 bit permute instructions in Streaming SVE mode (FEAT_SSVE_BitPerm) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_SSVE_BITPERM hardware support for the SVE2 bit permute instructions in Streaming SVE mode (FEAT_SSVE_BitPerm) available.
 
 
  Streaming SVE FEXPA extension ^
-__ARM_FEATURE_SSVE_FEXPA is defined to 1 if there is hardware support for the SVE FEXPA instruction in Streaming SVE mode (FEAT_SSVE_FEXPA) and if the associated ACLE intrinsics are available.
+__ARM_FEATURE_SSVE_FEXPA hardware support for the SVE FEXPA instruction in Streaming SVE mode (FEAT_SSVE_FEXPA) available.
 
  16-bit to 64-bit integer widening outer product intrinsics ^
 The specification for SME is in Beta state and might change or be extended in the future.
 
-__ARM_FEATURE_SME_I16I64 is defined to 1 if there is hardware support for the SME 16-bit to 64-bit integer widening outer product (FEAT_SME_I16I64) instructions and if their associated intrinsics are available. This implies that __ARM_FEATURE_SME is nonzero.
+__ARM_FEATURE_SME_I16I64 hardware support for the SME 16-bit to 64-bit integer widening outer product (FEAT_SME_I16I64) instructions available. This implies that __ARM_FEATURE_SME is nonzero.
 
  Double precision floating-point outer product intrinsics ^
 The specification for SME is in Beta state and might change or be extended in the future.
 
-__ARM_FEATURE_SME_F64F64 is defined to 1 if there is hardware support for the SME double precision floating-point outer product (FEAT_SME_F64F64) instructions and if their associated intrinsics are available. This implies that __ARM_FEATURE_SME is nonzero.
+__ARM_FEATURE_SME_F64F64 hardware support for the SME double precision floating-point outer product (FEAT_SME_F64F64) instructions available. This implies that __ARM_FEATURE_SME is nonzero.
 
  Structured sparsity outer product intrinsics ^
 The specification for SME is in Alpha state and may change or be extended in the future.
 
-__ARM_FEATURE_SME_TMOP is defined to 1 if there is hardware support for the SME structured sparsity outer product (FEAT_SME_TMOP) instructions and if their associated intrinsics are available. This implies that __ARM_FEATURE_SME2 is nonzero.
+__ARM_FEATURE_SME_TMOP hardware support for the SME structured sparsity outer product (FEAT_SME_TMOP) instructions available. This implies that __ARM_FEATURE_SME2 is nonzero.
 
  Quarter-tile outer product intrinsics ^
 The specification for SME is in Alpha state and may change or be extended in the future.
 
-__ARM_FEATURE_SME_MOP4 is defined to 1 if there is hardware support for the SME quarter-tile outer product (FEAT_SME_MOP4) instructions and if their associated intrinsics are available. This implies that __ARM_FEATURE_SME2 is nonzero.
+__ARM_FEATURE_SME_MOP4 hardware support for the SME quarter-tile outer product (FEAT_SME_MOP4) instructions available. This implies that __ARM_FEATURE_SME2 is nonzero.
 
  CSSC Extension ^
-__ARM_FEATURE_CSSC is defined to 1 if there is hardware support for common short sequence compression instructions. This includes the instructions ABS, CNT, CTZ and SMAX, SMIN, UMAX, UMIN (register/immediate).
+__ARM_FEATURE_CSSC hardware support for common short sequence compression instructions. This includes the instructions ABS, CNT, CTZ and SMAX, SMIN, UMAX, UMIN (register/immediate).
 
  Floating-point model ^
 These macros test the floating-point model implemented by the compiler and libraries. The model determines the guarantees on arithmetic and exceptions.
 
-__ARM_FP_FAST is defined to 1 if floating-point optimizations may occur such that the computed results are different from those prescribed by the order of operations according to the C standard. Examples of such optimizations would be reassociation of expressions to reduce depth, and replacement of a division by constant with multiplication by its reciprocal.
+__ARM_FP_FAST floating-point optimizations may occur such that the computed results are different from those prescribed by the order of operations according to the C standard. Examples of such optimizations would be reassociation of expressions to reduce depth, and replacement of a division by constant with multiplication by its reciprocal.
 
-__ARM_FP_FENV_ROUNDING is defined to 1 if the implementation allows the rounding to be configured at runtime using the standard C fesetround() function and will apply this rounding to future floating-point operations. The rounding mode applies to both scalar floating-point and Neon.
+__ARM_FP_FENV_ROUNDING implementation allows the rounding to be configured at runtime using the standard C fesetround() function and will apply this rounding to future floating-point operations. The rounding mode applies to both scalar floating-point and Neon.
 
 The floating-point implementation might or might not support denormal values. If denormal values are not supported then they are flushed to zero.
 
 Implementations may also define the following macros in appropriate floating-point modes:
 
-__STDC_IEC_559__ is defined if the implementation conforms to IEC This implies support for floating-point exception status flags, including the inexact exception. This macro is specified by [C99] (6.10.8).
+__STDC_IEC_559__ the implementation conforms to IEC This implies support for floating-point exception status flags, including the inexact exception. This macro is specified by [C99] (6.10.8).
 
-__SUPPORT_SNAN__ is defined if the implementation supports signalling NaNs. This macro is specified by the C standards proposal WG14 N965 Optional support for Signaling NaNs. (Note: this was not adopted into C11.)
+__SUPPORT_SNAN__ the implementation supports signalling NaNs. This macro is specified by the C standards proposal WG14 N965 Optional support for Signaling NaNs. (Note: this was not adopted into C11.)
 
  Procedure call standard ^
-__ARM_PCS is defined to 1 if the default procedure calling standard for the translation unit conforms to the base PCS defined in [AAPCS]. This is supported on AArch32 only.
+__ARM_PCS default procedure calling standard for the translation unit conforms to the base PCS defined in [AAPCS]. This is supported on AArch32 only.
 
-__ARM_PCS_VFP is defined to 1 if the default is to pass floating-point parameters in hardware floating-point registers using the VFP variant PCS defined in [AAPCS]. This is supported on AArch32 only.
+__ARM_PCS_VFP default is to pass floating-point parameters in hardware floating-point registers using the VFP variant PCS defined in [AAPCS]. This is supported on AArch32 only.
 
-__ARM_PCS_AAPCS64 is defined to 1 if the default procedure calling standard for the translation unit conforms to the [AAPCS64].
+__ARM_PCS_AAPCS64 default procedure calling standard for the translation unit conforms to the [AAPCS64].
 
 Note that this should reflect the implementation default for the translation unit. Implementations which allow the PCS to be set for a function, class or namespace are not expected to redefine the macro within that scope.
 
  Position-independent code ^
-__ARM_ROPI is defined to 1 if the translation unit is being compiled in read-only position independent mode. In this mode, all read-only data and functions are at a link-time constant offset from the program counter.
+__ARM_ROPI translation unit is being compiled in read-only position independent mode. In this mode, all read-only data and functions are at a link-time constant offset from the program counter.
 
-__ARM_RWPI is defined to 1 if the translation unit is being compiled in read-write position independent mode. In this mode, all writable data is at a link-time constant offset from the static base register defined in [AAPCS].
+__ARM_RWPI translation unit is being compiled in read-write position independent mode. In this mode, all writable data is at a link-time constant offset from the static base register defined in [AAPCS].
 
 The ROPI and RWPI position independence modes are compatible with each other, so the __ARM_ROPI and __ARM_RWPI macros may be defined at the same time.
 
  Coprocessor intrinsics ^
 __ARM_FEATURE_COPROC is defined as a bitmap to indicate the presence of coprocessor intrinsics for the target architecture. If __ARM_FEATURE_COPROC is undefined or zero, that means there is no support for coprocessor intrinsics on the target architecture. The following bits are used:
 
-Bit	Value	Intrinsics Available
-0	0x1	__arm_cdp __arm_ldc, __arm_ldcl, __arm_stc, __arm_stcl, __arm_mcr and __arm_mrc
-1	0x2	__arm_cdp2, __arm_ldc2, __arm_stc2, __arm_ldc2l, __arm_stc2l, __arm_mcr2 and __arm_mrc2
-2	0x4	__arm_mcrr and __arm_mrrc
-3	0x8	__arm_mcrr2 and __arm_mrrc2
+Bit Value   Intrinsics Available
+0   0x1 __arm_cdp __arm_ldc, __arm_ldcl, __arm_stc, __arm_stcl, __arm_mcr and __arm_mrc
+1   0x2 __arm_cdp2, __arm_ldc2, __arm_stc2, __arm_ldc2l, __arm_stc2l, __arm_mcr2 and __arm_mrc2
+2   0x4 __arm_mcrr and __arm_mrrc
+3   0x8 __arm_mcrr2 and __arm_mrrc2
  Custom Datapath Extension ^
-__ARM_FEATURE_CDE is defined to 1 if the Arm Custom Datapath Extension (CDE) is supported.
+__ARM_FEATURE_CDE Arm Custom Datapath Extension (CDE) is supported.
 
 __ARM_FEATURE_CDE_COPROC is a bitmap indicating the CDE coprocessors available. The following bits are used:
 
-Bit	Value	CDE Coprocessor available
-0	0x01	p0
-1	0x02	p1
-2	0x04	p2
-3	0x08	p3
-4	0x10	p4
-5	0x20	p5
-6	0x40	p6
-7	0x80	p7
+Bit Value   CDE Coprocessor available
+0   0x01    p0
+1   0x02    p1
+2   0x04    p2
+3   0x08    p3
+4   0x10    p4
+5   0x20    p5
+6   0x40    p6
+7   0x80    p7
  Mapping of object build attributes to predefines ^
 This section is provided for guidance. Details of build attributes can be found in [BA].
 
-Tag no.	Tag	Predefined macro
-6	Tag_CPU_arch	__ARM_ARCH, __ARM_FEATURE_DSP
-7	Tag_CPU_arch_profile	__ARM_PROFILE
-8	Tag_ARM_ISA_use	__ARM_ISA_ARM
-9	Tag_THUMB_ISA_use	__ARM_ISA_THUMB
-11	Tag_WMMX_arch	__ARM_WMMX
-18	Tag_ABI_PCS_wchar_t	__ARM_SIZEOF_WCHAR_T
-20	Tag_ABI_FP_denormal	 
-21	Tag_ABI_FP_exceptions	 
-22	Tag_ABI_FP_user_exceptions	 
-23	Tag_ABI_FP_number_model	 
-26	Tag_ABI_enum_size	__ARM_SIZEOF_MINIMAL_ENUM
-34	Tag_CPU_unaligned_access	__ARM_FEATURE_UNALIGNED
-36	Tag_FP_HP_extension	__ARM_FP16_FORMAT_IEEE
- 	 	__ARM_FP16_FORMAT_ALTERNATIVE
-38	Tag_ABI_FP_16bit_for	__ARM_FP16_FORMAT_IEEE
- 	 	__ARM_FP16_FORMAT_ALTERNATIVE
+Tag no. Tag Predefined macro
+6   Tag_CPU_arch    __ARM_ARCH, __ARM_FEATURE_DSP
+7   Tag_CPU_arch_profile    __ARM_PROFILE
+8   Tag_ARM_ISA_use __ARM_ISA_ARM
+9   Tag_THUMB_ISA_use   __ARM_ISA_THUMB
+11  Tag_WMMX_arch   __ARM_WMMX
+18  Tag_ABI_PCS_wchar_t __ARM_SIZEOF_WCHAR_T
+20  Tag_ABI_FP_denormal
+21  Tag_ABI_FP_exceptions
+22  Tag_ABI_FP_user_exceptions
+23  Tag_ABI_FP_number_model
+26  Tag_ABI_enum_size   __ARM_SIZEOF_MINIMAL_ENUM
+34  Tag_CPU_unaligned_access    __ARM_FEATURE_UNALIGNED
+36  Tag_FP_HP_extension __ARM_FP16_FORMAT_IEEE
+        __ARM_FP16_FORMAT_ALTERNATIVE
+38  Tag_ABI_FP_16bit_for    __ARM_FP16_FORMAT_IEEE
+        __ARM_FP16_FORMAT_ALTERNATIVE
  Summary of predefined macros ^
-Macro name	Meaning	Example
-__ARM_32BIT_STATE	Code is for AArch32 state	1
-__ARM_64BIT_STATE	Code is for AArch64 state	1
-__ARM_ACLE	Indicates ACLE implemented	101
-__ARM_ALIGN_MAX_PWR	Log of maximum alignment of static object	20
-__ARM_ALIGN_MAX_STACK_PWR	Log of maximum alignment of stack object	3
-__ARM_ARCH	Arm architecture level	7
-__ARM_ARCH_ISA_A64	AArch64 ISA present	1
-__ARM_ARCH_ISA_ARM	Arm instruction set present	1
-__ARM_ARCH_ISA_THUMB	T32 instruction set present	2
-__ARM_ARCH_PROFILE	Architecture profile	'A'
-__ARM_BF16_FORMAT_ALTERNATIVE	16-bit brain floating-point, alternative format	1
-__ARM_BIG_ENDIAN	Memory is big-endian	1
-__ARM_FEATURE_AES	AES Crypto extension (Arm v8-A)	1
-__ARM_FEATURE_ATOMICS	Large System Extensions	1
-__ARM_FEATURE_BF16	16-bit brain floating-point, vector instruction	1
-__ARM_FEATURE_BTI_DEFAULT	Branch Target Identification	1
-__ARM_FEATURE_CDE	Custom Datapath Extension	0x01
-__ARM_FEATURE_CDE_COPROC	Custom Datapath Extension	0xf
-__ARM_FEATURE_CLZ	CLZ instruction	1
-__ARM_FEATURE_COMPLEX	Armv8.3-A extension	1
-__ARM_FEATURE_COPROC	Coprocessor Intrinsics	1
-__ARM_FEATURE_CRC32	CRC32 extension	1
-__ARM_FEATURE_CRYPTO	Crypto extension	1
-__ARM_FEATURE_CSSC	CSSC extension	1
-__ARM_FEATURE_DIRECTED_ROUNDING	Directed Rounding	1
-__ARM_FEATURE_DOTPROD	Dot product extension (ARM v8.2-A)	1
-__ARM_FEATURE_DSP	DSP instructions (Arm v5E) (32-bit-only)	1
-__ARM_FEATURE_FAMINMAX	Floating-point absolute minimum and maximum extension	1
-__ARM_FEATURE_FMA	Floating-point fused multiply-accumulate	1
-__ARM_FEATURE_FP16_FML	FP16 FML extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)	1
-__ARM_FEATURE_FP8	Modal 8-bit floating-point extensions	1
-__ARM_FEATURE_FP8DOT2	Modal 8-bit floating-point extensions	1
-__ARM_FEATURE_FP8DOT4	Modal 8-bit floating-point extensions	1
-__ARM_FEATURE_FP8FMA	Modal 8-bit floating-point extensions	1
-__ARM_FEATURE_FRINT	Floating-point rounding extension (Arm v8.5-A)	1
-__ARM_FEATURE_GCS	Guarded Control Stack	1
-__ARM_FEATURE_GCS_DEFAULT	Guarded Control Stack protection can be enabled	1
-__ARM_FEATURE_IDIV	Hardware Integer Divide	1
-__ARM_FEATURE_JCVT	Javascript conversion (ARMv8.3-A)	1
-__ARM_FEATURE_LDREX (Deprecated)	Load/store exclusive instructions	0x0F
-__ARM_FEATURE_LUT	Lookup table extensions (FEAT_LUT)	1
-__ARM_FEATURE_MATMUL_INT8	Integer Matrix Multiply extension (Armv8.6-A, optional Armv8.2-A, Armv8.3-A, Armv8.4-A, Armv8.5-A)	1
-__ARM_FEATURE_MEMORY_TAGGING	Memory Tagging (Armv8.5-A)	1
-__ARM_FEATURE_MOPS	memcpy, memset, and memmove family of operations standardization instructions	1
-__ARM_FEATURE_MVE	M-profile Vector Extension	1
-__ARM_FEATURE_NUMERIC_MAXMIN	Numeric Maximum and Minimum	1
-__ARM_FEATURE_PAC_DEFAULT	Pointer authentication protection	0x5
-__ARM_FEATURE_PAUTH	Pointer Authentication Extension (FEAT_PAuth)	1
-__ARM_FEATURE_PAUTH_LR	Armv9.5-A Enhancements to Pointer Authentication Extension (FEAT_PAuth_LR)	1
-__ARM_FEATURE_QBIT	Q (saturation) flag (32-bit-only)	1
-__ARM_FEATURE_QRDMX	SQRDMLxH instructions and associated intrinsics availability	1
-__ARM_FEATURE_RCPC	Release Consistent processor consistent Model (64-bit-only)	1
-__ARM_FEATURE_RNG	Random Number Generation Extension (Armv8.5-A)	1
-__ARM_FEATURE_SAT	Width-specified saturation instructions (32-bit-only)	1
-__ARM_FEATURE_SHA2	SHA2 Crypto extension (Arm v8-A)	1
-__ARM_FEATURE_SHA3	SHA3 Crypto extension (Arm v8.4-A)	1
-__ARM_FEATURE_SHA512	SHA2 Crypto ext. (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)	1
-__ARM_FEATURE_SIMD32	32-bit SIMD instructions (Armv6) (32-bit-only)	1
-__ARM_FEATURE_SM3	SM3 Crypto extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)	1
-__ARM_FEATURE_SM4	SM4 Crypto extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)	1
-__ARM_FEATURE_SME	Scalable Matrix Extension (FEAT_SME)	1
-__ARM_FEATURE_SME2	Scalable Matrix Extension (FEAT_SME2)	1
-__ARM_FEATURE_SME_B16B16	Non-widening brain 16-bit floating-point SME intrinsics (FEAT_SME_B16B16)	1
-__ARM_FEATURE_SME_F16F16	Half-precision floating-point SME intrinsics (FEAT_SME_F16F16)	1
-__ARM_FEATURE_SME_F64F64	Double precision floating-point outer product intrinsics (FEAT_SME_F64F64)	1
-__ARM_FEATURE_SME_F8F16	Modal 8-bit floating-point extensions	1
-__ARM_FEATURE_SME_F8F32	Modal 8-bit floating-point extensions	1
-__ARM_FEATURE_SME_I16I64	16-bit to 64-bit integer widening outer product intrinsics (FEAT_SME_I16I64)	1
-__ARM_FEATURE_SME_TMOP	Structured sparsity outer product intrinsics (FEAT_SME_TMOP)	1
-__ARM_FEATURE_SME_MOP4	quarter-tile outer product intrinsics (FEAT_SME_MOP4)	1
-__ARM_FEATURE_SME_LOCALLY_STREAMING	Support for the arm_locally_streaming attribute	1
-__ARM_FEATURE_SME_LUTv2	Lookup table extensions (FEAT_SME_LUTv2)	1
-__ARM_FEATURE_SSVE_FP8DOT2	Modal 8-bit floating-point extensions	1
-__ARM_FEATURE_SSVE_FP8DOT4	Modal 8-bit floating-point extensions	1
-__ARM_FEATURE_SSVE_FP8FMA	Modal 8-bit floating-point extensions	1
-__ARM_FEATURE_SVE	Scalable Vector Extension (FEAT_SVE)	1
-__ARM_FEATURE_SVE_B16B16	Non-widening brain 16-bit floating-point intrinsics (FEAT_SVE_B16B16)	1
-__ARM_FEATURE_SVE_BF16	SVE support for the 16-bit brain floating-point extension (FEAT_BF16)	1
-__ARM_FEATURE_SVE_BITS	The number of bits in an SVE vector, when known in advance	256
-__ARM_FEATURE_SVE_MATMUL_FP32	32-bit floating-point matrix multiply extension (FEAT_F32MM)	1
-__ARM_FEATURE_SVE_MATMUL_FP64	64-bit floating-point matrix multiply extension (FEAT_F64MM)	1
-__ARM_FEATURE_SVE_MATMUL_INT8	SVE support for the integer matrix multiply extension (FEAT_I8MM)	1
-__ARM_FEATURE_SVE_PREDICATE_OPERATORS	Level of support for C and C++ operators on SVE vector types	1
-__ARM_FEATURE_SVE_VECTOR_OPERATORS	Level of support for C and C++ operators on SVE predicate types	1
-__ARM_FEATURE_SVE2	SVE version 2 (FEAT_SVE2)	1
-__ARM_FEATURE_SVE2_AES	SVE2 support for the AES cryptographic extension (FEAT_SVE_AES)	1
-__ARM_FEATURE_SVE2_BITPERM	SVE2 bit permute extension	1
-__ARM_FEATURE_SSVE_BITPERM	SVE2 bit permute extension	1
-__ARM_FEATURE_SSVE_FEXPA	Streaming SVE FEXPA extension	1
-__ARM_FEATURE_SVE2_SHA3	SVE2 support for the SHA3 cryptographic extension (FEAT_SVE_SHA3)	1
-__ARM_FEATURE_SVE2_SM3	SVE2 support for the SM3 cryptographic extension (FEAT_SVE_SM3)	1
-__ARM_FEATURE_SVE2_SM4	SVE2 support for the SM4 cryptographic extension (FEAT_SVE_SM4)	1
-__ARM_FEATURE_SVE2p1	SVE version 2.1 (FEAT_SVE2p1)	 
-__ARM_FEATURE_SYSREG128	Support for 128-bit system registers (FEAT_SYSREG128)	1
-__ARM_FEATURE_UNALIGNED	Hardware support for unaligned access	1
-__ARM_FP	Hardware floating-point	1
-__ARM_FP16_ARGS	__fp16 argument and result	0x0C
-__ARM_FP16_FORMAT_ALTERNATIVE	16-bit floating-point, alternative format	1
-__ARM_FP16_FORMAT_IEEE	16-bit floating-point, IEEE format	1
-__ARM_FP_FAST	Accuracy-losing optimizations	1
-__ARM_FP_FENV_ROUNDING	Rounding is configurable at runtime	1
-__ARM_NEON	Advanced SIMD (Neon) extension	1
-__ARM_NEON_FP	Advanced SIMD (Neon) floating-point	0x04
-__ARM_NEON_SVE_BRIDGE	Availability of arm_neon_sve_brdge.h	1
-__ARM_PCS	Arm procedure call standard (32-bit-only)	0x01
-__ARM_PCS_AAPCS64	Arm PCS for AArch64.	1
-__ARM_PCS_VFP	Arm PCS hardware FP variant in use (32-bit-only)	1
-__ARM_ROPI	Read-only PIC in use	1
-__ARM_RWPI	Read-write PIC in use	1
-__ARM_SIZEOF_MINIMAL_ENUM	Size of minimal enumeration type: 1 or 4	1
-__ARM_SIZEOF_WCHAR_T	Size of wchar_t: 2 or 4	2
-__ARM_WMMX	Wireless MMX extension (32-bit-only)	1
+Macro name  Meaning Example
+__ARM_32BIT_STATE   Code is for AArch32 state   1
+__ARM_64BIT_STATE   Code is for AArch64 state   1
+__ARM_ACLE  Indicates ACLE implemented  101
+__ARM_ALIGN_MAX_PWR Log of maximum alignment of static object   20
+__ARM_ALIGN_MAX_STACK_PWR   Log of maximum alignment of stack object    3
+__ARM_ARCH  Arm architecture level  7
+__ARM_ARCH_ISA_A64  AArch64 ISA present 1
+__ARM_ARCH_ISA_ARM  Arm instruction set present 1
+__ARM_ARCH_ISA_THUMB    T32 instruction set present 2
+__ARM_ARCH_PROFILE  Architecture profile    'A'
+__ARM_BF16_FORMAT_ALTERNATIVE   16-bit brain floating-point, alternative format 1
+__ARM_BIG_ENDIAN    Memory is big-endian    1
+__ARM_FEATURE_AES   AES Crypto extension (Arm v8-A) 1
+__ARM_FEATURE_ATOMICS   Large System Extensions 1
+__ARM_FEATURE_BF16  16-bit brain floating-point, vector instruction 1
+__ARM_FEATURE_BTI_DEFAULT   Branch Target Identification    1
+__ARM_FEATURE_CDE   Custom Datapath Extension   0x01
+__ARM_FEATURE_CDE_COPROC    Custom Datapath Extension   0xf
+__ARM_FEATURE_CLZ   CLZ instruction 1
+__ARM_FEATURE_COMPLEX   Armv8.3-A extension 1
+__ARM_FEATURE_COPROC    Coprocessor Intrinsics  1
+__ARM_FEATURE_CRC32 CRC32 extension 1
+__ARM_FEATURE_CRYPTO    Crypto extension    1
+__ARM_FEATURE_CSSC  CSSC extension  1
+__ARM_FEATURE_DIRECTED_ROUNDING Directed Rounding   1
+__ARM_FEATURE_DOTPROD   Dot product extension (ARM v8.2-A)  1
+__ARM_FEATURE_DSP   DSP instructions (Arm v5E) (32-bit-only)    1
+__ARM_FEATURE_FAMINMAX  Floating-point absolute minimum and maximum extension   1
+__ARM_FEATURE_FMA   Floating-point fused multiply-accumulate    1
+__ARM_FEATURE_FP16_FML  FP16 FML extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)  1
+__ARM_FEATURE_FP8   Modal 8-bit floating-point extensions   1
+__ARM_FEATURE_FP8DOT2   Modal 8-bit floating-point extensions   1
+__ARM_FEATURE_FP8DOT4   Modal 8-bit floating-point extensions   1
+__ARM_FEATURE_FP8FMA    Modal 8-bit floating-point extensions   1
+__ARM_FEATURE_FRINT Floating-point rounding extension (Arm v8.5-A)  1
+__ARM_FEATURE_GCS   Guarded Control Stack   1
+__ARM_FEATURE_GCS_DEFAULT   Guarded Control Stack protection can be enabled 1
+__ARM_FEATURE_IDIV  Hardware Integer Divide 1
+__ARM_FEATURE_JCVT  Javascript conversion (ARMv8.3-A)   1
+__ARM_FEATURE_LDREX (Deprecated)    Load/store exclusive instructions   0x0F
+__ARM_FEATURE_LUT   Lookup table extensions (FEAT_LUT)  1
+__ARM_FEATURE_MATMUL_INT8   Integer Matrix Multiply extension (Armv8.6-A, optional Armv8.2-A, Armv8.3-A, Armv8.4-A, Armv8.5-A)  1
+__ARM_FEATURE_MEMORY_TAGGING    Memory Tagging (Armv8.5-A)  1
+__ARM_FEATURE_MOPS  memcpy, memset, and memmove family of operations standardization instructions   1
+__ARM_FEATURE_MVE   M-profile Vector Extension  1
+__ARM_FEATURE_NUMERIC_MAXMIN    Numeric Maximum and Minimum 1
+__ARM_FEATURE_PAC_DEFAULT   Pointer authentication protection   0x5
+__ARM_FEATURE_PAUTH Pointer Authentication Extension (FEAT_PAuth)   1
+__ARM_FEATURE_PAUTH_LR  Armv9.5-A Enhancements to Pointer Authentication Extension (FEAT_PAuth_LR)  1
+__ARM_FEATURE_QBIT  Q (saturation) flag (32-bit-only)   1
+__ARM_FEATURE_QRDMX SQRDMLxH instructions and associated intrinsics availability    1
+__ARM_FEATURE_RCPC  Release Consistent processor consistent Model (64-bit-only) 1
+__ARM_FEATURE_RNG   Random Number Generation Extension (Armv8.5-A)  1
+__ARM_FEATURE_SAT   Width-specified saturation instructions (32-bit-only)   1
+__ARM_FEATURE_SHA2  SHA2 Crypto extension (Arm v8-A)    1
+__ARM_FEATURE_SHA3  SHA3 Crypto extension (Arm v8.4-A)  1
+__ARM_FEATURE_SHA512    SHA2 Crypto ext. (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)    1
+__ARM_FEATURE_SIMD32    32-bit SIMD instructions (Armv6) (32-bit-only)  1
+__ARM_FEATURE_SM3   SM3 Crypto extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)    1
+__ARM_FEATURE_SM4   SM4 Crypto extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)    1
+__ARM_FEATURE_SME   Scalable Matrix Extension (FEAT_SME)    1
+__ARM_FEATURE_SME2  Scalable Matrix Extension (FEAT_SME2)   1
+__ARM_FEATURE_SME_B16B16    Non-widening brain 16-bit floating-point SME intrinsics (FEAT_SME_B16B16)   1
+__ARM_FEATURE_SME_F16F16    Half-precision floating-point SME intrinsics (FEAT_SME_F16F16)  1
+__ARM_FEATURE_SME_F64F64    Double precision floating-point outer product intrinsics (FEAT_SME_F64F64)  1
+__ARM_FEATURE_SME_F8F16 Modal 8-bit floating-point extensions   1
+__ARM_FEATURE_SME_F8F32 Modal 8-bit floating-point extensions   1
+__ARM_FEATURE_SME_I16I64    16-bit to 64-bit integer widening outer product intrinsics (FEAT_SME_I16I64)    1
+__ARM_FEATURE_SME_TMOP  Structured sparsity outer product intrinsics (FEAT_SME_TMOP)    1
+__ARM_FEATURE_SME_MOP4  quarter-tile outer product intrinsics (FEAT_SME_MOP4)   1
+__ARM_FEATURE_SME_LOCALLY_STREAMING Support for the arm_locally_streaming attribute 1
+__ARM_FEATURE_SME_LUTv2 Lookup table extensions (FEAT_SME_LUTv2)    1
+__ARM_FEATURE_SSVE_FP8DOT2  Modal 8-bit floating-point extensions   1
+__ARM_FEATURE_SSVE_FP8DOT4  Modal 8-bit floating-point extensions   1
+__ARM_FEATURE_SSVE_FP8FMA   Modal 8-bit floating-point extensions   1
+__ARM_FEATURE_SVE   Scalable Vector Extension (FEAT_SVE)    1
+__ARM_FEATURE_SVE_B16B16    Non-widening brain 16-bit floating-point intrinsics (FEAT_SVE_B16B16)   1
+__ARM_FEATURE_SVE_BF16  SVE support for the 16-bit brain floating-point extension (FEAT_BF16)   1
+__ARM_FEATURE_SVE_BITS  The number of bits in an SVE vector, when known in advance  256
+__ARM_FEATURE_SVE_MATMUL_FP32   32-bit floating-point matrix multiply extension (FEAT_F32MM)    1
+__ARM_FEATURE_SVE_MATMUL_FP64   64-bit floating-point matrix multiply extension (FEAT_F64MM)    1
+__ARM_FEATURE_SVE_MATMUL_INT8   SVE support for the integer matrix multiply extension (FEAT_I8MM)   1
+__ARM_FEATURE_SVE_PREDICATE_OPERATORS   Level of support for C and C++ operators on SVE vector types    1
+__ARM_FEATURE_SVE_VECTOR_OPERATORS  Level of support for C and C++ operators on SVE predicate types 1
+__ARM_FEATURE_SVE2  SVE version 2 (FEAT_SVE2)   1
+__ARM_FEATURE_SVE2_AES  SVE2 support for the AES cryptographic extension (FEAT_SVE_AES) 1
+__ARM_FEATURE_SVE2_BITPERM  SVE2 bit permute extension  1
+__ARM_FEATURE_SSVE_BITPERM  SVE2 bit permute extension  1
+__ARM_FEATURE_SSVE_FEXPA    Streaming SVE FEXPA extension   1
+__ARM_FEATURE_SVE2_SHA3 SVE2 support for the SHA3 cryptographic extension (FEAT_SVE_SHA3)   1
+__ARM_FEATURE_SVE2_SM3  SVE2 support for the SM3 cryptographic extension (FEAT_SVE_SM3) 1
+__ARM_FEATURE_SVE2_SM4  SVE2 support for the SM4 cryptographic extension (FEAT_SVE_SM4) 1
+__ARM_FEATURE_SVE2p1    SVE version 2.1 (FEAT_SVE2p1)
+__ARM_FEATURE_SYSREG128 Support for 128-bit system registers (FEAT_SYSREG128)   1
+__ARM_FEATURE_UNALIGNED Hardware support for unaligned access   1
+__ARM_FP    Hardware floating-point 1
+__ARM_FP16_ARGS __fp16 argument and result  0x0C
+__ARM_FP16_FORMAT_ALTERNATIVE   16-bit floating-point, alternative format   1
+__ARM_FP16_FORMAT_IEEE  16-bit floating-point, IEEE format  1
+__ARM_FP_FAST   Accuracy-losing optimizations   1
+__ARM_FP_FENV_ROUNDING  Rounding is configurable at runtime 1
+__ARM_NEON  Advanced SIMD (Neon) extension  1
+__ARM_NEON_FP   Advanced SIMD (Neon) floating-point 0x04
+__ARM_NEON_SVE_BRIDGE   Availability of arm_neon_sve_brdge.h    1
+__ARM_PCS   Arm procedure call standard (32-bit-only)   0x01
+__ARM_PCS_AAPCS64   Arm PCS for AArch64.    1
+__ARM_PCS_VFP   Arm PCS hardware FP variant in use (32-bit-only)    1
+__ARM_ROPI  Read-only PIC in use    1
+__ARM_RWPI  Read-write PIC in use   1
+__ARM_SIZEOF_MINIMAL_ENUM   Size of minimal enumeration type: 1 or 4    1
+__ARM_SIZEOF_WCHAR_T    Size of wchar_t: 2 or 4 2
+__ARM_WMMX  Wireless MMX extension (32-bit-only)    1
 
 
 */
 
-void report_ARM_supportedFeatures() {
-	auto version = 0; // __ARM_ACLE;
-	auto fp = __ARM_FP;
+template <typename T>
+void report_arm_feature(T f, const char *f_id, const char *f_descr) {
+    Serial.print(f_id);
+    Serial.print(" = ");
+    Serial.print(f);
+    if (f_descr && *f_descr) {
+      Serial.print("\t\t :: ");
+      Serial.print(f_descr);
+    }
 }
+
+void report_ARM_supportedFeatures() {
+
+/*
+__ARM_ACLE Arm C Language Extensions: the version of this specification that is implemented, formatted as {YEAR}{QUARTER}{PATCH}.
+__ARM_ARCH the current Arm instruction set architecture (for example 7 for the Arm v7-A architecture implemented by Cortex-A8 or the Armv7-M architecture implemented by Cortex-M3 or 8 for the Armv8-A architecture implemented by Cortex-A57).
+__ARM_ARCH_ISA_ARM the core supports the Arm instruction set. It is not defined for M-profile cores.
+__ARM_ARCH_ISA_THUMB the core supports the original T32 instruction set (including the v6-M architecture) and 2 if it supports the T32 instruction set as found in the v6T2 architecture and all v7 architectures.
+__ARM_ARCH_ISA_A64 the core supports AArch64’s A64 instruction set.
+__ARM_32BIT_STATE code is being generated for AArch32.
+__ARM_64BIT_STATE code is being generated for AArch64.
+__ARM_ARCH_PROFILE Architectural profile (A, R, M or pre-Cortex): is a char literal 'A', 'R', 'M' or 'S', or unset, according to the architectural profile of the target. 'S' indicates the common subset of the A and R profiles.
+__ARM_FEATURE_UNALIGNED the target supports unaligned access in hardware, at least to the extent of being able to load or store an integer word at any alignment with a single instruction.
+__ARM_FEATURE_LDREX the load/store-exclusive instructions (LDREX/STREX) are supported: the value is a set of bits indicating available widths of the access, as powers of 2. It is strongly recommended that C11/C++11 atomics be used instead.
+__ARM_FEATURE_CLZ the CLZ (count leading zeroes) instruction is supported in hardware.
+__ARM_FEATURE_QBIT the Q (saturation) global flag exists and the intrinsics defined in The Q (saturation) flag are available. This flag is used with the DSP saturating-arithmetic instructions (such as QADD) and the width-specified saturating instructions (SSAT and USAT).
+__ARM_FEATURE_DSP the DSP (v5E) instructions are supported and the intrinsics defined in Saturating intrinsics are available. These instructions include QADD, SMULBB and others.
+__ARM_FEATURE_SAT the SSAT and USAT instructions are supported and the intrinsics defined in Width-specified saturation intrinsics are available. This feature also implies support for the Q flag.
+__ARM_FEATURE_SIMD32 the 32-bit SIMD instructions are supported and the intrinsics defined in 32-bit SIMD Operations are available. This also implies support for the GE global flags which indicate byte-by-byte comparison results.
+__ARM_FEATURE_IDIV the target has hardware support for 32-bit integer division in all available instruction sets.
+__ARM_FEATURE_CRC32 the CRC32 instructions are supported and the intrinsics defined in CRC32 intrinsics are available. These instructions include CRC32B, CRC32H and others.
+__ARM_FEATURE_RNG the Random Number Generation instructions are supported and the intrinsics defined in Random number generation intrinsics are available.
+__ARM_FEATURE_BTI_DEFAULT the Branch Target Identification extension is used to protect branch destinations by default.
+__ARM_FEATURE_BTI Branch Target Identification extension is available on the target.
+__ARM_FEATURE_PAC_DEFAULT a bitmap to indicate the use of the Pointer Authentication extension to protect code against code reuse attacks by default.
+__ARM_FEATURE_PAUTH Pointer Authentication extension (FEAT_PAuth) is available on the target.
+__ARM_FEATURE_PAUTH_LR Armv9.5-A enhancements to the Pointer Authentication extension (FEAT_PAuth_LR) are available on the target.
+__ARM_FEATURE_GCS_DEFAULT the code generation is compatible with enabling the Guarded Control Stack (GCS) extension based protection.
+__ARM_FEATURE_GCS Guarded Control Stack (GCS) extension is available on the target.
+__ARM_FEATURE_ATOMICS the Large System Extensions introduced in the Armv8.1-A [ARMARMv81] architecture are supported on this target. Note: It is strongly recommended that standardized C11/C++11 atomics are used to implement atomic operations in user code.
+__ARM_FEATURE_TME Transactional Memory Extension instructions are supported in hardware and intrinsics defined in Transactional Memory Extension (TME) intrinsics are available.
+__ARM_FEATURE_LS64 Armv8.7-A LD64B, ST64B, ST64BV and ST64BV0 instructions for atomic 64-byte access to device memory are supported.
+__ARM_FEATURE_MOPS the CPYF*, CPY*, SET* and SETG* instructions are supported, as part of the standardization of memcpy, memset, and memmove family of memory operations (MOPS).
+__ARM_FEATURE_RCPC the weaker RCpc (Release Consistent processor consistent) model is supported. The value indicates the set of Load-Acquire and Store-Release instructions available.
+__ARM_FEATURE_SYSREG128 128-bit system registers: the MRRS and MSRR instructions are supported.
+__ARM_FP hardware floating-point is available. The value is a set of bits indicating the floating-point precisions supported.
+__ARM_FP16_FORMAT_IEEE the IEEE 754-2008 [IEEE-FP] 16-bit floating-point format is used.
+__ARM_FP16_FORMAT_ALTERNATIVE the Arm alternative [ARMARM] 16-bit floating-point format is used. This format removes support for infinities and NaNs in order to provide an additional binade.
+__ARM_FP16_ARGS Half-precision argument and result: __fp16 can be used as an argument and result.
+__ARM_NEON a value indicating the Advanced SIMD (Neon) architecture supported.
+__ARM_NEON_FP a bitmap to indicate floating-point support in the Neon architecture.
+__ARM_FEATURE_SVE Scalable Vector Extension (SVE): hardware support for the FEAT_SVE instructions available.
+__ARM_FEATURE_SVE_BITS nonzero indicates that the implementation is generating code for an N-bit SVE target and that the implementation supports the arm_sve_vector_bits(N) attribute.
+__ARM_FEATURE_SVE_VECTOR_OPERATORS indicates that applying the arm_sve_vector_bits attribute to an SVE vector type creates a type that supports the GNU vector extensions.
+__ARM_FEATURE_SVE_PREDICATE_OPERATORS indicates that applying the arm_sve_vector_bits attribute to svbool_t creates a type that supports basic built-in vector operations.
+__ARM_FEATURE_SVE2 hardware support for the Armv9-A SVE2 extension (FEAT_SVE2) available.
+__ARM_FEATURE_SVE2p1 the FEAT_SVE2p1 instructions are available.
+__ARM_NEON_SVE_BRIDGE NEON-SVE Bridge macro: the <arm_neon_sve_bridge.h> header file is available.
+__ARM_FEATURE_SME Scalable Matrix Extension (SME) available.
+__ARM_FEATURE_LOCALLY_STREAMING Scalable Matrix Extension (SME): the arm_locally_streaming attribute is available.
+__ARM_FEATURE_MVE a bitmap to indicate M-profile Vector Extension (MVE) support.
+__ARM_WMMX Wireless MMX operations: indicates the level of support, corresponding to the Tag_WMMX_arch build attribute.
+__ARM_FEATURE_FP16_SCALAR_ARITHMETIC the 16-bit floating-point arithmetic instructions are supported in hardware.
+__ARM_FEATURE_FP16_VECTOR_ARITHMETIC the 16-bit floating-point vector arithmetic instructions are supported in hardware.
+__ARM_FEATURE_FP16_FML the FP16 multiplication variant instructions from Armv8.2-A are supported and intrinsics targeting them are available.
+__ARM_FEATURE_FP16_SCALAR_ARITHMETIC
+__ARM_FEATURE_SME_F16F16 hardware support for the SME2 half-precision (FEAT_SME_F16F16) instructions available.
+__ARM_BF16_FORMAT_ALTERNATIVE the Arm alternative [ARMARM] 16-bit brain floating-point format is used. This format closely resembles the IEEE 754 single-precision format.
+__ARM_FEATURE_BF16_VECTOR_ARITHMETIC hardware support for the Advanced SIMD brain 16-bit floating-point arithmetic instructions available.
+__ARM_FEATURE_SVE_BF16 hardware support for the SVE BF16 extensions available.
+__ARM_FEATURE_SVE_B16B16 Non-widening brain 16-bit floating-point support: hardware support for the FEAT_SVE_B16B16 instructions available.
+__ARM_FEATURE_SME_B16B16 Non-widening brain 16-bit floating-point support: hardware support for the FEAT_SME_B16B16 instructions available.
+__ARM_FEATURE_CRYPTO the Armv8-A Crypto instructions are supported. These instructions include AES{E, D}, SHA1{C, P, M} and others.
+__ARM_FEATURE_AES hardware support for the Advanced SIMD AES Crypto instructions from Armv8-A available.
+__ARM_FEATURE_SVE2_AES hardware support for the SVE2 AES (FEAT_SVE_AES) instructions available.
+__ARM_FEATURE_SHA2 the SHA1 & SHA2-256 Crypto instructions from Armv8-A are supported available.
+__ARM_FEATURE_SHA512 the SHA2-512 Crypto instructions from Armv8.2-A are supported. These instructions include SHA1{C, P, M}, SHA256H, SHA256H2, …, SHA512H, SHA512H2, SHA512SU0… and others.
+__ARM_FEATURE_SHA3 hardware support for the Advanced SIMD SHA1 & SHA2 Crypto instructions from Armv8-A and the SHA2 and SHA3 instructions from Armv8.2-A and newer available. These instructions include AES{E, D}, SHA1{C, P, M}, RAX, and others.
+__ARM_FEATURE_SVE2_SHA3 hardware support for the SVE2 SHA3 (FEAT_SVE_SHA3) instructions available.
+__ARM_FEATURE_SM3 hardware support for Advanced SIMD SM3 Crypto instructions from Armv8.2-A available. These instructions include SM3{TT1A, TT1B}, and others.
+__ARM_FEATURE_SVE2_SM3 hardware support for the SVE2 SM3 (FEAT_SVE_SM3) instructions available.
+__ARM_FEATURE_SM4 hardware support for the Advanced SIMD SM4 Crypto instructions from Armv8.2-A available. These instructions include SM4{E, EKEY} and others.
+__ARM_FEATURE_SVE2_SM4 hardware support for the SVE2 SM4 (FEAT_SVE_SM4) instructions available.
+__ARM_FEATURE_FAMINMAX hardware support for floating-point absolute minimum and maximum instructions (FEAT_FAMINMAX) available.
+__ARM_FEATURE_LUT hardware support for lookup table instructions with 2-bit and 4-bit indices (FEAT_LUT) available.
+__ARM_FEATURE_SME_LUTv2 hardware support for lookup table instructions with 4-bit indices and 8-bit elements (FEAT_SME_LUTv2) available.
+__ARM_FEATURE_FP8 hardware support for FP8 conversion instructions (FEAT_FP8) available.
+__ARM_FEATURE_FP8FMA hardware support for FP8 multiply-accumulate to half-precision and single-precision instructions (FEAT_FP8FMA) available.
+__ARM_FEATURE_FP8DOT2 hardware support for FP8 2-way dot product to half-precision instructions (FEAT_FP8DOT2) available.
+__ARM_FEATURE_FP8DOT4 hardware support for FP8 4-way dot product to single-precision instructions (FEAT_FP8DOT4) available.
+__ARM_FEATURE_SSVE_FP8DOT4 hardware support for SVE2 FP8 4-way dot product to single-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8DOT4) available.
+__ARM_FEATURE_SSVE_FP8DOT2 hardware support for SVE2 FP8 2-way dot product to half-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8DOT2) available.
+__ARM_FEATURE_SSVE_FP8FMA hardware support for SVE2 FP8 multiply-accumulate to half-precision and single-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8FMA) available.
+__ARM_FEATURE_SME_F8F32 hardware support for SME2 FP8 dot product, multiply-accumulate, and outer product to single-precision instructions (FEAT_SME_F8F32) available.
+__ARM_FEATURE_SME_F8F16 hardware support for SME2 FP8 dot product, multiply-accumulate, and outer product to half-precision instructions (FEAT_SME_F8F16) available.
+__ARM_FEATURE_FMA hardware floating-point architecture supports fused floating-point multiply-accumulate, that is, without intermediate rounding.
+__ARM_FEATURE_DIRECTED_ROUNDING directed rounding and conversion vector instructions are supported.
+__ARM_FEATURE_FRINT Armv8.5-A rounding number instructions are supported.
+__ARM_FEATURE_JCVT FJCVTZS (AArch64) or VJCVT (AArch32) instruction available.
+__ARM_FEATURE_NUMERIC_MAXMIN IEEE 754-2008 compliant floating point maximum and minimum vector instructions are supported.
+__ARM_FEATURE_QRDMX SQRDMLAH and SQRDMLSH instructions available.
+__ARM_FEATURE_DOTPROD the dot product data manipulation instructions are supported available.
+__ARM_FEATURE_COMPLEX the complex addition and complex multiply-accumulate vector instructions are supported.
+__ARM_FEATURE_MATMUL_INT8  Multiplication of 8-bit integer matrices: hardware support for the Advanced SIMD integer matrix multiply instructions available.
+__ARM_FEATURE_SVE_MATMUL_INT8 Multiplication of 8-bit integer matrices: hardware support for the SVE forms available.
+__ARM_FEATURE_SVE_MATMUL_FP32 hardware support for the SVE 32-bit floating-point matrix multiply (FEAT_F32MM) instructions available.
+__ARM_FEATURE_SVE_MATMUL_FP64 hardware support for the SVE 64-bit floating-point matrix multiply (FEAT_F64MM) instructions available.
+__ARM_FEATURE_SVE2_BITPERM hardware support for the SVE2 bit permute (FEAT_SVE_BitPerm) instructions available.
+__ARM_FEATURE_SSVE_BITPERM hardware support for the SVE2 bit permute instructions in Streaming SVE mode (FEAT_SSVE_BitPerm) available.
+__ARM_FEATURE_SSVE_FEXPA hardware support for the SVE FEXPA instruction in Streaming SVE mode (FEAT_SSVE_FEXPA) available.
+__ARM_FEATURE_SME_I16I64 hardware support for the SME 16-bit to 64-bit integer widening outer product (FEAT_SME_I16I64) instructions available.
+__ARM_FEATURE_SME_F64F64 hardware support for the SME double precision floating-point outer product (FEAT_SME_F64F64) instructions available.
+__ARM_FEATURE_SME_TMOP hardware support for the SME structured sparsity outer product (FEAT_SME_TMOP) instructions available.
+__ARM_FEATURE_SME_MOP4 hardware support for the SME quarter-tile outer product (FEAT_SME_MOP4) instructions available.
+__ARM_FEATURE_CSSC hardware support for common short sequence compression instructions. This includes the instructions ABS, CNT, CTZ and SMAX, SMIN, UMAX, UMIN (register/immediate).
+__ARM_FP_FAST floating-point optimizations may occur such that the computed results are different from those prescribed by the order of operations according to the C standard.
+__ARM_FP_FENV_ROUNDING implementation allows the rounding to be configured at runtime using the standard C fesetround() function and will apply this rounding to future floating-point operations.
+__STDC_IEC_559__ the implementation conforms to IEC This implies support for floating-point exception status flags, including the inexact exception. This macro is specified by [C99] (6.10.8).
+__SUPPORT_SNAN__ the implementation supports signalling NaNs. This macro is specified by the C standards proposal WG14 N965 Optional support for Signaling NaNs.
+__ARM_PCS default procedure calling standard for the translation unit conforms to the base PCS defined in [AAPCS].
+__ARM_PCS_VFP default is to pass floating-point parameters in hardware floating-point registers using the VFP variant PCS defined in [AAPCS].
+__ARM_PCS_AAPCS64 default procedure calling standard for the translation unit conforms to the [AAPCS64].
+__ARM_ROPI translation unit is being compiled in read-only position independent mode. In this mode, all read-only data and functions are at a link-time constant offset from the program counter.
+__ARM_RWPI translation unit is being compiled in read-write position independent mode. In this mode, all writable data is at a link-time constant offset from the static base register defined in [AAPCS].
+__ARM_FEATURE_COPROC is defined as a bitmap to indicate the presence of coprocessor intrinsics for the target architecture.
+__ARM_FEATURE_CDE Arm Custom Datapath Extension (CDE) is supported.
+__ARM_FEATURE_CDE_COPROC a bitmap indicating the CDE coprocessors available.
+__ARM_32BIT_STATE   Code is for AArch32 state
+__ARM_64BIT_STATE   Code is for AArch64 state
+__ARM_ACLE  ACLE implemented
+__ARM_ALIGN_MAX_PWR Log of maximum alignment of static object
+__ARM_ALIGN_MAX_STACK_PWR   Log of maximum alignment of stack object
+__ARM_ARCH  Arm architecture level
+__ARM_ARCH_ISA_A64  AArch64 ISA present
+__ARM_ARCH_ISA_ARM  Arm instruction set present
+__ARM_ARCH_ISA_THUMB    T32 instruction set present
+__ARM_ARCH_PROFILE  Architecture profile
+__ARM_BF16_FORMAT_ALTERNATIVE   16-bit brain floating-point, alternative format
+__ARM_BIG_ENDIAN    Memory is big-endian
+__ARM_FEATURE_AES   AES Crypto extension (Arm v8-A)
+__ARM_FEATURE_ATOMICS   Large System Extensions
+__ARM_FEATURE_BF16  16-bit brain floating-point, vector instruction
+__ARM_FEATURE_BTI_DEFAULT   Branch Target Identification
+__ARM_FEATURE_CDE   Custom Datapath Extension
+__ARM_FEATURE_CDE_COPROC    Custom Datapath Extension
+__ARM_FEATURE_CLZ   CLZ instruction
+__ARM_FEATURE_COMPLEX   Armv8.3-A extension
+__ARM_FEATURE_COPROC    Coprocessor Intrinsics
+__ARM_FEATURE_CRC32 CRC32 extension
+__ARM_FEATURE_CRYPTO    Crypto extension
+__ARM_FEATURE_CSSC  CSSC extension
+__ARM_FEATURE_DIRECTED_ROUNDING Directed Rounding
+__ARM_FEATURE_DOTPROD   Dot product extension (ARM v8.2-A)
+__ARM_FEATURE_DSP   DSP instructions (Arm v5E) (32-bit-only)
+__ARM_FEATURE_FAMINMAX  Floating-point absolute minimum and maximum extension
+__ARM_FEATURE_FMA   Floating-point fused multiply-accumulate
+__ARM_FEATURE_FP16_FML  FP16 FML extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)
+__ARM_FEATURE_FP8   Modal 8-bit floating-point extensions
+__ARM_FEATURE_FP8DOT2   Modal 8-bit floating-point extensions
+__ARM_FEATURE_FP8DOT4   Modal 8-bit floating-point extensions
+__ARM_FEATURE_FP8FMA    Modal 8-bit floating-point extensions
+__ARM_FEATURE_FRINT Floating-point rounding extension (Arm v8.5-A)
+__ARM_FEATURE_GCS   Guarded Control Stack
+__ARM_FEATURE_GCS_DEFAULT   Guarded Control Stack protection can be enabled
+__ARM_FEATURE_IDIV  Hardware Integer Divide
+__ARM_FEATURE_JCVT  Javascript conversion (ARMv8.3-A)
+__ARM_FEATURE_LDREX (Deprecated)    Load/store exclusive instructions
+__ARM_FEATURE_LUT   Lookup table extensions (FEAT_LUT)
+__ARM_FEATURE_MATMUL_INT8   Integer Matrix Multiply extension (Armv8.6-A, optional Armv8.2-A, Armv8.3-A, Armv8.4-A, Armv8.5-A)
+__ARM_FEATURE_MEMORY_TAGGING    Memory Tagging (Armv8.5-A)
+__ARM_FEATURE_MOPS  memcpy, memset, and memmove family of operations standardization instructions
+__ARM_FEATURE_MVE   M-profile Vector Extension
+__ARM_FEATURE_NUMERIC_MAXMIN    Numeric Maximum and Minimum
+__ARM_FEATURE_PAC_DEFAULT   Pointer authentication protection
+__ARM_FEATURE_PAUTH Pointer Authentication Extension (FEAT_PAuth)
+__ARM_FEATURE_PAUTH_LR  Armv9.5-A Enhancements to Pointer Authentication Extension (FEAT_PAuth_LR)
+__ARM_FEATURE_QBIT  Q (saturation) flag (32-bit-only)
+__ARM_FEATURE_QRDMX SQRDMLxH instructions and associated intrinsics availability
+__ARM_FEATURE_RCPC  Release Consistent processor consistent Model (64-bit-only)
+__ARM_FEATURE_RNG   Random Number Generation Extension (Armv8.5-A)
+__ARM_FEATURE_SAT   Width-specified saturation instructions (32-bit-only)
+__ARM_FEATURE_SHA2  SHA2 Crypto extension (Arm v8-A)
+__ARM_FEATURE_SHA3  SHA3 Crypto extension (Arm v8.4-A)
+__ARM_FEATURE_SHA512    SHA2 Crypto ext. (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)
+__ARM_FEATURE_SIMD32    32-bit SIMD instructions (Armv6) (32-bit-only)
+__ARM_FEATURE_SM3   SM3 Crypto extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)
+__ARM_FEATURE_SM4   SM4 Crypto extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)
+__ARM_FEATURE_SME   Scalable Matrix Extension (FEAT_SME)
+__ARM_FEATURE_SME2  Scalable Matrix Extension (FEAT_SME2)
+__ARM_FEATURE_SME_B16B16    Non-widening brain 16-bit floating-point SME intrinsics (FEAT_SME_B16B16)
+__ARM_FEATURE_SME_F16F16    Half-precision floating-point SME intrinsics (FEAT_SME_F16F16)
+__ARM_FEATURE_SME_F64F64    Double precision floating-point outer product intrinsics (FEAT_SME_F64F64)
+__ARM_FEATURE_SME_F8F16 Modal 8-bit floating-point extensions
+__ARM_FEATURE_SME_F8F32 Modal 8-bit floating-point extensions
+__ARM_FEATURE_SME_I16I64    16-bit to 64-bit integer widening outer product intrinsics (FEAT_SME_I16I64)
+__ARM_FEATURE_SME_TMOP  Structured sparsity outer product intrinsics (FEAT_SME_TMOP)
+__ARM_FEATURE_SME_MOP4  quarter-tile outer product intrinsics (FEAT_SME_MOP4)
+__ARM_FEATURE_SME_LOCALLY_STREAMING Support for the arm_locally_streaming attribute
+__ARM_FEATURE_SME_LUTv2 Lookup table extensions (FEAT_SME_LUTv2)
+__ARM_FEATURE_SSVE_FP8DOT2  Modal 8-bit floating-point extensions
+__ARM_FEATURE_SSVE_FP8DOT4  Modal 8-bit floating-point extensions
+__ARM_FEATURE_SSVE_FP8FMA   Modal 8-bit floating-point extensions
+__ARM_FEATURE_SVE   Scalable Vector Extension (FEAT_SVE)
+__ARM_FEATURE_SVE_B16B16    Non-widening brain 16-bit floating-point intrinsics (FEAT_SVE_B16B16)
+__ARM_FEATURE_SVE_BF16  SVE support for the 16-bit brain floating-point extension (FEAT_BF16)
+__ARM_FEATURE_SVE_BITS  The number of bits in an SVE vector, when known in advance
+__ARM_FEATURE_SVE_MATMUL_FP32   32-bit floating-point matrix multiply extension (FEAT_F32MM)
+__ARM_FEATURE_SVE_MATMUL_FP64   64-bit floating-point matrix multiply extension (FEAT_F64MM)
+__ARM_FEATURE_SVE_MATMUL_INT8   SVE support for the integer matrix multiply extension (FEAT_I8MM)
+__ARM_FEATURE_SVE_PREDICATE_OPERATORS   Level of support for C and C++ operators on SVE vector types
+__ARM_FEATURE_SVE_VECTOR_OPERATORS  Level of support for C and C++ operators on SVE predicate types
+__ARM_FEATURE_SVE2  SVE version 2 (FEAT_SVE2)
+__ARM_FEATURE_SVE2_AES  SVE2 support for the AES cryptographic extension (FEAT_SVE_AES)
+__ARM_FEATURE_SVE2_BITPERM  SVE2 bit permute extension
+__ARM_FEATURE_SSVE_BITPERM  SVE2 bit permute extension
+__ARM_FEATURE_SSVE_FEXPA    Streaming SVE FEXPA extension
+__ARM_FEATURE_SVE2_SHA3 SVE2 support for the SHA3 cryptographic extension (FEAT_SVE_SHA3)
+__ARM_FEATURE_SVE2_SM3  SVE2 support for the SM3 cryptographic extension (FEAT_SVE_SM3)
+__ARM_FEATURE_SVE2_SM4  SVE2 support for the SM4 cryptographic extension (FEAT_SVE_SM4)
+__ARM_FEATURE_SVE2p1    SVE version 2.1 (FEAT_SVE2p1)
+__ARM_FEATURE_SYSREG128 Support for 128-bit system registers (FEAT_SYSREG128)
+__ARM_FEATURE_UNALIGNED Hardware support for unaligned access
+__ARM_FP    Hardware floating-point
+__ARM_FP16_ARGS __fp16 argument and result
+__ARM_FP16_FORMAT_ALTERNATIVE   16-bit floating-point, alternative format
+__ARM_FP16_FORMAT_IEEE  16-bit floating-point, IEEE format
+__ARM_FP_FAST   Accuracy-losing optimizations
+__ARM_FP_FENV_ROUNDING  Rounding is configurable at runtime
+__ARM_NEON  Advanced SIMD (Neon) extension
+__ARM_NEON_FP   Advanced SIMD (Neon) floating-point
+__ARM_NEON_SVE_BRIDGE   Availability of arm_neon_sve_brdge.h
+__ARM_PCS   Arm procedure call standard (32-bit-only)
+__ARM_PCS_AAPCS64   Arm PCS for AArch64.
+__ARM_PCS_VFP   Arm PCS hardware FP variant in use (32-bit-only)
+__ARM_ROPI  Read-only PIC in use
+__ARM_RWPI  Read-write PIC in use
+__ARM_SIZEOF_MINIMAL_ENUM   Size of minimal enumeration type: 1 or 4
+__ARM_SIZEOF_WCHAR_T    Size of wchar_t: 2 or 4
+__ARM_WMMX  Wireless MMX extension (32-bit-only)
+*/
+
+#if defined(__ARM_ACLE)
+  report_arm_feature(__ARM_ACLE, "__ARM_ACLE", "Arm C Language Extensions: the version of this specification that is implemented, formatted as {YEAR}{QUARTER}{PATCH}.");
+#endif
+#if defined(__ARM_ARCH)
+  report_arm_feature(__ARM_ARCH, "__ARM_ARCH", "the current Arm instruction set architecture (for example 7 for the Arm v7-A architecture implemented by Cortex-A8 or the Armv7-M architecture implemented by Cortex-M3 or 8 for the Armv8-A architecture implemented by Cortex-A57).");
+#endif
+#if defined(__ARM_ARCH_ISA_ARM)
+  report_arm_feature(__ARM_ARCH_ISA_ARM, "__ARM_ARCH_ISA_ARM", "the core supports the Arm instruction set. It is not defined for M-profile cores.");
+#endif
+#if defined(__ARM_ARCH_ISA_THUMB)
+  report_arm_feature(__ARM_ARCH_ISA_THUMB, "__ARM_ARCH_ISA_THUMB", "the core supports the original T32 instruction set (including the v6-M architecture) and 2 if it supports the T32 instruction set as found in the v6T2 architecture and all v7 architectures.");
+#endif
+#if defined(__ARM_ARCH_ISA_A64)
+  report_arm_feature(__ARM_ARCH_ISA_A64, "__ARM_ARCH_ISA_A64", "the core supports AArch64’s A64 instruction set.");
+#endif
+#if defined(__ARM_32BIT_STATE)
+  report_arm_feature(__ARM_32BIT_STATE, "__ARM_32BIT_STATE", "code is being generated for AArch32.");
+#endif
+#if defined(__ARM_64BIT_STATE)
+  report_arm_feature(__ARM_64BIT_STATE, "__ARM_64BIT_STATE", "code is being generated for AArch64.");
+#endif
+#if defined(__ARM_ARCH_PROFILE)
+  report_arm_feature(__ARM_ARCH_PROFILE, "__ARM_ARCH_PROFILE", "Architectural profile (A, R, M or pre-Cortex): is a char literal 'A', 'R', 'M' or 'S', or unset, according to the architectural profile of the target. 'S' indicates the common subset of the A and R profiles.");
+#endif
+#if defined(__ARM_FEATURE_UNALIGNED)
+  report_arm_feature(__ARM_FEATURE_UNALIGNED, "__ARM_FEATURE_UNALIGNED", "the target supports unaligned access in hardware, at least to the extent of being able to load or store an integer word at any alignment with a single instruction.");
+#endif
+#if defined(__ARM_FEATURE_LDREX)
+  report_arm_feature(__ARM_FEATURE_LDREX, "__ARM_FEATURE_LDREX", "the load/store-exclusive instructions (LDREX/STREX) are supported: the value is a set of bits indicating available widths of the access, as powers of 2. It is strongly recommended that C11/C++11 atomics be used instead.");
+#endif
+#if defined(__ARM_FEATURE_CLZ)
+  report_arm_feature(__ARM_FEATURE_CLZ, "__ARM_FEATURE_CLZ", "the CLZ (count leading zeroes) instruction is supported in hardware.");
+#endif
+#if defined(__ARM_FEATURE_QBIT)
+  report_arm_feature(__ARM_FEATURE_QBIT, "__ARM_FEATURE_QBIT", "the Q (saturation) global flag exists and the intrinsics defined in The Q (saturation) flag are available. This flag is used with the DSP saturating-arithmetic instructions (such as QADD) and the width-specified saturating instructions (SSAT and USAT).");
+#endif
+#if defined(__ARM_FEATURE_DSP)
+  report_arm_feature(__ARM_FEATURE_DSP, "__ARM_FEATURE_DSP", "the DSP (v5E) instructions are supported and the intrinsics defined in Saturating intrinsics are available. These instructions include QADD, SMULBB and others.");
+#endif
+#if defined(__ARM_FEATURE_SAT)
+  report_arm_feature(__ARM_FEATURE_SAT, "__ARM_FEATURE_SAT", "the SSAT and USAT instructions are supported and the intrinsics defined in Width-specified saturation intrinsics are available. This feature also implies support for the Q flag.");
+#endif
+#if defined(__ARM_FEATURE_SIMD32)
+  report_arm_feature(__ARM_FEATURE_SIMD32, "__ARM_FEATURE_SIMD32", "the 32-bit SIMD instructions are supported and the intrinsics defined in 32-bit SIMD Operations are available. This also implies support for the GE global flags which indicate byte-by-byte comparison results.");
+#endif
+#if defined(__ARM_FEATURE_IDIV)
+  report_arm_feature(__ARM_FEATURE_IDIV, "__ARM_FEATURE_IDIV", "the target has hardware support for 32-bit integer division in all available instruction sets.");
+#endif
+#if defined(__ARM_FEATURE_CRC32)
+  report_arm_feature(__ARM_FEATURE_CRC32, "__ARM_FEATURE_CRC32", "the CRC32 instructions are supported and the intrinsics defined in CRC32 intrinsics are available. These instructions include CRC32B, CRC32H and others.");
+#endif
+#if defined(__ARM_FEATURE_RNG)
+  report_arm_feature(__ARM_FEATURE_RNG, "__ARM_FEATURE_RNG", "the Random Number Generation instructions are supported and the intrinsics defined in Random number generation intrinsics are available.");
+#endif
+#if defined(__ARM_FEATURE_BTI_DEFAULT)
+  report_arm_feature(__ARM_FEATURE_BTI_DEFAULT, "__ARM_FEATURE_BTI_DEFAULT", "the Branch Target Identification extension is used to protect branch destinations by default.");
+#endif
+#if defined(__ARM_FEATURE_BTI)
+  report_arm_feature(__ARM_FEATURE_BTI, "__ARM_FEATURE_BTI", "Branch Target Identification extension is available on the target.");
+#endif
+#if defined(__ARM_FEATURE_PAC_DEFAULT)
+  report_arm_feature(__ARM_FEATURE_PAC_DEFAULT, "__ARM_FEATURE_PAC_DEFAULT", "a bitmap to indicate the use of the Pointer Authentication extension to protect code against code reuse attacks by default.");
+#endif
+#if defined(__ARM_FEATURE_PAUTH)
+  report_arm_feature(__ARM_FEATURE_PAUTH, "__ARM_FEATURE_PAUTH", "Pointer Authentication extension (FEAT_PAuth) is available on the target.");
+#endif
+#if defined(__ARM_FEATURE_PAUTH_LR)
+  report_arm_feature(__ARM_FEATURE_PAUTH_LR, "__ARM_FEATURE_PAUTH_LR", "Armv9.5-A enhancements to the Pointer Authentication extension (FEAT_PAuth_LR) are available on the target.");
+#endif
+#if defined(__ARM_FEATURE_GCS_DEFAULT)
+  report_arm_feature(__ARM_FEATURE_GCS_DEFAULT, "__ARM_FEATURE_GCS_DEFAULT", "the code generation is compatible with enabling the Guarded Control Stack (GCS) extension based protection.");
+#endif
+#if defined(__ARM_FEATURE_GCS)
+  report_arm_feature(__ARM_FEATURE_GCS, "__ARM_FEATURE_GCS", "Guarded Control Stack (GCS) extension is available on the target.");
+#endif
+#if defined(__ARM_FEATURE_ATOMICS)
+  report_arm_feature(__ARM_FEATURE_ATOMICS, "__ARM_FEATURE_ATOMICS", "the Large System Extensions introduced in the Armv8.1-A [ARMARMv81] architecture are supported on this target. Note: It is strongly recommended that standardized C11/C++11 atomics are used to implement atomic operations in user code.");
+#endif
+#if defined(__ARM_FEATURE_TME)
+  report_arm_feature(__ARM_FEATURE_TME, "__ARM_FEATURE_TME", "Transactional Memory Extension instructions are supported in hardware and intrinsics defined in Transactional Memory Extension (TME) intrinsics are available.");
+#endif
+#if defined(__ARM_FEATURE_LS64)
+  report_arm_feature(__ARM_FEATURE_LS64, "__ARM_FEATURE_LS64", "Armv8.7-A LD64B, ST64B, ST64BV and ST64BV0 instructions for atomic 64-byte access to device memory are supported.");
+#endif
+#if defined(__ARM_FEATURE_MOPS)
+  report_arm_feature(__ARM_FEATURE_MOPS, "__ARM_FEATURE_MOPS", "the CPYF*, CPY*, SET* and SETG* instructions are supported, as part of the standardization of memcpy, memset, and memmove family of memory operations (MOPS).");
+#endif
+#if defined(__ARM_FEATURE_RCPC)
+  report_arm_feature(__ARM_FEATURE_RCPC, "__ARM_FEATURE_RCPC", "the weaker RCpc (Release Consistent processor consistent) model is supported. The value indicates the set of Load-Acquire and Store-Release instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SYSREG128)
+  report_arm_feature(__ARM_FEATURE_SYSREG128, "__ARM_FEATURE_SYSREG128", "128-bit system registers: the MRRS and MSRR instructions are supported.");
+#endif
+#if defined(__ARM_FP)
+  report_arm_feature(__ARM_FP, "__ARM_FP", "hardware floating-point is available. The value is a set of bits indicating the floating-point precisions supported.");
+#endif
+#if defined(__ARM_FP16_FORMAT_IEEE)
+  report_arm_feature(__ARM_FP16_FORMAT_IEEE, "__ARM_FP16_FORMAT_IEEE", "the IEEE 754-2008 [IEEE-FP] 16-bit floating-point format is used.");
+#endif
+#if defined(__ARM_FP16_FORMAT_ALTERNATIVE)
+  report_arm_feature(__ARM_FP16_FORMAT_ALTERNATIVE, "__ARM_FP16_FORMAT_ALTERNATIVE", "the Arm alternative [ARMARM] 16-bit floating-point format is used. This format removes support for infinities and NaNs in order to provide an additional binade.");
+#endif
+#if defined(__ARM_FP16_ARGS)
+  report_arm_feature(__ARM_FP16_ARGS, "__ARM_FP16_ARGS", "Half-precision argument and result: __fp16 can be used as an argument and result.");
+#endif
+#if defined(__ARM_NEON)
+  report_arm_feature(__ARM_NEON, "__ARM_NEON", "a value indicating the Advanced SIMD (Neon) architecture supported.");
+#endif
+#if defined(__ARM_NEON_FP)
+  report_arm_feature(__ARM_NEON_FP, "__ARM_NEON_FP", "a bitmap to indicate floating-point support in the Neon architecture.");
+#endif
+#if defined(__ARM_FEATURE_SVE)
+  report_arm_feature(__ARM_FEATURE_SVE, "__ARM_FEATURE_SVE", "Scalable Vector Extension (SVE): hardware support for the FEAT_SVE instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SVE_BITS)
+  report_arm_feature(__ARM_FEATURE_SVE_BITS, "__ARM_FEATURE_SVE_BITS", "nonzero indicates that the implementation is generating code for an N-bit SVE target and that the implementation supports the arm_sve_vector_bits(N) attribute.");
+#endif
+#if defined(__ARM_FEATURE_SVE_VECTOR_OPERATORS)
+  report_arm_feature(__ARM_FEATURE_SVE_VECTOR_OPERATORS, "__ARM_FEATURE_SVE_VECTOR_OPERATORS", "indicates that applying the arm_sve_vector_bits attribute to an SVE vector type creates a type that supports the GNU vector extensions.");
+#endif
+#if defined(__ARM_FEATURE_SVE_PREDICATE_OPERATORS)
+  report_arm_feature(__ARM_FEATURE_SVE_PREDICATE_OPERATORS, "__ARM_FEATURE_SVE_PREDICATE_OPERATORS", "indicates that applying the arm_sve_vector_bits attribute to svbool_t creates a type that supports basic built-in vector operations.");
+#endif
+#if defined(__ARM_FEATURE_SVE2)
+  report_arm_feature(__ARM_FEATURE_SVE2, "__ARM_FEATURE_SVE2", "hardware support for the Armv9-A SVE2 extension (FEAT_SVE2) available.");
+#endif
+#if defined(__ARM_FEATURE_SVE2p1)
+  report_arm_feature(__ARM_FEATURE_SVE2p1, "__ARM_FEATURE_SVE2p1", "the FEAT_SVE2p1 instructions are available.");
+#endif
+#if defined(__ARM_NEON_SVE_BRIDGE)
+  report_arm_feature(__ARM_NEON_SVE_BRIDGE, "__ARM_NEON_SVE_BRIDGE", "NEON-SVE Bridge macro: the <arm_neon_sve_bridge.h> header file is available.");
+#endif
+#if defined(__ARM_FEATURE_SME)
+  report_arm_feature(__ARM_FEATURE_SME, "__ARM_FEATURE_SME", "Scalable Matrix Extension (SME) available.");
+#endif
+#if defined(__ARM_FEATURE_LOCALLY_STREAMING)
+  report_arm_feature(__ARM_FEATURE_LOCALLY_STREAMING, "__ARM_FEATURE_LOCALLY_STREAMING", "Scalable Matrix Extension (SME): the arm_locally_streaming attribute is available.");
+#endif
+#if defined(__ARM_FEATURE_MVE)
+  report_arm_feature(__ARM_FEATURE_MVE, "__ARM_FEATURE_MVE", "a bitmap to indicate M-profile Vector Extension (MVE) support.");
+#endif
+#if defined(__ARM_WMMX)
+  report_arm_feature(__ARM_WMMX, "__ARM_WMMX", "Wireless MMX operations: indicates the level of support, corresponding to the Tag_WMMX_arch build attribute.");
+#endif
+#if defined(__ARM_FEATURE_FP16_SCALAR_ARITHMETIC)
+  report_arm_feature(__ARM_FEATURE_FP16_SCALAR_ARITHMETIC, "__ARM_FEATURE_FP16_SCALAR_ARITHMETIC", "the 16-bit floating-point arithmetic instructions are supported in hardware.");
+#endif
+#if defined(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC)
+  report_arm_feature(__ARM_FEATURE_FP16_VECTOR_ARITHMETIC, "__ARM_FEATURE_FP16_VECTOR_ARITHMETIC", "the 16-bit floating-point vector arithmetic instructions are supported in hardware.");
+#endif
+#if defined(__ARM_FEATURE_FP16_FML)
+  report_arm_feature(__ARM_FEATURE_FP16_FML, "__ARM_FEATURE_FP16_FML", "the FP16 multiplication variant instructions from Armv8.2-A are supported and intrinsics targeting them are available.");
+#endif
+#if defined(__ARM_FEATURE_FP16_SCALAR_ARITHMETIC)
+  report_arm_feature(__ARM_FEATURE_FP16_SCALAR_ARITHMETIC, "__ARM_FEATURE_FP16_SCALAR_ARITHMETIC", "");
+#endif
+#if defined(__ARM_FEATURE_SME_F16F16)
+  report_arm_feature(__ARM_FEATURE_SME_F16F16, "__ARM_FEATURE_SME_F16F16", "hardware support for the SME2 half-precision (FEAT_SME_F16F16) instructions available.");
+#endif
+#if defined(__ARM_BF16_FORMAT_ALTERNATIVE)
+  report_arm_feature(__ARM_BF16_FORMAT_ALTERNATIVE, "__ARM_BF16_FORMAT_ALTERNATIVE", "the Arm alternative [ARMARM] 16-bit brain floating-point format is used. This format closely resembles the IEEE 754 single-precision format.");
+#endif
+#if defined(__ARM_FEATURE_BF16_VECTOR_ARITHMETIC)
+  report_arm_feature(__ARM_FEATURE_BF16_VECTOR_ARITHMETIC, "__ARM_FEATURE_BF16_VECTOR_ARITHMETIC", "hardware support for the Advanced SIMD brain 16-bit floating-point arithmetic instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SVE_BF16)
+  report_arm_feature(__ARM_FEATURE_SVE_BF16, "__ARM_FEATURE_SVE_BF16", "hardware support for the SVE BF16 extensions available.");
+#endif
+#if defined(__ARM_FEATURE_SVE_B16B16)
+  report_arm_feature(__ARM_FEATURE_SVE_B16B16, "__ARM_FEATURE_SVE_B16B16", "Non-widening brain 16-bit floating-point support: hardware support for the FEAT_SVE_B16B16 instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SME_B16B16)
+  report_arm_feature(__ARM_FEATURE_SME_B16B16, "__ARM_FEATURE_SME_B16B16", "Non-widening brain 16-bit floating-point support: hardware support for the FEAT_SME_B16B16 instructions available.");
+#endif
+#if defined(__ARM_FEATURE_CRYPTO)
+  report_arm_feature(__ARM_FEATURE_CRYPTO, "__ARM_FEATURE_CRYPTO", "the Armv8-A Crypto instructions are supported. These instructions include AES{E, D}, SHA1{C, P, M} and others.");
+#endif
+#if defined(__ARM_FEATURE_AES)
+  report_arm_feature(__ARM_FEATURE_AES, "__ARM_FEATURE_AES", "hardware support for the Advanced SIMD AES Crypto instructions from Armv8-A available.");
+#endif
+#if defined(__ARM_FEATURE_SVE2_AES)
+  report_arm_feature(__ARM_FEATURE_SVE2_AES, "__ARM_FEATURE_SVE2_AES", "hardware support for the SVE2 AES (FEAT_SVE_AES) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SHA2)
+  report_arm_feature(__ARM_FEATURE_SHA2, "__ARM_FEATURE_SHA2", "the SHA1 & SHA2-256 Crypto instructions from Armv8-A are supported available.");
+#endif
+#if defined(__ARM_FEATURE_SHA512)
+  report_arm_feature(__ARM_FEATURE_SHA512, "__ARM_FEATURE_SHA512", "the SHA2-512 Crypto instructions from Armv8.2-A are supported. These instructions include SHA1{C, P, M}, SHA256H, SHA256H2, …, SHA512H, SHA512H2, SHA512SU0… and others.");
+#endif
+#if defined(__ARM_FEATURE_SHA3)
+  report_arm_feature(__ARM_FEATURE_SHA3, "__ARM_FEATURE_SHA3", "hardware support for the Advanced SIMD SHA1 & SHA2 Crypto instructions from Armv8-A and the SHA2 and SHA3 instructions from Armv8.2-A and newer available. These instructions include AES{E, D}, SHA1{C, P, M}, RAX, and others.");
+#endif
+#if defined(__ARM_FEATURE_SVE2_SHA3)
+  report_arm_feature(__ARM_FEATURE_SVE2_SHA3, "__ARM_FEATURE_SVE2_SHA3", "hardware support for the SVE2 SHA3 (FEAT_SVE_SHA3) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SM3)
+  report_arm_feature(__ARM_FEATURE_SM3, "__ARM_FEATURE_SM3", "hardware support for Advanced SIMD SM3 Crypto instructions from Armv8.2-A available. These instructions include SM3{TT1A, TT1B}, and others.");
+#endif
+#if defined(__ARM_FEATURE_SVE2_SM3)
+  report_arm_feature(__ARM_FEATURE_SVE2_SM3, "__ARM_FEATURE_SVE2_SM3", "hardware support for the SVE2 SM3 (FEAT_SVE_SM3) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SM4)
+  report_arm_feature(__ARM_FEATURE_SM4, "__ARM_FEATURE_SM4", "hardware support for the Advanced SIMD SM4 Crypto instructions from Armv8.2-A available. These instructions include SM4{E, EKEY} and others.");
+#endif
+#if defined(__ARM_FEATURE_SVE2_SM4)
+  report_arm_feature(__ARM_FEATURE_SVE2_SM4, "__ARM_FEATURE_SVE2_SM4", "hardware support for the SVE2 SM4 (FEAT_SVE_SM4) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_FAMINMAX)
+  report_arm_feature(__ARM_FEATURE_FAMINMAX, "__ARM_FEATURE_FAMINMAX", "hardware support for floating-point absolute minimum and maximum instructions (FEAT_FAMINMAX) available.");
+#endif
+#if defined(__ARM_FEATURE_LUT)
+  report_arm_feature(__ARM_FEATURE_LUT, "__ARM_FEATURE_LUT", "hardware support for lookup table instructions with 2-bit and 4-bit indices (FEAT_LUT) available.");
+#endif
+#if defined(__ARM_FEATURE_SME_LUTv2)
+  report_arm_feature(__ARM_FEATURE_SME_LUTv2, "__ARM_FEATURE_SME_LUTv2", "hardware support for lookup table instructions with 4-bit indices and 8-bit elements (FEAT_SME_LUTv2) available.");
+#endif
+#if defined(__ARM_FEATURE_FP8)
+  report_arm_feature(__ARM_FEATURE_FP8, "__ARM_FEATURE_FP8", "hardware support for FP8 conversion instructions (FEAT_FP8) available.");
+#endif
+#if defined(__ARM_FEATURE_FP8FMA)
+  report_arm_feature(__ARM_FEATURE_FP8FMA, "__ARM_FEATURE_FP8FMA", "hardware support for FP8 multiply-accumulate to half-precision and single-precision instructions (FEAT_FP8FMA) available.");
+#endif
+#if defined(__ARM_FEATURE_FP8DOT2)
+  report_arm_feature(__ARM_FEATURE_FP8DOT2, "__ARM_FEATURE_FP8DOT2", "hardware support for FP8 2-way dot product to half-precision instructions (FEAT_FP8DOT2) available.");
+#endif
+#if defined(__ARM_FEATURE_FP8DOT4)
+  report_arm_feature(__ARM_FEATURE_FP8DOT4, "__ARM_FEATURE_FP8DOT4", "hardware support for FP8 4-way dot product to single-precision instructions (FEAT_FP8DOT4) available.");
+#endif
+#if defined(__ARM_FEATURE_SSVE_FP8DOT4)
+  report_arm_feature(__ARM_FEATURE_SSVE_FP8DOT4, "__ARM_FEATURE_SSVE_FP8DOT4", "hardware support for SVE2 FP8 4-way dot product to single-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8DOT4) available.");
+#endif
+#if defined(__ARM_FEATURE_SSVE_FP8DOT2)
+  report_arm_feature(__ARM_FEATURE_SSVE_FP8DOT2, "__ARM_FEATURE_SSVE_FP8DOT2", "hardware support for SVE2 FP8 2-way dot product to half-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8DOT2) available.");
+#endif
+#if defined(__ARM_FEATURE_SSVE_FP8FMA)
+  report_arm_feature(__ARM_FEATURE_SSVE_FP8FMA, "__ARM_FEATURE_SSVE_FP8FMA", "hardware support for SVE2 FP8 multiply-accumulate to half-precision and single-precision instructions in Streaming SVE mode (FEAT_SSVE_FP8FMA) available.");
+#endif
+#if defined(__ARM_FEATURE_SME_F8F32)
+  report_arm_feature(__ARM_FEATURE_SME_F8F32, "__ARM_FEATURE_SME_F8F32", "hardware support for SME2 FP8 dot product, multiply-accumulate, and outer product to single-precision instructions (FEAT_SME_F8F32) available.");
+#endif
+#if defined(__ARM_FEATURE_SME_F8F16)
+  report_arm_feature(__ARM_FEATURE_SME_F8F16, "__ARM_FEATURE_SME_F8F16", "hardware support for SME2 FP8 dot product, multiply-accumulate, and outer product to half-precision instructions (FEAT_SME_F8F16) available.");
+#endif
+#if defined(__ARM_FEATURE_FMA)
+  report_arm_feature(__ARM_FEATURE_FMA, "__ARM_FEATURE_FMA", "hardware floating-point architecture supports fused floating-point multiply-accumulate, that is, without intermediate rounding.");
+#endif
+#if defined(__ARM_FEATURE_DIRECTED_ROUNDING)
+  report_arm_feature(__ARM_FEATURE_DIRECTED_ROUNDING, "__ARM_FEATURE_DIRECTED_ROUNDING", "directed rounding and conversion vector instructions are supported.");
+#endif
+#if defined(__ARM_FEATURE_FRINT)
+  report_arm_feature(__ARM_FEATURE_FRINT, "__ARM_FEATURE_FRINT", "Armv8.5-A rounding number instructions are supported.");
+#endif
+#if defined(__ARM_FEATURE_JCVT)
+  report_arm_feature(__ARM_FEATURE_JCVT, "__ARM_FEATURE_JCVT", "FJCVTZS (AArch64) or VJCVT (AArch32) instruction available.");
+#endif
+#if defined(__ARM_FEATURE_NUMERIC_MAXMIN)
+  report_arm_feature(__ARM_FEATURE_NUMERIC_MAXMIN, "__ARM_FEATURE_NUMERIC_MAXMIN", "IEEE 754-2008 compliant floating point maximum and minimum vector instructions are supported.");
+#endif
+#if defined(__ARM_FEATURE_QRDMX)
+  report_arm_feature(__ARM_FEATURE_QRDMX, "__ARM_FEATURE_QRDMX", "SQRDMLAH and SQRDMLSH instructions available.");
+#endif
+#if defined(__ARM_FEATURE_DOTPROD)
+  report_arm_feature(__ARM_FEATURE_DOTPROD, "__ARM_FEATURE_DOTPROD", "the dot product data manipulation instructions are supported available.");
+#endif
+#if defined(__ARM_FEATURE_COMPLEX)
+  report_arm_feature(__ARM_FEATURE_COMPLEX, "__ARM_FEATURE_COMPLEX", "the complex addition and complex multiply-accumulate vector instructions are supported.");
+#endif
+#if defined(__ARM_FEATURE_MATMUL_INT8)
+  report_arm_feature(__ARM_FEATURE_MATMUL_INT8, "__ARM_FEATURE_MATMUL_INT8", "Multiplication of 8-bit integer matrices: hardware support for the Advanced SIMD integer matrix multiply instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SVE_MATMUL_INT8)
+  report_arm_feature(__ARM_FEATURE_SVE_MATMUL_INT8, "__ARM_FEATURE_SVE_MATMUL_INT8", "Multiplication of 8-bit integer matrices: hardware support for the SVE forms available.");
+#endif
+#if defined(__ARM_FEATURE_SVE_MATMUL_FP32)
+  report_arm_feature(__ARM_FEATURE_SVE_MATMUL_FP32, "__ARM_FEATURE_SVE_MATMUL_FP32", "hardware support for the SVE 32-bit floating-point matrix multiply (FEAT_F32MM) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SVE_MATMUL_FP64)
+  report_arm_feature(__ARM_FEATURE_SVE_MATMUL_FP64, "__ARM_FEATURE_SVE_MATMUL_FP64", "hardware support for the SVE 64-bit floating-point matrix multiply (FEAT_F64MM) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SVE2_BITPERM)
+  report_arm_feature(__ARM_FEATURE_SVE2_BITPERM, "__ARM_FEATURE_SVE2_BITPERM", "hardware support for the SVE2 bit permute (FEAT_SVE_BitPerm) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SSVE_BITPERM)
+  report_arm_feature(__ARM_FEATURE_SSVE_BITPERM, "__ARM_FEATURE_SSVE_BITPERM", "hardware support for the SVE2 bit permute instructions in Streaming SVE mode (FEAT_SSVE_BitPerm) available.");
+#endif
+#if defined(__ARM_FEATURE_SSVE_FEXPA)
+  report_arm_feature(__ARM_FEATURE_SSVE_FEXPA, "__ARM_FEATURE_SSVE_FEXPA", "hardware support for the SVE FEXPA instruction in Streaming SVE mode (FEAT_SSVE_FEXPA) available.");
+#endif
+#if defined(__ARM_FEATURE_SME_I16I64)
+  report_arm_feature(__ARM_FEATURE_SME_I16I64, "__ARM_FEATURE_SME_I16I64", "hardware support for the SME 16-bit to 64-bit integer widening outer product (FEAT_SME_I16I64) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SME_F64F64)
+  report_arm_feature(__ARM_FEATURE_SME_F64F64, "__ARM_FEATURE_SME_F64F64", "hardware support for the SME double precision floating-point outer product (FEAT_SME_F64F64) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SME_TMOP)
+  report_arm_feature(__ARM_FEATURE_SME_TMOP, "__ARM_FEATURE_SME_TMOP", "hardware support for the SME structured sparsity outer product (FEAT_SME_TMOP) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_SME_MOP4)
+  report_arm_feature(__ARM_FEATURE_SME_MOP4, "__ARM_FEATURE_SME_MOP4", "hardware support for the SME quarter-tile outer product (FEAT_SME_MOP4) instructions available.");
+#endif
+#if defined(__ARM_FEATURE_CSSC)
+  report_arm_feature(__ARM_FEATURE_CSSC, "__ARM_FEATURE_CSSC", "hardware support for common short sequence compression instructions. This includes the instructions ABS, CNT, CTZ and SMAX, SMIN, UMAX, UMIN (register/immediate).");
+#endif
+#if defined(__ARM_FP_FAST)
+  report_arm_feature(__ARM_FP_FAST, "__ARM_FP_FAST", "floating-point optimizations may occur such that the computed results are different from those prescribed by the order of operations according to the C standard.");
+#endif
+#if defined(__ARM_FP_FENV_ROUNDING)
+  report_arm_feature(__ARM_FP_FENV_ROUNDING, "__ARM_FP_FENV_ROUNDING", "implementation allows the rounding to be configured at runtime using the standard C fesetround() function and will apply this rounding to future floating-point operations.");
+#endif
+#if defined(__STDC_IEC_559__)
+  report_arm_feature(__STDC_IEC_559__, "__STDC_IEC_559__", "the implementation conforms to IEC This implies support for floating-point exception status flags, including the inexact exception. This macro is specified by [C99] (6.10.8).");
+#endif
+#if defined(__SUPPORT_SNAN__)
+  report_arm_feature(__SUPPORT_SNAN__, "__SUPPORT_SNAN__", "the implementation supports signalling NaNs. This macro is specified by the C standards proposal WG14 N965 Optional support for Signaling NaNs.");
+#endif
+#if defined(__ARM_PCS)
+  report_arm_feature(__ARM_PCS, "__ARM_PCS", "default procedure calling standard for the translation unit conforms to the base PCS defined in [AAPCS].");
+#endif
+#if defined(__ARM_PCS_VFP)
+  report_arm_feature(__ARM_PCS_VFP, "__ARM_PCS_VFP", "default is to pass floating-point parameters in hardware floating-point registers using the VFP variant PCS defined in [AAPCS].");
+#endif
+#if defined(__ARM_PCS_AAPCS64)
+  report_arm_feature(__ARM_PCS_AAPCS64, "__ARM_PCS_AAPCS64", "default procedure calling standard for the translation unit conforms to the [AAPCS64].");
+#endif
+#if defined(__ARM_ROPI)
+  report_arm_feature(__ARM_ROPI, "__ARM_ROPI", "translation unit is being compiled in read-only position independent mode. In this mode, all read-only data and functions are at a link-time constant offset from the program counter.");
+#endif
+#if defined(__ARM_RWPI)
+  report_arm_feature(__ARM_RWPI, "__ARM_RWPI", "translation unit is being compiled in read-write position independent mode. In this mode, all writable data is at a link-time constant offset from the static base register defined in [AAPCS].");
+#endif
+#if defined(__ARM_FEATURE_COPROC)
+  report_arm_feature(__ARM_FEATURE_COPROC, "__ARM_FEATURE_COPROC", "is defined as a bitmap to indicate the presence of coprocessor intrinsics for the target architecture.");
+#endif
+#if defined(__ARM_FEATURE_CDE)
+  report_arm_feature(__ARM_FEATURE_CDE, "__ARM_FEATURE_CDE", "Arm Custom Datapath Extension (CDE) is supported.");
+#endif
+#if defined(__ARM_FEATURE_CDE_COPROC)
+  report_arm_feature(__ARM_FEATURE_CDE_COPROC, "__ARM_FEATURE_CDE_COPROC", "a bitmap indicating the CDE coprocessors available.");
+#endif
+#if defined(__ARM_32BIT_STATE)
+  report_arm_feature(__ARM_32BIT_STATE, "__ARM_32BIT_STATE", "Code is for AArch32 state");
+#endif
+#if defined(__ARM_64BIT_STATE)
+  report_arm_feature(__ARM_64BIT_STATE, "__ARM_64BIT_STATE", "Code is for AArch64 state");
+#endif
+#if defined(__ARM_ACLE)
+  report_arm_feature(__ARM_ACLE, "__ARM_ACLE", "ACLE implemented");
+#endif
+#if defined(__ARM_ALIGN_MAX_PWR)
+  report_arm_feature(__ARM_ALIGN_MAX_PWR, "__ARM_ALIGN_MAX_PWR", "Log of maximum alignment of static object");
+#endif
+#if defined(__ARM_ALIGN_MAX_STACK_PWR)
+  report_arm_feature(__ARM_ALIGN_MAX_STACK_PWR, "__ARM_ALIGN_MAX_STACK_PWR", "Log of maximum alignment of stack object");
+#endif
+#if defined(__ARM_ARCH)
+  report_arm_feature(__ARM_ARCH, "__ARM_ARCH", "Arm architecture level");
+#endif
+#if defined(__ARM_ARCH_ISA_A64)
+  report_arm_feature(__ARM_ARCH_ISA_A64, "__ARM_ARCH_ISA_A64", "AArch64 ISA present");
+#endif
+#if defined(__ARM_ARCH_ISA_ARM)
+  report_arm_feature(__ARM_ARCH_ISA_ARM, "__ARM_ARCH_ISA_ARM", "Arm instruction set present");
+#endif
+#if defined(__ARM_ARCH_ISA_THUMB)
+  report_arm_feature(__ARM_ARCH_ISA_THUMB, "__ARM_ARCH_ISA_THUMB", "T32 instruction set present");
+#endif
+#if defined(__ARM_ARCH_PROFILE)
+  report_arm_feature(__ARM_ARCH_PROFILE, "__ARM_ARCH_PROFILE", "Architecture profile");
+#endif
+#if defined(__ARM_BF16_FORMAT_ALTERNATIVE)
+  report_arm_feature(__ARM_BF16_FORMAT_ALTERNATIVE, "__ARM_BF16_FORMAT_ALTERNATIVE", "16-bit brain floating-point, alternative format");
+#endif
+#if defined(__ARM_BIG_ENDIAN)
+  report_arm_feature(__ARM_BIG_ENDIAN, "__ARM_BIG_ENDIAN", "Memory is big-endian");
+#endif
+#if defined(__ARM_FEATURE_AES)
+  report_arm_feature(__ARM_FEATURE_AES, "__ARM_FEATURE_AES", "AES Crypto extension (Arm v8-A)");
+#endif
+#if defined(__ARM_FEATURE_ATOMICS)
+  report_arm_feature(__ARM_FEATURE_ATOMICS, "__ARM_FEATURE_ATOMICS", "Large System Extensions");
+#endif
+#if defined(__ARM_FEATURE_BF16)
+  report_arm_feature(__ARM_FEATURE_BF16, "__ARM_FEATURE_BF16", "16-bit brain floating-point, vector instruction");
+#endif
+#if defined(__ARM_FEATURE_BTI_DEFAULT)
+  report_arm_feature(__ARM_FEATURE_BTI_DEFAULT, "__ARM_FEATURE_BTI_DEFAULT", "Branch Target Identification");
+#endif
+#if defined(__ARM_FEATURE_CDE)
+  report_arm_feature(__ARM_FEATURE_CDE, "__ARM_FEATURE_CDE", "Custom Datapath Extension");
+#endif
+#if defined(__ARM_FEATURE_CDE_COPROC)
+  report_arm_feature(__ARM_FEATURE_CDE_COPROC, "__ARM_FEATURE_CDE_COPROC", "Custom Datapath Extension");
+#endif
+#if defined(__ARM_FEATURE_CLZ)
+  report_arm_feature(__ARM_FEATURE_CLZ, "__ARM_FEATURE_CLZ", "CLZ instruction");
+#endif
+#if defined(__ARM_FEATURE_COMPLEX)
+  report_arm_feature(__ARM_FEATURE_COMPLEX, "__ARM_FEATURE_COMPLEX", "Armv8.3-A extension");
+#endif
+#if defined(__ARM_FEATURE_COPROC)
+  report_arm_feature(__ARM_FEATURE_COPROC, "__ARM_FEATURE_COPROC", "Coprocessor Intrinsics");
+#endif
+#if defined(__ARM_FEATURE_CRC32)
+  report_arm_feature(__ARM_FEATURE_CRC32, "__ARM_FEATURE_CRC32", "CRC32 extension");
+#endif
+#if defined(__ARM_FEATURE_CRYPTO)
+  report_arm_feature(__ARM_FEATURE_CRYPTO, "__ARM_FEATURE_CRYPTO", "Crypto extension");
+#endif
+#if defined(__ARM_FEATURE_CSSC)
+  report_arm_feature(__ARM_FEATURE_CSSC, "__ARM_FEATURE_CSSC", "CSSC extension");
+#endif
+#if defined(__ARM_FEATURE_DIRECTED_ROUNDING)
+  report_arm_feature(__ARM_FEATURE_DIRECTED_ROUNDING, "__ARM_FEATURE_DIRECTED_ROUNDING", "Directed Rounding");
+#endif
+#if defined(__ARM_FEATURE_DOTPROD)
+  report_arm_feature(__ARM_FEATURE_DOTPROD, "__ARM_FEATURE_DOTPROD", "Dot product extension (ARM v8.2-A)");
+#endif
+#if defined(__ARM_FEATURE_DSP)
+  report_arm_feature(__ARM_FEATURE_DSP, "__ARM_FEATURE_DSP", "DSP instructions (Arm v5E) (32-bit-only)");
+#endif
+#if defined(__ARM_FEATURE_FAMINMAX)
+  report_arm_feature(__ARM_FEATURE_FAMINMAX, "__ARM_FEATURE_FAMINMAX", "Floating-point absolute minimum and maximum extension");
+#endif
+#if defined(__ARM_FEATURE_FMA)
+  report_arm_feature(__ARM_FEATURE_FMA, "__ARM_FEATURE_FMA", "Floating-point fused multiply-accumulate");
+#endif
+#if defined(__ARM_FEATURE_FP16_FML)
+  report_arm_feature(__ARM_FEATURE_FP16_FML, "__ARM_FEATURE_FP16_FML", "FP16 FML extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)");
+#endif
+#if defined(__ARM_FEATURE_FP8)
+  report_arm_feature(__ARM_FEATURE_FP8, "__ARM_FEATURE_FP8", "Modal 8-bit floating-point extensions");
+#endif
+#if defined(__ARM_FEATURE_FP8DOT2)
+  report_arm_feature(__ARM_FEATURE_FP8DOT2, "__ARM_FEATURE_FP8DOT2", "Modal 8-bit floating-point extensions");
+#endif
+#if defined(__ARM_FEATURE_FP8DOT4)
+  report_arm_feature(__ARM_FEATURE_FP8DOT4, "__ARM_FEATURE_FP8DOT4", "Modal 8-bit floating-point extensions");
+#endif
+#if defined(__ARM_FEATURE_FP8FMA)
+  report_arm_feature(__ARM_FEATURE_FP8FMA, "__ARM_FEATURE_FP8FMA", "Modal 8-bit floating-point extensions");
+#endif
+#if defined(__ARM_FEATURE_FRINT)
+  report_arm_feature(__ARM_FEATURE_FRINT, "__ARM_FEATURE_FRINT", "Floating-point rounding extension (Arm v8.5-A)");
+#endif
+#if defined(__ARM_FEATURE_GCS)
+  report_arm_feature(__ARM_FEATURE_GCS, "__ARM_FEATURE_GCS", "Guarded Control Stack");
+#endif
+#if defined(__ARM_FEATURE_GCS_DEFAULT)
+  report_arm_feature(__ARM_FEATURE_GCS_DEFAULT, "__ARM_FEATURE_GCS_DEFAULT", "Guarded Control Stack protection can be enabled");
+#endif
+#if defined(__ARM_FEATURE_IDIV)
+  report_arm_feature(__ARM_FEATURE_IDIV, "__ARM_FEATURE_IDIV", "Hardware Integer Divide");
+#endif
+#if defined(__ARM_FEATURE_JCVT)
+  report_arm_feature(__ARM_FEATURE_JCVT, "__ARM_FEATURE_JCVT", "Javascript conversion (ARMv8.3-A)");
+#endif
+#if defined(__ARM_FEATURE_LDREX)
+  report_arm_feature(__ARM_FEATURE_LDREX, "__ARM_FEATURE_LDREX", "(Deprecated) Load/store exclusive instructions");
+#endif
+#if defined(__ARM_FEATURE_LUT)
+  report_arm_feature(__ARM_FEATURE_LUT, "__ARM_FEATURE_LUT", "Lookup table extensions (FEAT_LUT)");
+#endif
+#if defined(__ARM_FEATURE_MATMUL_INT8)
+  report_arm_feature(__ARM_FEATURE_MATMUL_INT8, "__ARM_FEATURE_MATMUL_INT8", "Integer Matrix Multiply extension (Armv8.6-A, optional Armv8.2-A, Armv8.3-A, Armv8.4-A, Armv8.5-A)");
+#endif
+#if defined(__ARM_FEATURE_MEMORY_TAGGING)
+  report_arm_feature(__ARM_FEATURE_MEMORY_TAGGING, "__ARM_FEATURE_MEMORY_TAGGING", "Memory Tagging (Armv8.5-A)");
+#endif
+#if defined(__ARM_FEATURE_MOPS)
+  report_arm_feature(__ARM_FEATURE_MOPS, "__ARM_FEATURE_MOPS", "memcpy, memset, and memmove family of operations standardization instructions");
+#endif
+#if defined(__ARM_FEATURE_MVE)
+  report_arm_feature(__ARM_FEATURE_MVE, "__ARM_FEATURE_MVE", "M-profile Vector Extension");
+#endif
+#if defined(__ARM_FEATURE_NUMERIC_MAXMIN)
+  report_arm_feature(__ARM_FEATURE_NUMERIC_MAXMIN, "__ARM_FEATURE_NUMERIC_MAXMIN", "Numeric Maximum and Minimum");
+#endif
+#if defined(__ARM_FEATURE_PAC_DEFAULT)
+  report_arm_feature(__ARM_FEATURE_PAC_DEFAULT, "__ARM_FEATURE_PAC_DEFAULT", "Pointer authentication protection");
+#endif
+#if defined(__ARM_FEATURE_PAUTH)
+  report_arm_feature(__ARM_FEATURE_PAUTH, "__ARM_FEATURE_PAUTH", "Pointer Authentication Extension (FEAT_PAuth)");
+#endif
+#if defined(__ARM_FEATURE_PAUTH_LR)
+  report_arm_feature(__ARM_FEATURE_PAUTH_LR, "__ARM_FEATURE_PAUTH_LR", "Armv9.5-A Enhancements to Pointer Authentication Extension (FEAT_PAuth_LR)");
+#endif
+#if defined(__ARM_FEATURE_QBIT)
+  report_arm_feature(__ARM_FEATURE_QBIT, "__ARM_FEATURE_QBIT", "Q (saturation) flag (32-bit-only)");
+#endif
+#if defined(__ARM_FEATURE_QRDMX)
+  report_arm_feature(__ARM_FEATURE_QRDMX, "__ARM_FEATURE_QRDMX", "SQRDMLxH instructions and associated intrinsics availability");
+#endif
+#if defined(__ARM_FEATURE_RCPC)
+  report_arm_feature(__ARM_FEATURE_RCPC, "__ARM_FEATURE_RCPC", "Release Consistent processor consistent Model (64-bit-only)");
+#endif
+#if defined(__ARM_FEATURE_RNG)
+  report_arm_feature(__ARM_FEATURE_RNG, "__ARM_FEATURE_RNG", "Random Number Generation Extension (Armv8.5-A)");
+#endif
+#if defined(__ARM_FEATURE_SAT)
+  report_arm_feature(__ARM_FEATURE_SAT, "__ARM_FEATURE_SAT", "Width-specified saturation instructions (32-bit-only)");
+#endif
+#if defined(__ARM_FEATURE_SHA2)
+  report_arm_feature(__ARM_FEATURE_SHA2, "__ARM_FEATURE_SHA2", "SHA2 Crypto extension (Arm v8-A)");
+#endif
+#if defined(__ARM_FEATURE_SHA3)
+  report_arm_feature(__ARM_FEATURE_SHA3, "__ARM_FEATURE_SHA3", "SHA3 Crypto extension (Arm v8.4-A)");
+#endif
+#if defined(__ARM_FEATURE_SHA512)
+  report_arm_feature(__ARM_FEATURE_SHA512, "__ARM_FEATURE_SHA512", "SHA2 Crypto ext. (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)");
+#endif
+#if defined(__ARM_FEATURE_SIMD32)
+  report_arm_feature(__ARM_FEATURE_SIMD32, "__ARM_FEATURE_SIMD32", "32-bit SIMD instructions (Armv6) (32-bit-only)");
+#endif
+#if defined(__ARM_FEATURE_SM3)
+  report_arm_feature(__ARM_FEATURE_SM3, "__ARM_FEATURE_SM3", "SM3 Crypto extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)");
+#endif
+#if defined(__ARM_FEATURE_SM4)
+  report_arm_feature(__ARM_FEATURE_SM4, "__ARM_FEATURE_SM4", "SM4 Crypto extension (Arm v8.4-A, optional Armv8.2-A, Armv8.3-A)");
+#endif
+#if defined(__ARM_FEATURE_SME)
+  report_arm_feature(__ARM_FEATURE_SME, "__ARM_FEATURE_SME", "Scalable Matrix Extension (FEAT_SME)");
+#endif
+#if defined(__ARM_FEATURE_SME2)
+  report_arm_feature(__ARM_FEATURE_SME2, "__ARM_FEATURE_SME2", "Scalable Matrix Extension (FEAT_SME2)");
+#endif
+#if defined(__ARM_FEATURE_SME_B16B16)
+  report_arm_feature(__ARM_FEATURE_SME_B16B16, "__ARM_FEATURE_SME_B16B16", "Non-widening brain 16-bit floating-point SME intrinsics (FEAT_SME_B16B16)");
+#endif
+#if defined(__ARM_FEATURE_SME_F16F16)
+  report_arm_feature(__ARM_FEATURE_SME_F16F16, "__ARM_FEATURE_SME_F16F16", "Half-precision floating-point SME intrinsics (FEAT_SME_F16F16)");
+#endif
+#if defined(__ARM_FEATURE_SME_F64F64)
+  report_arm_feature(__ARM_FEATURE_SME_F64F64, "__ARM_FEATURE_SME_F64F64", "Double precision floating-point outer product intrinsics (FEAT_SME_F64F64)");
+#endif
+#if defined(__ARM_FEATURE_SME_F8F16)
+  report_arm_feature(__ARM_FEATURE_SME_F8F16, "__ARM_FEATURE_SME_F8F16", "Modal 8-bit floating-point extensions");
+#endif
+#if defined(__ARM_FEATURE_SME_F8F32)
+  report_arm_feature(__ARM_FEATURE_SME_F8F32, "__ARM_FEATURE_SME_F8F32", "Modal 8-bit floating-point extensions");
+#endif
+#if defined(__ARM_FEATURE_SME_I16I64)
+  report_arm_feature(__ARM_FEATURE_SME_I16I64, "__ARM_FEATURE_SME_I16I64", "16-bit to 64-bit integer widening outer product intrinsics (FEAT_SME_I16I64)");
+#endif
+#if defined(__ARM_FEATURE_SME_TMOP)
+  report_arm_feature(__ARM_FEATURE_SME_TMOP, "__ARM_FEATURE_SME_TMOP", "Structured sparsity outer product intrinsics (FEAT_SME_TMOP)");
+#endif
+#if defined(__ARM_FEATURE_SME_MOP4)
+  report_arm_feature(__ARM_FEATURE_SME_MOP4, "__ARM_FEATURE_SME_MOP4", "quarter-tile outer product intrinsics (FEAT_SME_MOP4)");
+#endif
+#if defined(__ARM_FEATURE_SME_LOCALLY_STREAMING)
+  report_arm_feature(__ARM_FEATURE_SME_LOCALLY_STREAMING, "__ARM_FEATURE_SME_LOCALLY_STREAMING", "Support for the arm_locally_streaming attribute");
+#endif
+#if defined(__ARM_FEATURE_SME_LUTv2)
+  report_arm_feature(__ARM_FEATURE_SME_LUTv2, "__ARM_FEATURE_SME_LUTv2", "Lookup table extensions (FEAT_SME_LUTv2)");
+#endif
+#if defined(__ARM_FEATURE_SSVE_FP8DOT2)
+  report_arm_feature(__ARM_FEATURE_SSVE_FP8DOT2, "__ARM_FEATURE_SSVE_FP8DOT2", "Modal 8-bit floating-point extensions");
+#endif
+#if defined(__ARM_FEATURE_SSVE_FP8DOT4)
+  report_arm_feature(__ARM_FEATURE_SSVE_FP8DOT4, "__ARM_FEATURE_SSVE_FP8DOT4", "Modal 8-bit floating-point extensions");
+#endif
+#if defined(__ARM_FEATURE_SSVE_FP8FMA)
+  report_arm_feature(__ARM_FEATURE_SSVE_FP8FMA, "__ARM_FEATURE_SSVE_FP8FMA", "Modal 8-bit floating-point extensions");
+#endif
+#if defined(__ARM_FEATURE_SVE)
+  report_arm_feature(__ARM_FEATURE_SVE, "__ARM_FEATURE_SVE", "Scalable Vector Extension (FEAT_SVE)");
+#endif
+#if defined(__ARM_FEATURE_SVE_B16B16)
+  report_arm_feature(__ARM_FEATURE_SVE_B16B16, "__ARM_FEATURE_SVE_B16B16", "Non-widening brain 16-bit floating-point intrinsics (FEAT_SVE_B16B16)");
+#endif
+#if defined(__ARM_FEATURE_SVE_BF16)
+  report_arm_feature(__ARM_FEATURE_SVE_BF16, "__ARM_FEATURE_SVE_BF16", "SVE support for the 16-bit brain floating-point extension (FEAT_BF16)");
+#endif
+#if defined(__ARM_FEATURE_SVE_BITS)
+  report_arm_feature(__ARM_FEATURE_SVE_BITS, "__ARM_FEATURE_SVE_BITS", "The number of bits in an SVE vector, when known in advance");
+#endif
+#if defined(__ARM_FEATURE_SVE_MATMUL_FP32)
+  report_arm_feature(__ARM_FEATURE_SVE_MATMUL_FP32, "__ARM_FEATURE_SVE_MATMUL_FP32", "32-bit floating-point matrix multiply extension (FEAT_F32MM)");
+#endif
+#if defined(__ARM_FEATURE_SVE_MATMUL_FP64)
+  report_arm_feature(__ARM_FEATURE_SVE_MATMUL_FP64, "__ARM_FEATURE_SVE_MATMUL_FP64", "64-bit floating-point matrix multiply extension (FEAT_F64MM)");
+#endif
+#if defined(__ARM_FEATURE_SVE_MATMUL_INT8)
+  report_arm_feature(__ARM_FEATURE_SVE_MATMUL_INT8, "__ARM_FEATURE_SVE_MATMUL_INT8", "SVE support for the integer matrix multiply extension (FEAT_I8MM)");
+#endif
+#if defined(__ARM_FEATURE_SVE_PREDICATE_OPERATORS)
+  report_arm_feature(__ARM_FEATURE_SVE_PREDICATE_OPERATORS, "__ARM_FEATURE_SVE_PREDICATE_OPERATORS", "Level of support for C and C++ operators on SVE vector types");
+#endif
+#if defined(__ARM_FEATURE_SVE_VECTOR_OPERATORS)
+  report_arm_feature(__ARM_FEATURE_SVE_VECTOR_OPERATORS, "__ARM_FEATURE_SVE_VECTOR_OPERATORS", "Level of support for C and C++ operators on SVE predicate types");
+#endif
+#if defined(__ARM_FEATURE_SVE2)
+  report_arm_feature(__ARM_FEATURE_SVE2, "__ARM_FEATURE_SVE2", "SVE version 2 (FEAT_SVE2)");
+#endif
+#if defined(__ARM_FEATURE_SVE2_AES)
+  report_arm_feature(__ARM_FEATURE_SVE2_AES, "__ARM_FEATURE_SVE2_AES", "SVE2 support for the AES cryptographic extension (FEAT_SVE_AES)");
+#endif
+#if defined(__ARM_FEATURE_SVE2_BITPERM)
+  report_arm_feature(__ARM_FEATURE_SVE2_BITPERM, "__ARM_FEATURE_SVE2_BITPERM", "SVE2 bit permute extension");
+#endif
+#if defined(__ARM_FEATURE_SSVE_BITPERM)
+  report_arm_feature(__ARM_FEATURE_SSVE_BITPERM, "__ARM_FEATURE_SSVE_BITPERM", "SVE2 bit permute extension");
+#endif
+#if defined(__ARM_FEATURE_SSVE_FEXPA)
+  report_arm_feature(__ARM_FEATURE_SSVE_FEXPA, "__ARM_FEATURE_SSVE_FEXPA", "Streaming SVE FEXPA extension");
+#endif
+#if defined(__ARM_FEATURE_SVE2_SHA3)
+  report_arm_feature(__ARM_FEATURE_SVE2_SHA3, "__ARM_FEATURE_SVE2_SHA3", "SVE2 support for the SHA3 cryptographic extension (FEAT_SVE_SHA3)");
+#endif
+#if defined(__ARM_FEATURE_SVE2_SM3)
+  report_arm_feature(__ARM_FEATURE_SVE2_SM3, "__ARM_FEATURE_SVE2_SM3", "SVE2 support for the SM3 cryptographic extension (FEAT_SVE_SM3)");
+#endif
+#if defined(__ARM_FEATURE_SVE2_SM4)
+  report_arm_feature(__ARM_FEATURE_SVE2_SM4, "__ARM_FEATURE_SVE2_SM4", "SVE2 support for the SM4 cryptographic extension (FEAT_SVE_SM4)");
+#endif
+#if defined(__ARM_FEATURE_SVE2p1)
+  report_arm_feature(__ARM_FEATURE_SVE2p1, "__ARM_FEATURE_SVE2p1", "SVE version 2.1 (FEAT_SVE2p1)");
+#endif
+#if defined(__ARM_FEATURE_SYSREG128)
+  report_arm_feature(__ARM_FEATURE_SYSREG128, "__ARM_FEATURE_SYSREG128", "Support for 128-bit system registers (FEAT_SYSREG128)");
+#endif
+#if defined(__ARM_FEATURE_UNALIGNED)
+  report_arm_feature(__ARM_FEATURE_UNALIGNED, "__ARM_FEATURE_UNALIGNED", "Hardware support for unaligned access");
+#endif
+#if defined(__ARM_FP)
+  report_arm_feature(__ARM_FP, "__ARM_FP", "Hardware floating-point");
+#endif
+#if defined(__ARM_FP16_ARGS)
+  report_arm_feature(__ARM_FP16_ARGS, "__ARM_FP16_ARGS", "__fp16 argument and result");
+#endif
+#if defined(__ARM_FP16_FORMAT_ALTERNATIVE)
+  report_arm_feature(__ARM_FP16_FORMAT_ALTERNATIVE, "__ARM_FP16_FORMAT_ALTERNATIVE", "16-bit floating-point, alternative format");
+#endif
+#if defined(__ARM_FP16_FORMAT_IEEE)
+  report_arm_feature(__ARM_FP16_FORMAT_IEEE, "__ARM_FP16_FORMAT_IEEE", "16-bit floating-point, IEEE format");
+#endif
+#if defined(__ARM_FP_FAST)
+  report_arm_feature(__ARM_FP_FAST, "__ARM_FP_FAST", "Accuracy-losing optimizations");
+#endif
+#if defined(__ARM_FP_FENV_ROUNDING)
+  report_arm_feature(__ARM_FP_FENV_ROUNDING, "__ARM_FP_FENV_ROUNDING", "Rounding is configurable at runtime");
+#endif
+#if defined(__ARM_NEON)
+  report_arm_feature(__ARM_NEON, "__ARM_NEON", "Advanced SIMD (Neon) extension");
+#endif
+#if defined(__ARM_NEON_FP)
+  report_arm_feature(__ARM_NEON_FP, "__ARM_NEON_FP", "Advanced SIMD (Neon) floating-point");
+#endif
+#if defined(__ARM_NEON_SVE_BRIDGE)
+  report_arm_feature(__ARM_NEON_SVE_BRIDGE, "__ARM_NEON_SVE_BRIDGE", "Availability of arm_neon_sve_brdge.h");
+#endif
+#if defined(__ARM_PCS)
+  report_arm_feature(__ARM_PCS, "__ARM_PCS", "Arm procedure call standard (32-bit-only)");
+#endif
+#if defined(__ARM_PCS_AAPCS64)
+  report_arm_feature(__ARM_PCS_AAPCS64, "__ARM_PCS_AAPCS64", "Arm PCS for AArch64.");
+#endif
+#if defined(__ARM_PCS_VFP)
+  report_arm_feature(__ARM_PCS_VFP, "__ARM_PCS_VFP", "Arm PCS hardware FP variant in use (32-bit-only)");
+#endif
+#if defined(__ARM_ROPI)
+  report_arm_feature(__ARM_ROPI, "__ARM_ROPI", "Read-only PIC in use");
+#endif
+#if defined(__ARM_RWPI)
+  report_arm_feature(__ARM_RWPI, "__ARM_RWPI", "Read-write PIC in use");
+#endif
+#if defined(__ARM_SIZEOF_MINIMAL_ENUM)
+  report_arm_feature(__ARM_SIZEOF_MINIMAL_ENUM, "__ARM_SIZEOF_MINIMAL_ENUM", "Size of minimal enumeration type: 1 or 4");
+#endif
+#if defined(__ARM_SIZEOF_WCHAR_T)
+  report_arm_feature(__ARM_SIZEOF_WCHAR_T, "__ARM_SIZEOF_WCHAR_T", "Size of wchar_t: 2 or 4");
+#endif
+#if defined(__ARM_WMMX)
+  report_arm_feature(__ARM_WMMX, "__ARM_WMMX", "Wireless MMX extension (32-bit-only)");
+#endif
+}
+
+
 
 /*
 On the STM32, some magic is worked internally so that each bit in a pre-defined memory range can be addressed as another location in a kind of virtual address space somewhere else. So, for example, the 32 bit value stored at address 0x20000000 also appears as 32 sequential memory locations starting at 0x22000000. There are two regions of memory that have bit-band alias regions. First there is a 1Mbyte SRAM region from 0x20000000 – 0x20100000 where each bit is aliases by a byte address in the range 0x22000000 – 0x23FFFFFF. Then there is the peripheral space from 0x40000000 – 0x40100000 which is aliased in the same way to the range 0x42000000 – 0x43FFFFFF.
