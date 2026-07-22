@@ -924,6 +924,8 @@ void handleSequencerStepSizeRelease() {
         case StepSixteenthTriplet:
           newStepSize = StepSixteenth;
           break;
+        default:
+          break;
       }
     } else if (sensorRow == SEQ->STEPSIZE_TOP && cell(sensorCol, SEQ->STEPSIZE_BOTTOM).touched == untouchedCell) {
       newSwing = false;
@@ -949,6 +951,8 @@ void handleSequencerStepSizeRelease() {
         case StepSixteenthTriplet:
           newStepSize = StepSixteenthDotted;
           break;
+        default:
+          break;
       }
     } else if (sensorRow == SEQ->STEPSIZE_BOTTOM && cell(sensorCol, SEQ->STEPSIZE_TOP).touched == untouchedCell) {
       newSwing = false;
@@ -973,6 +977,8 @@ void handleSequencerStepSizeRelease() {
         case StepSixteenth:
         case StepSixteenthDotted:
           newStepSize = StepSixteenthTriplet;
+          break;
+        default:
           break;
       }
     }
@@ -998,6 +1004,8 @@ void handleSequencerStepSizeRelease() {
         case StepSixteenthTriplet:
           newStepSize = StepFourthTriplet;
           break;
+        default:
+          break;
       }
     } else if (sensorRow == SEQ->STEPSIZE_TOP && cell(sensorCol, SEQ->STEPSIZE_BOTTOM).touched == untouchedCell) {
       switch (currentStepSize) {
@@ -1016,6 +1024,8 @@ void handleSequencerStepSizeRelease() {
         case StepSixteenthTriplet:
           newStepSize = StepSixteenthTriplet;
           break;
+        default:
+          break;
       }
     } else if (sensorRow == SEQ->STEPSIZE_BOTTOM && cell(sensorCol, SEQ->STEPSIZE_TOP).touched == untouchedCell) {
       switch (currentStepSize) {
@@ -1033,6 +1043,8 @@ void handleSequencerStepSizeRelease() {
         case StepFourthTriplet:
         case StepSixteenthTriplet:
           newStepSize = StepEighthTriplet;
+          break;
+        default:
           break;
       }
     }
@@ -1719,6 +1731,7 @@ void SequencerPattern::clear() {
   }
 }
 
+#if 0
 void SequencerPattern::operator=(const SequencerPattern& p) {
   for (byte s = 0; s < MAX_SEQUENCER_STEPS; ++s) {
     steps[s] = p.steps[s];
@@ -1729,6 +1742,7 @@ void SequencerPattern::operator=(const SequencerPattern& p) {
   swing = p.swing;
   length = p.length;
 }
+#endif
 
 
 //
@@ -1741,11 +1755,13 @@ void StepData::clear() {
   }
 }
 
+#if 0
 void StepData::operator=(const StepData& d) {
   for (byte e = 0; e < MAX_SEQUENCER_STEP_EVENTS; ++e) {
     events[e] = d.events[e];
   }
 }
+#endif
 
 
 //
@@ -1760,9 +1776,11 @@ void StepEvent::clear() {
   memset(&data, 0, sizeof(StepEventData));
 }
 
+#if 0
 void StepEvent::operator=(const StepEvent& e) {
   memcpy(&data, &e.data, sizeof(StepEventData));
 }
+#endif
 
 void StepEvent::setNewEvent(byte note, byte velocity, unsigned short duration, byte timbre, byte row) {
   clear();
@@ -2872,6 +2890,8 @@ void StepSequencerState::paintPerformanceSettings() {
       stepSize1CellDisplayTop = cellOff;
       stepSize1CellDisplayBottom = cellOn;
       break;
+    default:
+      break;
   }
   setLed(SEQ->STEPSIZE_LEFT, SEQ->STEPSIZE_TOP, Split[split].colorMain, stepSize1CellDisplayTop);
   setLed(SEQ->STEPSIZE_LEFT, SEQ->STEPSIZE_BOTTOM, Split[split].colorMain, stepSize1CellDisplayBottom);
@@ -2900,6 +2920,8 @@ void StepSequencerState::paintPerformanceSettings() {
       case StepSixteenthTriplet:
         stepSize2CellDisplayTop = cellOff;
         stepSize2CellDisplayBottom = cellOn;
+        break;
+      default:
         break;
     }
   }
@@ -3314,14 +3336,14 @@ boolean checkProjectIntegrity(const AddressInfo& info) {
 struct StepData {
   void clear();
 
-  void operator=(const StepData& d);
+  //void operator=(const StepData& d);
   
   StepEvent events[MAX_SEQUENCER_STEP_EVENTS];  // the events for each step
 };
 struct SequencerPattern {
   void clear();
 
-  void operator=(const SequencerPattern& p);
+  //void operator=(const SequencerPattern& p);
 
   StepData steps[MAX_SEQUENCER_STEPS];
   SequencerStepSize stepSize;             // see SequencerStepSize
@@ -3348,3 +3370,64 @@ struct SequencerProject {
 
   return true;
 }
+
+/*
+ls_sequencer.ino: In function 'void handleSequencerStepSizeRelease()':
+ls_sequencer.ino:911:14: warning: enumeration value 'StepTwosTriplet' not handled in switch [-Wswitch]
+  911 |       switch (currentStepSize) {
+      |              ^
+ls_sequencer.ino:911:14: warning: enumeration value 'StepTwos' not handled in switch [-Wswitch]
+ls_sequencer.ino:911:14: warning: enumeration value 'StepTwosDotted' not handled in switch [-Wswitch]
+ls_sequencer.ino:911:14: warning: enumeration value 'StepOnesTriplet' not handled in switch [-Wswitch]
+ls_sequencer.ino:911:14: warning: enumeration value 'StepOnes' not handled in switch [-Wswitch]
+ls_sequencer.ino:930:14: warning: enumeration value 'StepTwosTriplet' not handled in switch [-Wswitch]
+  930 |       switch (currentStepSize) {
+      |              ^
+ls_sequencer.ino:930:14: warning: enumeration value 'StepTwos' not handled in switch [-Wswitch]
+ls_sequencer.ino:930:14: warning: enumeration value 'StepTwosDotted' not handled in switch [-Wswitch]
+ls_sequencer.ino:930:14: warning: enumeration value 'StepOnesTriplet' not handled in switch [-Wswitch]
+ls_sequencer.ino:930:14: warning: enumeration value 'StepOnes' not handled in switch [-Wswitch]
+ls_sequencer.ino:955:14: warning: enumeration value 'StepTwosTriplet' not handled in switch [-Wswitch]
+  955 |       switch (currentStepSize) {
+      |              ^
+ls_sequencer.ino:955:14: warning: enumeration value 'StepTwos' not handled in switch [-Wswitch]
+ls_sequencer.ino:955:14: warning: enumeration value 'StepTwosDotted' not handled in switch [-Wswitch]
+ls_sequencer.ino:955:14: warning: enumeration value 'StepOnesTriplet' not handled in switch [-Wswitch]
+ls_sequencer.ino:955:14: warning: enumeration value 'StepOnes' not handled in switch [-Wswitch]
+ls_sequencer.ino:985:14: warning: enumeration value 'StepTwosTriplet' not handled in switch [-Wswitch]
+  985 |       switch (currentStepSize) {
+      |              ^
+ls_sequencer.ino:985:14: warning: enumeration value 'StepTwos' not handled in switch [-Wswitch]
+ls_sequencer.ino:985:14: warning: enumeration value 'StepTwosDotted' not handled in switch [-Wswitch]
+ls_sequencer.ino:985:14: warning: enumeration value 'StepOnesTriplet' not handled in switch [-Wswitch]
+ls_sequencer.ino:985:14: warning: enumeration value 'StepOnes' not handled in switch [-Wswitch]
+ls_sequencer.ino:1003:14: warning: enumeration value 'StepTwosTriplet' not handled in switch [-Wswitch]
+ 1003 |       switch (currentStepSize) {
+      |              ^
+ls_sequencer.ino:1003:14: warning: enumeration value 'StepTwos' not handled in switch [-Wswitch]
+ls_sequencer.ino:1003:14: warning: enumeration value 'StepTwosDotted' not handled in switch [-Wswitch]
+ls_sequencer.ino:1003:14: warning: enumeration value 'StepOnesTriplet' not handled in switch [-Wswitch]
+ls_sequencer.ino:1003:14: warning: enumeration value 'StepOnes' not handled in switch [-Wswitch]
+ls_sequencer.ino:1021:14: warning: enumeration value 'StepTwosTriplet' not handled in switch [-Wswitch]
+ 1021 |       switch (currentStepSize) {
+      |              ^
+ls_sequencer.ino:1021:14: warning: enumeration value 'StepTwos' not handled in switch [-Wswitch]
+ls_sequencer.ino:1021:14: warning: enumeration value 'StepTwosDotted' not handled in switch [-Wswitch]
+ls_sequencer.ino:1021:14: warning: enumeration value 'StepOnesTriplet' not handled in switch [-Wswitch]
+ls_sequencer.ino:1021:14: warning: enumeration value 'StepOnes' not handled in switch [-Wswitch]
+ls_sequencer.ino: In member function 'void StepSequencerState::paintPerformanceSettings()':
+ls_sequencer.ino:2856:10: warning: enumeration value 'StepTwosTriplet' not handled in switch [-Wswitch]
+ 2856 |   switch (getCurrentPattern().stepSize) {
+      |          ^
+ls_sequencer.ino:2856:10: warning: enumeration value 'StepTwos' not handled in switch [-Wswitch]
+ls_sequencer.ino:2856:10: warning: enumeration value 'StepTwosDotted' not handled in switch [-Wswitch]
+ls_sequencer.ino:2856:10: warning: enumeration value 'StepOnesTriplet' not handled in switch [-Wswitch]
+ls_sequencer.ino:2856:10: warning: enumeration value 'StepOnes' not handled in switch [-Wswitch]
+ls_sequencer.ino:2885:12: warning: enumeration value 'StepTwosTriplet' not handled in switch [-Wswitch]
+ 2885 |     switch (getCurrentPattern().stepSize) {
+      |            ^
+ls_sequencer.ino:2885:12: warning: enumeration value 'StepTwos' not handled in switch [-Wswitch]
+ls_sequencer.ino:2885:12: warning: enumeration value 'StepTwosDotted' not handled in switch [-Wswitch]
+ls_sequencer.ino:2885:12: warning: enumeration value 'StepOnesTriplet' not handled in switch [-Wswitch]
+ls_sequencer.ino:2885:12: warning: enumeration value 'StepOnes' not handled in switch [-Wswitch]
+*/

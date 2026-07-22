@@ -979,7 +979,7 @@ struct __attribute__((packed)) StepEvent {
   int getFaderNeutral(byte fader, byte split);
   boolean calculateSequencerFaderValue(boolean newVelocity);
 
-  void operator=(const StepEvent& e);
+  //void operator=(const StepEvent& e);
 
   // the bit-wise arrangement is like below,
   // while the struct hierarchy is marked as 'packed' as well
@@ -1042,14 +1042,14 @@ struct __attribute__((packed)) StepEvent {
 struct __attribute__((packed)) StepData {
   void clear();
 
-  void operator=(const StepData& d);
+  //void operator=(const StepData& d);
 
   StepEvent events[MAX_SEQUENCER_STEP_EVENTS];  // the events for each step
 };
 struct __attribute__((packed)) SequencerPattern {
   void clear();
 
-  void operator=(const SequencerPattern& p);
+  //void operator=(const SequencerPattern& p);
 
   StepData steps[MAX_SEQUENCER_STEPS];
 
