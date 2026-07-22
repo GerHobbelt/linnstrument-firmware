@@ -65,4 +65,7 @@ static inline T max(T a, T b) {
 // lack of break here is purposeful, we want to fall through...
 #define FALLTHROUGH         __attribute__ ((fallthrough))
 
+// ignore DueFlashStorage's basic demo implementation of flash_debug(): we provide our own!
+#define DFS_IGNORE_DEMO_FLASH_DEBUG_IMPL  1
+
 #endif // LS_COMPILER_TWEAKS_H

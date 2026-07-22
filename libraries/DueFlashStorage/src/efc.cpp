@@ -46,7 +46,6 @@
 //   C:\Users\<User>\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\system\libsam\source\efc.c
 
 #include "efc.h"
-#include "ramfunc_attr.h"
 
 /// @cond 0
 /**INDENT-OFF**/
@@ -66,13 +65,21 @@ extern "C" {
  */
 
 /* Address definition for read operation */
+#if (SAM3XA_SERIES || SAM3U_SERIES /*|| SAM4SD16 || SAM4SD32*/)
 # define READ_BUFF_ADDR0    IFLASH0_ADDR
 # define READ_BUFF_ADDR1    IFLASH1_ADDR
+#elif (SAM3S_SERIES || SAM3N_SERIES)
+# define READ_BUFF_ADDR     IFLASH_ADDR
+#elif (SAM3U_SERIES || SAM4S_SERIES)
+# define READ_BUFF_ADDR     IFLASH0_ADDR
+#else
+# warning Only reading unique id for sam3 is implemented.
+#endif
 
 /* Flash Writing Protection Key */
 #define FWP_KEY    0x5Au
 
-#if (SAM4S || SAM4E)
+#if SAM4S_SERIES
 #define EEFC_FCR_FCMD(value) \
 	((EEFC_FCR_FCMD_Msk & ((value) << EEFC_FCR_FCMD_Pos)))
 #define EEFC_ERROR_FLAGS  (EEFC_FSR_FLOCKE | EEFC_FSR_FCMDE | EEFC_FSR_FLERR)
@@ -86,8 +93,8 @@ extern "C" {
  * Local function declaration.
  * Because they are RAM functions, they need 'extern' declaration.
  */
-RAMFUNC extern void efc_write_fmr(Efc *p_efc, uint32_t ul_fmr);
-RAMFUNC extern uint32_t efc_perform_fcr(Efc *p_efc, uint32_t ul_fcr);
+extern void efc_write_fmr(Efc *p_efc, uint32_t ul_fmr);
+extern uint32_t efc_perform_fcr(Efc *p_efc, uint32_t ul_fcr);
 
 /**
  * \brief Initialize the EFC controller.
@@ -208,12 +215,13 @@ This function returns the value of the EEFC_FSR.
 uint32_t efc_perform_command(Efc *p_efc, uint32_t ul_command,
 		uint32_t ul_argument)
 {
-	/* Unique ID commands are not supported. */
+	// Unique ID commands are not supported.
 	if (ul_command == EFC_FCMD_STUI || ul_command == EFC_FCMD_SPUI) {
 		return EFC_RC_NOT_SUPPORT;
 	}
 
-	/* Use IAP function with 2 parameters in ROM. */
+#if (SAM3XA_SERIES || SAM3U4)
+	// Use IAP function with 2 parameters in ROM.
 	static uint32_t(*iap_perform_command) (uint32_t, uint32_t);
 	uint32_t ul_efc_nb = (p_efc == EFC0) ? 0 : 1;
 
@@ -224,6 +232,31 @@ uint32_t efc_perform_command(Efc *p_efc, uint32_t ul_command,
 			EEFC_FCR_FKEY(FWP_KEY) | EEFC_FCR_FARG(ul_argument) |
 			EEFC_FCR_FCMD(ul_command));
 	return (p_efc->EEFC_FSR & EEFC_ERROR_FLAGS);
+#elif (SAM3N_SERIES || SAM3S_SERIES || SAM4S_SERIES || SAM3U_SERIES)
+	// Use IAP function with 2 parameter in ROM.
+	static uint32_t(*iap_perform_command) (uint32_t, uint32_t);
+
+	iap_perform_command =
+			(uint32_t(*)(uint32_t, uint32_t))
+			*((uint32_t *) CHIP_FLASH_IAP_ADDRESS);
+#if SAM4S_SERIES
+    uint32_t ul_efc_nb = (p_efc == EFC0) ? 0 : 1;
+	iap_perform_command(ul_efc_nb,
+			EEFC_FCR_FKEY_PASSWD | EEFC_FCR_FARG(ul_argument) |
+			EEFC_FCR_FCMD(ul_command));
+#else
+	iap_perform_command(0,
+			EEFC_FCR_FKEY(FWP_KEY) | EEFC_FCR_FARG(ul_argument) |
+			EEFC_FCR_FCMD(ul_command));
+#endif
+	return (p_efc->EEFC_FSR & EEFC_ERROR_FLAGS);
+#else
+	// Use RAM Function.
+	return efc_perform_fcr(p_efc,
+			EEFC_FCR_FKEY(FWP_KEY) | EEFC_FCR_FARG(ul_argument) |
+			EEFC_FCR_FCMD(ul_command));
+
+#endif
 }
 
 /**
@@ -264,7 +297,11 @@ uint32_t efc_get_result(Efc *p_efc)
  *
  * \return 0 if successful, otherwise returns an error code.
  */
-RAMFUNC 
+#ifdef __ICCARM__
+__ramfunc
+#else
+__attribute__ ((section(".ramfunc")))
+#endif
 uint32_t efc_perform_read_sequence(Efc *p_efc,
 		uint32_t ul_cmd_st, uint32_t ul_cmd_sp,
 		uint32_t *p_ul_buf, uint32_t ul_size)
@@ -272,9 +309,15 @@ uint32_t efc_perform_read_sequence(Efc *p_efc,
 	volatile uint32_t ul_status;
 	uint32_t ul_cnt;
 
+#if (SAM3U4 || SAM3XA_SERIES /*|| SAM4SD16 || SAM4SD32*/)
 	uint32_t *p_ul_data =
 			(uint32_t *) ((p_efc == EFC0) ?
 			READ_BUFF_ADDR0 : READ_BUFF_ADDR1);
+#elif (SAM3S_SERIES || SAM4S_SERIES || SAM3N_SERIES || SAM3U_SERIES)
+	uint32_t *p_ul_data = (uint32_t *) READ_BUFF_ADDR;
+#else
+	return EFC_RC_NOT_SUPPORT;
+#endif
 
 	if (p_ul_buf == NULL) {
 		return EFC_RC_INVALID;
@@ -283,9 +326,13 @@ uint32_t efc_perform_read_sequence(Efc *p_efc,
 	p_efc->EEFC_FMR |= (0x1u << 16);
 
 	/* Send the Start Read command */
-
+#if SAM4S_SERIES
+	p_efc->EEFC_FCR = EEFC_FCR_FKEY_PASSWD | EEFC_FCR_FARG(0)
+			| EEFC_FCR_FCMD(ul_cmd_st);
+#else
 	p_efc->EEFC_FCR = EEFC_FCR_FKEY(FWP_KEY) | EEFC_FCR_FARG(0)
 			| EEFC_FCR_FCMD(ul_cmd_st);
+#endif
 	/* Wait for the FRDY bit in the Flash Programming Status Register
 	 * (EEFC_FSR) falls.
 	 */
@@ -302,8 +349,13 @@ uint32_t efc_perform_read_sequence(Efc *p_efc,
 
 	/* To stop the read mode */
 	p_efc->EEFC_FCR =
+#if SAM4S_SERIES
+			EEFC_FCR_FKEY_PASSWD | EEFC_FCR_FARG(0) |
+			EEFC_FCR_FCMD(ul_cmd_sp);
+#else
 			EEFC_FCR_FKEY(FWP_KEY) | EEFC_FCR_FARG(0) |
 			EEFC_FCR_FCMD(ul_cmd_sp);
+#endif
 	/* Wait for the FRDY bit in the Flash Programming Status Register (EEFC_FSR)
 	 * rises.
 	 */
@@ -322,7 +374,11 @@ uint32_t efc_perform_read_sequence(Efc *p_efc,
  * \param p_efc Pointer to an EFC instance.
  * \param ul_fmr Value of mode register
  */
-RAMFUNC 
+#ifdef __ICCARM__
+__ramfunc
+#else
+__attribute__ ((section(".ramfunc")))
+#endif
 void efc_write_fmr(Efc *p_efc, uint32_t ul_fmr)
 {
 	p_efc->EEFC_FMR = ul_fmr;
@@ -336,7 +392,11 @@ void efc_write_fmr(Efc *p_efc, uint32_t ul_fmr)
  *
  * \return The current status.
  */
-RAMFUNC 
+#ifdef __ICCARM__
+__ramfunc
+#else
+__attribute__ ((section(".ramfunc")))
+#endif
 uint32_t efc_perform_fcr(Efc *p_efc, uint32_t ul_fcr)
 {
 	volatile uint32_t ul_status;
