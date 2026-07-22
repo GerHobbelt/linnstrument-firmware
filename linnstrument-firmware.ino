@@ -1111,7 +1111,7 @@ constexpr const int SINGLE_PROJECT_SIZE = alignToWord32Boundary(sizeof(Sequencer
 /**************************************** FIXED POINT MATH ***************************************/
 
 #define FXD_FBITS        8
-#define FXD_FROM_INT(a)  (int32_t)((a) << FXD_FBITS)
+#define FXD_FROM_INT(a)  (int32_t)(((uint32_t)(a)) << FXD_FBITS)
 #define FXD_MAKE(a)      (int32_t)((a * (1 << FXD_FBITS)))
 
 inline int FXD_TO_INT(int32_t a) {
