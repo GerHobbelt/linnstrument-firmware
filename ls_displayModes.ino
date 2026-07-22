@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ***************************************************************************************************
-There are 13 different display modes.
+There are N different display modes.
 
 These are the possible values of the global variable displayMode:
 

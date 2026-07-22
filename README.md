@@ -1,7 +1,7 @@
 LinnStrument
 ============
 
-This is the firmware for LinnStrument, running on an Arduino Due processor.
+This is the firmware for LinnStrument, running on an Arduino Due processor (Atmel/Microchip SAM3X8E).
 
 These sources assume that you're using Arduino IDE v1.8.1 with SAM boards v1.6.11.
 Different versions of this package might create unknown build and execution problems.
@@ -15,7 +15,7 @@ Different versions of this package might create unknown build and execution prob
 
 To rebuild the LinnStrument / MicroLinn firmware binary, set up your development environment as follows: 
 
-- download and install the Arduino IDE v2.x (tested with v2.3.8)
+- download and install the Arduino IDE v2.x (tested with v2.3.10)
 - download and install the Arduino CLI (tested with v1.4.1)
 - start the Arduino IDE
 - wait a little bit for the board package specs to download (particularly when you have added additional boards' package JSON URLs to the Arduino IDE preferences)

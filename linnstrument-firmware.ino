@@ -139,7 +139,7 @@ static const struct OSinfo {
   const char* OSVersionBuild;
 } OSinfo = {
   .OSVersion = "234.",
-  .OSVersionBuild = ".075",
+  .OSVersionBuild = ".076",
 };
 
 // SPI addresses
@@ -252,7 +252,7 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 #define DEFAULT_MAINLOOP_DIVIDER      2
 #define DEFAULT_LED_REFRESH           333      // microseconds per column (was 333) — lower reduces flicker
-#define DEFAULT_MIDI_DECIMATION       8000
+#define DEFAULT_MIDI_DECIMATION       8000     // use a decimation rate of 8 ms
 #define DEFAULT_MIDI_INTERVAL         235
 
 // Differences for low power mode
@@ -404,7 +404,7 @@ const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS + 1) * LED_LAYER_SIZE;
 // calculate the difference between now and a previous timestamp, taking a possible single overflow into account
 #define calcTimeDelta(now, last)   (now < last ? now + ~last : now - last)
 
-// obtain the focused cell for a channel in a asplit
+// obtain the focused cell for a channel in a split
 #define focus(split, channel)      focusCell[split][channel - 1]
 
 
@@ -517,7 +517,7 @@ TouchInfo touchInfo[MAXCOLS][MAXROWS];       // store as much touch information 
 TouchInfo* sensorCell = &touchInfo[0][0];
 
 int32_t rowsInColsTouched[MAXCOLS];          // keep track of which rows inside each column and which columns inside each row are touched, using a bitmask
-int32_t colsInRowsTouched[MAXROWS];          // to makes it possible to quickly identify square formations that generate phantom presses
+int32_t colsInRowsTouched[MAXROWS];          // to make it possible to quickly identify square formations that generate phantom presses
 unsigned short cellsTouched;                 // counts the number of active touches on cells
 
 struct VirtualTouchInfo {
@@ -1112,7 +1112,7 @@ constexpr const int SINGLE_PROJECT_SIZE = alignToWord32Boundary(sizeof(Sequencer
 
 #define FXD_FBITS        8
 #define FXD_FROM_INT(a)  (int32_t)(((uint32_t)(a)) << FXD_FBITS)
-#define FXD_MAKE(a)      (int32_t)((a * (1 << FXD_FBITS)))
+#define FXD_MAKE(a)      (int32_t)(((a) * (1 << FXD_FBITS)))
 
 inline int FXD_TO_INT(int32_t a) {
   a += ((a & (int32_t)1 << (FXD_FBITS - 1)) << 1);  // rounding instead of truncation
@@ -1132,7 +1132,7 @@ constexpr inline int32_t FXD_DIV(int32_t a, int32_t b) {
 
 #define FXD4_FBITS        4
 #define FXD4_FROM_INT(a)  (int32_t)((a) << FXD4_FBITS)
-#define FXD4_MAKE(a)      (int32_t)((a * (1 << FXD4_FBITS)))
+#define FXD4_MAKE(a)      (int32_t)(((a) * (1 << FXD4_FBITS)))
 
 inline int FXD4_TO_INT(int32_t a) {
   a += ((a & (int32_t)1 << (FXD4_FBITS - 1)) << 1);  // rounding instead of truncation
@@ -1160,7 +1160,7 @@ const int32_t FXD_CONST_1016 = FXD_FROM_INT(1016);
 
 const int CALX_VALUE_MARGIN = 85;                         // 4095 / 48
 const int32_t FXD_CALX_HALF_UNIT = FXD_MAKE(85.3125);     // 4095 / 48
-const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(170);     // full cell width (~4095 / 24), accept any X within cell bounds
+const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(170);     // full cell width (~ 4095 / 24), accept any X within cell bounds
 const int32_t FXD_CALX_FULL_UNIT = FXD_MAKE(170.625);     // 4095 / 24
 const int32_t CALX_QUARTER_UNIT = FXD_TO_INT(FXD_CALX_FULL_UNIT) / 4;
 
@@ -1542,111 +1542,8 @@ void setup() {
      default, after reset, the PIO line is configured as input with its pull-up enabled and the ADC input is connected to
      the GND.                                                                   
   */
-  REG_ADC_WPMR = (0x414443 << 8) | 0;       // WPEN = 0: enable write access
-  REG_ADC_ACR = 0 | (0b00 << 8) | (1 << 4); // IBCTL = 00, TSON = 1 :: TSON: Temperature Sensor On
-  REG_ADC_WPMR = (0x414443 << 8) | 1;       // WPEN = 1: disable write
 
-#if 0
-// GerH: if *I* read the datasheet correctly, this anolog I/O activity requires REG_ADC_WPMR access to be set to write-OK iff
-// we want to configure our ADC clock and/or set up a ADC channel like this.
-//
-// Incidentally, the adc code pasted/cludged together below does not set up the ADC module nor the ADC clock, which are mandatory
-// for proper operations, so the question is: where does the default core code do that bit of chip fiddling?!
-
-  //uint32_t analogRead(uint32_t ulPin)
-{
-  //uint32_t ulPin = ADC15;
-  uint32_t ulValue = 0;
-  const uint32_t ulChannel = 15;
-
-#if 0
-  if (ulPin < A0)
-    ulPin += A0;
-
-  ulChannel = g_APinDescription[ulPin].ulADCChannelNumber ;
-#endif
-
-//#if defined __SAM3X8E__ || defined __SAM3X8H__
-	//static uint32_t latestSelectedChannel = -1;
-	//switch ( g_APinDescription[ulPin].ulAnalogChannel )
-	{
-		// Handling ADC 12 bits channels
-		//case ADC15 :
-
-			// Enable the corresponding channel
-uint32_t adc_get_channel_status(const Adc *p_adc, const enum adc_channel_num_t adc_ch)
-{
-	return p_adc->ADC_CHSR & (1 << adc_ch);
-}
-			if (adc_get_channel_status(ADC, ulChannel) != 1) {
-void adc_enable_channel(Adc *p_adc, const enum adc_channel_num_t adc_ch)
-{
-	p_adc->ADC_CHER = 1 << adc_ch;
-}
-				adc_enable_channel( ADC, ulChannel );
-				//if ( latestSelectedChannel != (uint32_t)-1 && ulChannel != latestSelectedChannel)
-				//	adc_disable_channel( ADC, latestSelectedChannel );
-				//latestSelectedChannel = ulChannel;
-				g_pinStatus[ulPin] = (g_pinStatus[ulPin] & 0xF0) | PIN_STATUS_ANALOG;
-			}
-
-			// Start the ADC
-void adc_start(Adc *p_adc)
-{
-	p_adc->ADC_CR = ADC_CR_START;
-}
-			adc_start( ADC );
-
-			// Wait for end of conversion
-uint32_t adc_get_status(const Adc *p_adc)
-{
-	return p_adc->ADC_ISR;
-}
-			while ((adc_get_status(ADC) & ADC_ISR_DRDY) != ADC_ISR_DRDY)
-				;
-
-
-uint32_t adc_get_channel_status(const Adc *p_adc, const enum adc_channel_num_t adc_ch)
-{
-	return p_adc->ADC_CHSR & (1 << adc_ch);
-}
-uint32_t adc_get_channel_value(const Adc *p_adc, const enum adc_channel_num_t adc_ch)
-{
-	uint32_t ul_data = 0;
-
-	if (15 >= adc_ch) {
-		ul_data = *(p_adc->ADC_CDR + adc_ch);
-	}
-
-	return ul_data;
-}
-uint32_t adc_get_latest_value(const Adc *p_adc)
-{
-	return p_adc->ADC_LCDR;
-}
-void adc_enable_tag(Adc *p_adc)
-{
-	p_adc->ADC_EMR |= ADC_EMR_TAG;
-}
-enum adc_channel_num_t adc_get_tag(const Adc *p_adc)
-{
-	return (p_adc->ADC_LCDR & ADC_LCDR_CHNB_Msk) >> ADC_LCDR_CHNB_Pos;
-}
-
-
-			// Read the value
-uint32_t adc_get_latest_value(const Adc *p_adc)
-{
-	return p_adc->ADC_LCDR;
-}
-			ulValue = adc_get_latest_value(ADC);
-			ulValue = mapResolution(ulValue, ADC_RESOLUTION, _readResolution);
-	}
-
-	return ulValue;
-}
-#endif  // 0
-
+  // TODO -- see also the separate repo about the hardware bug in SAM3X8E re internal temp sensor.
 
 #endif  // 0
 
@@ -1794,7 +1691,7 @@ void loop() {
   if (operatingMode == modePerformance) {
     modeLoopPerformance();
   }
-  // manufactoring test mode where leds are shows for specific signals
+  // manufactoring test mode where leds are shown for specific signals
   else if (operatingMode == modeManufacturingTest) {
     modeLoopManufacturingTest();
   }
@@ -1842,7 +1739,7 @@ inline void modeLoopPerformance() {
   }
 
   // We're iterating so quickly, that it makes no sense to perform the continuous tasks
-  // at each sensor cell, only call this every three cells.
+  // at each sensor cell, only call this every N cells.
   // Note that this is very much dependent on the speed of the main loop, if it slows down
   // lights will start flickering and this ratio might have to be adapted.
   if (cellCount % mainLoopDivider == 0) {
