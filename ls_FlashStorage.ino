@@ -78,7 +78,7 @@ struct FlashBlockFooter {
 uint32_t locateSettingsBootBlock() {
 	DEBUGPRINT_FUNCNAME();
 
-	uint32_t pos = IFLASH0_SIZE;
+	//uint32_t pos = IFLASH0_SIZE;
 	//byte bootblock = dueFlashStorage.read(pos);
 	//settingsBootBlockOffset;  // getFirstFreeBlock
 
@@ -94,7 +94,7 @@ AppDataFlashStorage::AppDataFlashStorage()
   : DueFlashStorage(),
     activeBlockStartOffset(0) {}
 
-#if 01
+#if 0
 
 void AppDataFlashStorage::factoryReset() {
 }
@@ -138,22 +138,22 @@ AddressInfo AppDataFlashStorage::allocateSettingsStorageSpace(uint32_t size) {
 }
 
 
-	const AddressInfo AppDataFlashStorage::getConfigPresetAddressInfo(uint16_t presetId) const {
+const AddressInfo AppDataFlashStorage::getConfigPresetAddressInfo(uint16_t presetId) const {
 	return {
 		.address = nullptr,
 		.size = 0
 	};
 }
 
-	AddressInfo AppDataFlashStorage::allocateConfigPresetStorageSpace(uint16_t presetId, uint32_t size) {
+AddressInfo AppDataFlashStorage::allocateConfigPresetStorageSpace(uint16_t presetId, uint32_t size) {
 	return {
 		.address = nullptr,
 		.size = 0
 	};
 }
 
-   void AppDataFlashStorage::markSectionAsValid(const AddressInfo &chunkInfo) {
-	 }
+void AppDataFlashStorage::markSectionAsValid(const AddressInfo &chunkInfo) {
+}
 
 #else
 
@@ -262,7 +262,7 @@ AddressInfo AppDataFlashStorage::allocateSettingsStorageSpace(uint32_t size) {
 	};
 }
 
-   void AppDataFlashStorage::markSectionAsValid(const AddressInfo &chunkInfo) {
-	 }
+void AppDataFlashStorage::markSectionAsValid(const AddressInfo &chunkInfo) {
+}
 
 #endif
