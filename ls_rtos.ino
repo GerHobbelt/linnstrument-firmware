@@ -26,11 +26,11 @@ Arduino's delayMicroseconds() function.
 // IMPORTANT: Use instead of Arduino's delayMicroseconds() function because this one handles background LED refresh and foot switch checking while it's waiting
 inline void delayUsec(unsigned long delayTime) {    // input the delay time in microseconds
   unsigned long start = micros();                   // start is set to time that function is called
-  unsigned long now = start;                        // now is set once at function invocation...
-  while (calcTimeDelta(now, start) < delayTime) {   // do the following while the interval between now and start less than delayTime
+  unsigned long now = start;                        
+  do {                                              // do the following while the interval between now and start less than delayTime
     performContinuousTasks(now);
     now = micros();                                 // reset now to current time and repeat...
-  }
+  } while (calcTimeDelta(now, start) < delayTime);
 }
 
 // delayUsecWithScanning:
@@ -43,13 +43,15 @@ inline void delayUsecWithScanning(unsigned long delayTime) {
     return;
   }
 
-  unsigned long start = micros();                        // start is set to time that function is called
-  while (calcTimeDelta(micros(), start) < delayTime) {   // use now-start to account for clock reset
-    modeLoopPerformance();                               // reset now to current time and repeat...
-  }
+  unsigned long start = micros();                   // start is set to time that function is called
+  unsigned long now = start;                        // now is set once at function invocation...
+  do {                                              // do the following while the interval between now and start less than delayTime
+    loop();                                         // ~ modeLoopPerformance(), iff used in that mode
+    now = micros();                                 // reset now to current time and repeat...
+  } while (calcTimeDelta(now, start) < delayTime);
 }
 
-inline void performCheckAdvanceArpeggiator() {
+void performCheckAdvanceArpeggiator() {
   static boolean continuousAdvanceArpeggiator = false;
   if (!continuousAdvanceArpeggiator) {
     continuousAdvanceArpeggiator = true;
@@ -58,7 +60,7 @@ inline void performCheckAdvanceArpeggiator() {
   }
 }
 
-inline void performCheckAdvanceSequencer() {
+void performCheckAdvanceSequencer() {
   static boolean continuousAdvanceSequencer = false;
   if (!continuousAdvanceSequencer) {
     continuousAdvanceSequencer = true;
@@ -71,7 +73,7 @@ inline void performContinuousTasks() {
   performContinuousTasks(micros());
 }
 
-inline void performContinuousTasks(unsigned long nowMicros) {
+void performContinuousTasks(unsigned long nowMicros) {
   if (!setupDone || displayMode == displaySleep) {
     return;
   }
@@ -183,7 +185,6 @@ inline void checkTimeToRefreshTouchAnim(unsigned long now) {
   }
 }
 
-// checks to see if it's time to refresh the next LED column, and if so, does it
 inline void checkTimeToReadFootSwitches(unsigned long now) {
   if (calcTimeDelta(now, prevFootSwitchTimerCount) > 20000) {              // is it time to check the foot switches?
     checkFootSwitches();                                                   // yes, check the foot switches and if state has changed, handle the event, then...
