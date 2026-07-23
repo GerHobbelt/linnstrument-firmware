@@ -51,11 +51,12 @@ enum linnCommands {
   SendProjects = 'p',
   RestoreProject = 'q',
   RestoreSettings = 'r',
-  SendSettings = 's'
+  SendSettings = 's',
+  ShowInfo = '?',
+  TweakSettings = 't',
 };
 
 byte codePos = 0;
-uint32_t lastSerialMoment = 0;
 
 static const prog_uint32_t crc_table[16] = {
   0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
@@ -99,12 +100,24 @@ void handleSerialIO() {
   byte d = Serial.read();
   DEBUGPRINT((5, "handleSerialIO: input="));
   DEBUGPRINT((5, d));
+  if (isascii(d) && isprint(d)) {
+    char chdisp[] = " ('X')";
+    chdisp[3] = d;
+    DEBUGPRINT((5, chdisp));
+  }
   DEBUGPRINT((5, ", waitingForCommands="));
-  DEBUGPRINT((5, (int)waitingForCommands));
+  DEBUGPRINT((5, waitingForCommands));
+  DEBUGPRINT((5, ", controlModeActive="));
+  DEBUGPRINT((5, controlModeActive));
+  DEBUGPRINT((5, ", codePos="));
+  DEBUGPRINT((5, codePos));
   DEBUGPRINT((5, "\n"));
 
   // check for a recognized command
-  if (waitingForCommands) {
+  if (d == ShowInfo && codePos == 0) {
+    serialShowInfo();
+  }
+  else if (waitingForCommands) {
     switch (d) {
       case SendSettings:
         {
@@ -142,8 +155,23 @@ void handleSerialIO() {
           break;
         }
 
+      case TweakSettings:
+        {
+          serialTweakSettings();
+          break;
+        }
+
+      // ignore CR, LF and whitespace (SPACE, TAB) to allow easier use of the command mode from line-oriented simple terminal applications too:
+      case '\n':
+      case '\r':
+      case '\t':
+      case ' ':
+        break;
+
       default:
         {
+          DEBUGPRINT((5, "Unsupported/unrecognized command; dropping out of serial command mode.\n"));
+
           waitingForCommands = false;
           break;
         }
@@ -177,7 +205,6 @@ void handleSerialIO() {
 inline boolean waitForSerialAck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
-  lastSerialMoment = millis();
   if (ack != ACK) return false;
   return true;
 }
@@ -185,7 +212,6 @@ inline boolean waitForSerialAck() {
 inline boolean waitForSerialCheck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
-  lastSerialMoment = millis();
   if (ack != CRCCheck) return false;
   return true;
 }
@@ -193,7 +219,6 @@ inline boolean waitForSerialCheck() {
 inline char waitForSerialCRC() {
   if (!serialWaitForMaximumTwoSeconds()) return 0;
   char ack = Serial.read();
-  lastSerialMoment = millis();
   return ack;
 }
 
@@ -214,7 +239,6 @@ int negotiateIncomingCRC(byte* buffer, uint8_t size) {
   for (byte k = 0; k < sizeof(uint32_t); ++k) {
     if (!serialWaitForMaximumTwoSeconds()) return -1;
     buff_crc[k] = Serial.read();
-    lastSerialMoment = millis();
   }
   uint32_t remote_crc;
   memcpy(&remote_crc, buff_crc, sizeof(uint32_t));
@@ -243,7 +267,6 @@ void serialSendSettings() {
   // send the actual settings
   const uint8_t batchsize = 96;
   byte* src = (byte*)&config;
-  lastSerialMoment = millis();
   while (confSize > 0) {
     int actual = min(confSize, batchsize);
     Serial.write(src, actual);
@@ -262,6 +285,7 @@ void serialSendSettings() {
 }
 
 boolean serialWaitForMaximumTwoSeconds() {
+  uint32_t lastSerialMoment = millis();
   // retry if there's no data available
   while (Serial.available() <= 0) {
     // timeout after 2s if no data is coming in anymore
@@ -269,6 +293,7 @@ boolean serialWaitForMaximumTwoSeconds() {
       waitingForCommands = false;
       return false;
     }
+    delayUsec(10);
   }
 
   return true;
@@ -281,13 +306,10 @@ void serialRestoreSettings() {
   delayUsec(1000);
 
   // retrieve the size of the settings
-  lastSerialMoment = millis();
-
   byte buff1[sizeof(int32_t)];
   for (byte i = 0; i < sizeof(int32_t); ++i) {
     if (!serialWaitForMaximumTwoSeconds()) return;
     buff1[i] = Serial.read();
-    lastSerialMoment = millis();
   }
   int32_t settingsSize;
   memcpy(&settingsSize, buff1, sizeof(int32_t));
@@ -302,14 +324,12 @@ void serialRestoreSettings() {
     byte* projectOffset = dataBuffer.address;
     const uint8_t batchsize = 96;
     byte buff2[batchsize];
-    lastSerialMoment = millis();
     int32_t remaining = settingsSize;
     while (remaining > 0) {
       int actual = min(remaining, batchsize);
       for (byte k = 0; k < actual; ++k) {
         if (!serialWaitForMaximumTwoSeconds()) goto fail;
         buff2[k] = Serial.read();
-        lastSerialMoment = millis();
       }
 
       int crc = negotiateIncomingCRC(buff2, actual);
@@ -360,15 +380,12 @@ fail:
 }
 
 void serialLightLed() {
-  lastSerialMoment = millis();
-
   byte buff[3];
   for (byte i = 0; i < 3; ++i) {
     if (!serialWaitForMaximumTwoSeconds()) return;
 
     // read the next byte of the configuration size
     buff[i] = Serial.read();
-    lastSerialMoment = millis();
   }
 
   setLed(buff[0], buff[1], buff[2], cellOn);
@@ -380,7 +397,6 @@ inline int32_t serialSendProjectSize() {
   // send the size of a project
   int32_t projectSize = sizeof(SequencerProject);
   Serial.write((byte*)&projectSize, sizeof(int32_t));
-  lastSerialMoment = millis();
   return projectSize;
 }
 
@@ -414,8 +430,6 @@ void serialSendSingleProject() {
 
   clearDisplayImmediately();
   delayUsec(1000);
-
-  lastSerialMoment = millis();
 
   if (!serialWaitForMaximumTwoSeconds()) return;
 
@@ -455,13 +469,10 @@ static boolean serialRestoreProject___L() {
   clearDisplayImmediately();
   delayUsec(1000);
 
-  lastSerialMoment = millis();
-
   if (!serialWaitForMaximumTwoSeconds()) return false;
   uint8_t version = Serial.read();
   if (version < 9) return false;
   Serial.write(HandshakeCodes.ackCode);
-  lastSerialMoment = millis();
 
   // retrieve the size of a project
   byte buff1[sizeof(int32_t)];
@@ -470,7 +481,6 @@ static boolean serialRestoreProject___L() {
 
     // read the next byte of the project size
     buff1[i] = Serial.read();
-    lastSerialMoment = millis();
   }
 
   int32_t projectSize;
@@ -490,7 +500,6 @@ static boolean serialRestoreProject___L() {
   if (flashInfo.address && flashInfo.size > 0) {
     const uint8_t batchsize = 96;
     byte buff2[batchsize];
-    lastSerialMoment = millis();
     byte* dst = flashInfo.address;
     int32_t remaining = flashInfo.size;
     while (remaining > 0) {
@@ -498,7 +507,6 @@ static boolean serialRestoreProject___L() {
       for (byte k = 0; k < actual; ++k) {
         if (!serialWaitForMaximumTwoSeconds()) return false;
         buff2[k] = Serial.read();
-        lastSerialMoment = millis();
       }
 
       int crc = negotiateIncomingCRC(buff2, actual);
@@ -534,3 +542,127 @@ void serialRestoreProject() {
   // __always:
   delayUsec(500000);
 }
+
+void serialShowInfo() {
+  const char *msg = R"LINN(
+LinnStrument serial console info
+================================
+
+The LinnStrument has a USB/serial console mode which listens for some specific
+commands (listed below) which can be used to backup/restore projects from
+the instrument and/or control it (in a limited way).
+
+To ensure the LinnStrument acts on any given command, you first need to send
+it a magic handshake string, which will activate 'waitingForCommands' mode.
+
+These magic handshakes are supported:
+
+- countDownCode = "5, 4, 3, 2, 1 ...\n"
+
+  to which the LinnStrument will respond with "LinnStruments are go!\n"
+  when accepted and 'waitingForCommands' mode has been activated.
+
+- linnStrumentControlCode = "LC\n"
+
+  to which the LinnStrument will respond with "ACK\n" when accepted.
+  This handshake activates Control Mode, which enables a kind of fast typing
+  mode on the Linn, where every touch is transmitted as a message to
+  the serial port.
+
+The following commands are supported:
+
+  CRCCheck = 'c'
+  CRCWrong = 'w'
+  CRCOk = 'o'
+  LightLed = 'l'
+  SendSingleProject = 'j'
+  SendProjects = 'p'
+  RestoreProject = 'q'
+  RestoreSettings = 'r'
+  SendSettings = 's'
+  TweakSettings = 't'
+  ShowInfo = '?'
+
+and entering any unsupported command/character (except your regular space
+and CR LF end-of-line) will drop the Linn out of Command Mode and back into
+regular serial listening...
+
+TweakSettings is a group of human console/terminal mode usable subcommands,
+such as:
+
+  updt <N>      set ram & other diagnostics update time in seconds.
+                0 resets to the default period.
+  dbgl <N>      set the debug level to N: higher is more verbose.
+
+  (note: when no <N> parameter has been specified, the current value will
+   be reported instead.)
+
+Enjoy!
+-------------------------------------------------------------------------
+)LINN";
+
+  Serial.println(msg);
+  // __always:
+  delayUsec(500000);
+}
+
+static bool strieq(const char *s1, const char *s2) {
+  if (!s1 || !s2)
+    return false;
+  return stricmp(s1, s2) == 0;
+}
+
+void serialTweakSettings() {
+  // expect subcommand, with optional parameter(s):
+  char subcmdbuf[60];
+
+  Serial.write(HandshakeCodes.ackCode);
+  Serial.write(" ...waiting for subcommand line (terminated by LF)\n");
+
+  unsigned int i = 0;
+  for (;;) {
+    byte d = Serial.read();
+    if (d == '\r' || d == '\n' || d == 0) {
+      subcmdbuf[i] = 0;
+      break;
+    }
+    if (i == sizeof(subcmdbuf) - 1) {
+      Serial.write(" ...subcommand line overflows input buffer. Ignoring the entire line!\n");
+      subcmdbuf[0] = 0;
+      break;
+    }
+    subcmdbuf[i++] = d;
+  }
+
+  // parse command line:
+  char *cmd = strtok(subcmdbuf, " \t");
+  if (strieq(cmd, "dbgl")) {
+    char *param = strtok(nullptr, " \t");
+    if (param) {
+      int l = atoi(param);
+      debugLevel = l;
+    }
+    // else: report current debug level.
+    Serial.print("Active debug level = ");
+    Serial.println(debugLevel);
+  }
+  else if (strieq(cmd, "updt")) {
+    char *param = strtok(nullptr, " \t");
+    if (param) {
+      int l = atoi(param);
+      if (l <= 0)
+        l = 5;
+      diagFreeRamUpdatePeriod = l;
+    }
+    // else: report current debug level.
+    Serial.print("diagFreeRam update period = ");
+    Serial.print(diagFreeRamUpdatePeriod);
+    Serial.println(" seconds");
+  }
+  else if (cmd) {
+    Serial.print("unsupported subcommand: ");
+    Serial.print(cmd);
+    Serial.println(" --> ignored!");
+  }
+}
+
