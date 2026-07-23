@@ -182,7 +182,7 @@ inline short applyRawZBias(short rawZ) {
   //
   // ergo the '*' multiply operator implicitly promotes the 'short int' values involved to 'int' before executing!
   //
-  // RawZ is obtained from an ADS7883 12-bit ADC chip, i.e. will carry values in the range 0..4095, so 32-bit integer overflow near the top end of that range is still a risk!
+  // RawZ is obtained from an ADS7883 12-bit ADC chip, i.e. will carry values in the range 0..4095, so 32-bit integer overflow near the top end of that range is not a risk!
 }
 
 inline unsigned short readZ() {                       // returns the raw Z value
@@ -321,16 +321,16 @@ inline void selectSensorCell(byte col, byte row, byte switchCode) {
   switch (switchCode)                             // set SPI values differently depending on reading X, Y or Z
   {
   case READ_X:                                    // if reading X...
-    msb |= B10000000;                             // set colBotSw to ADC
-    lsb |= B01010000;                             // set rowRightSwA to RT_SW_B and rowRightSwB to +3.3 (for low-R Analog Devices switches)
+    msb |= B10000000;                             // set colBotSw + ColTopSw to ADC
+    lsb |= B01010000;                             // set rowRightSwA to RT_SW_B and rowRightSwB to +3.3 & rowLeftSw to GND (for low-R Analog Devices switches)
     break;
   case READ_Y:                                    // if reading Y...
-    msb |= B01000000;                             // set colTopSw to +3.3v
-    lsb |= B00011000;                             // set rowRightSwA to RT_SW_B and rowRightSwB to ADC (for low-R Analog Devices switches)
+    msb |= B01000000;                             // set colTopSw to +3.3v & colBotSw to GND
+    lsb |= B00011000;                             // set rowRightSwA to RT_SW_B and rowRightSwB to ADC & rowLeftSw to ADC (for low-R Analog Devices switches)
     break;
   case READ_Z:                                    // if reading Z...
-    msb |= B10000000;                             // set colBotSw to ADC
-    lsb |= B00100000;                             // set rowRightSwA to GND and rowRightSwB doesn't matter (for low-R Analog Devices switches)
+    msb |= B10000000;                             // set colBotSw + ColTopSw to ADC
+    lsb |= B00100000;                             // set rowLeftSw + rowRightSwA to GND and rowRightSwB doesn't matter & add adcPullup to form a resistor divider at ADC input (via low-R Analog Devices switches)
     break;
   default:
     break;
