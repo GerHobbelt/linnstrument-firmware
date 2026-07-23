@@ -402,7 +402,12 @@ const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS + 1) * LED_LAYER_SIZE;
 #define virtualCell()              virtualTouchInfo[sensorRow]
 
 // calculate the difference between now and a previous timestamp, taking a possible single overflow into account
-#define calcTimeDelta(now, last)   (now < last ? now + ~last : now - last)
+template<typename T>
+inline T calcTimeDelta(T now, T last) {
+  if (now < last)
+    return now + ~last;
+  return now - last;
+}
 
 // obtain the focused cell for a channel in a split
 #define focus(split, channel)      focusCell[split][channel - 1]
@@ -1398,6 +1403,11 @@ void applyMpeMode() {
 }
 
 void setup() {
+#if 0
+  Serial.begin(DEBUG_SERIAL_BAUDRATE);
+  Serial.println("LinnStrument...");
+#endif
+
   //*************************************************************************************************************************************************
   //**************** IMPORTANT, DONT CHANGE ANYTHING REGARDING THIS CODE BLOCK AT THE RISK OF BRICKING THE LINNSTRUMENT !!!!! ***********************
   //*************************************************************************************************************************************************
@@ -1686,7 +1696,7 @@ void setup() {
 
 /******************************* MAIN LOOP *****************************/
 
-void loop() {
+void ExecLoop() {
   // the default musical performance mode
   if (operatingMode == modePerformance) {
     modeLoopPerformance();
@@ -1702,7 +1712,16 @@ void loop() {
   }
 }
 
-inline void modeLoopPerformance() {
+void loop() {
+  static boolean loopExec = false;
+  if (!loopExec) {
+    loopExec = true;
+    execLoop();
+    loopExec = false;
+  }
+}
+
+void modeLoopPerformance() {
   if (displayMode == displayReset) {                             // if reset is active, don't process any input data
     if (calcTimeDelta(millis(), lastReset) > 3000) {             // restore normal operations three seconds after the reset started
       applySystemState();
