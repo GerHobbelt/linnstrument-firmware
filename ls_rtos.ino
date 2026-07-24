@@ -36,20 +36,61 @@ inline void delayUsec(unsigned long delayTime) {    // input the delay time in m
 
 // delayUsecWithScanning:
 // use to insert a brief time delay but with key scanning still active.
-inline void delayUsecWithScanning(unsigned long delayTime) {
-  // we can not have scanning unless the full setup routine is done,
-  // falling back to regular delay in this case
-  if (!setupDone) {
-    delayUsec(delayTime);
-    return;
-  }
+//
+// NOTE: this function will (recursively) execute the main `loop()` function!
+// This is GOOD as this function is meant to be used only iff the specified delay
+// is so large it will otherwise effectively 'lock up' the LinnStrument.
+//
+// So to make matters easier for all, this delay will take care of running the
+// `loop()` anyhow, while it does protect about *recursive* invocation as we only
+// want a single loop() content to execute at any time -- cooperative multitasking.
+//
+// This issue could potentially occur when the loop() scan detects user interaction
+// (or otherwise) demanding the code to run another long-delay command, e.g. playbook
+// or scrolling announcement text from inside this delay call: such would be a coding
+// error (as the machine state should ideally prevent this), but we better protect 
+// against this run-away layering of loop() calls by limiting the recursion to one
+// layer only...
+//
+// Next, we should provide the caller with a signal that such recursive abuse occurred
+// so they can safely abort the 'inner action'
+// --> this function is used by all these:
+// - playPromoAnimation()
+// - font_scroll_text_flipped() / big_scroll_text_flipped() / small_scroll_text_flipped()
+// - font_scroll_text() / big_scroll_text() / small_scroll_text()
+// - playChristmasAnimation() / playPlayBook()
+// which all have in common that they are aborted via `stopAnimation`, so we can be smart
+// about it and do the same here...
+//
+void delayUsecWithScanning(unsigned long delayTime) {
+  static byte callDepth = 0;
+  callDepth++;
+  bool innerUnacceptableRecursiveCallHappening = (callDepth > 1);
 
-  unsigned long start = micros();                   // start is set to time that function is called
-  unsigned long now = start;                        // now is set once at function invocation...
-  do {                                              // do the following while the interval between now and start less than delayTime
-    modeLoopPerformance();                          // uhh... isn't this recursively invoking a major loop() call/code chunk?
-    now = micros();                                 // reset now to current time and repeat...
-  } while (calcTimeDelta(now, start) < delayTime);
+  if (innerUnacceptableRecursiveCallHappening) {
+    if (animationActive) {
+      DEBUGPRINT((-1, "\n\ndelayUsecWithScanning: inner, **unacceptable**, recursive loop() call happening: aborting the animation immediately!\n\n"));
+      stopAnimation = true;
+    }
+    else {
+      DEBUGPRINT((-1, "\n\ndelayUsecWithScanning: inner, **unacceptable**, recursive loop() call occurs outside the expected `animationActive` realm: SOFTWARE B0RK B0RK B0RK!\n\n"));
+    }
+  }
+  else if (!setupDone) {
+    // we can not have scanning unless the full setup routine is done,
+    // falling back to regular delay in this case
+    delayUsec(delayTime);
+  }
+  else {
+    unsigned long start = micros();                   // start is set to time that function is called
+    unsigned long now = start;                        // now is set once at function invocation...
+    do {                                              // do the following while the interval between now and start less than delayTime
+      loop();                                         // ( mostly eqv. to modeLoopPerformance() but this more generic.)
+      now = micros();                                 // reset now to current time and repeat...
+    } while (calcTimeDelta(now, start) < delayTime);
+  }
+  
+  callDepth--;
 }
 
 void performCheckAdvanceArpeggiator() {
