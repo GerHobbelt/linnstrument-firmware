@@ -482,6 +482,14 @@ void debugFreeRam() {
 
     Serial.println("-----------------------------------------------------");
 
+    Serial.print("Serial console: waitingForCommands=");
+    Serial.print(waitingForCommands);
+    Serial.print(", controlModeActive=");
+    Serial.print(controlModeActive);
+    Serial.print(", codePos=");
+    Serial.print(codePos);
+    Serial.println(" -- send '?' to see the online help.");
+
     register char* stack_ptr asm ("sp");
     Serial.print("RAM static:");
     Serial.print(&_end - ramstart);

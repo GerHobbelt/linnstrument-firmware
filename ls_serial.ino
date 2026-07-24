@@ -641,6 +641,13 @@ void serialTweakSettings() {
 
   // parse command line:
   char *cmd = strtok(subcmdbuf, " \t");
+
+  // send ACK/FAIL response to show a command line has been received:
+  if (cmd)
+    Serial.write(HandshakeCodes.ackCode);
+  else
+    Serial.write("Empty command line ignored...");
+
   if (strieq(cmd, "dbgl")) {
     char *param = strtok(nullptr, " \t");
     if (param) {
