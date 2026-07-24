@@ -47,7 +47,7 @@ inline void delayUsecWithScanning(unsigned long delayTime) {
   unsigned long start = micros();                   // start is set to time that function is called
   unsigned long now = start;                        // now is set once at function invocation...
   do {                                              // do the following while the interval between now and start less than delayTime
-    loop();                                         // ~ modeLoopPerformance(), iff used in that mode
+    modeLoopPerformance();                          // uhh... isn't this recursively invoking a major loop() call/code chunk?
     now = micros();                                 // reset now to current time and repeat...
   } while (calcTimeDelta(now, start) < delayTime);
 }
