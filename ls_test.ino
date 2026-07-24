@@ -17,6 +17,7 @@ Assorted debug functions.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 #include <alloca.h>
 

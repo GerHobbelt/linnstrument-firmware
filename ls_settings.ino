@@ -17,6 +17,7 @@ These functions handle the changing of any of LinnStrument's panel settings.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 // These messages correspond to the scrolling texts that will be displayed by default when pressing
 // the top-most row in global settings. Only the first 30 characters will be used.

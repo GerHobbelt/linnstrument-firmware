@@ -66,6 +66,7 @@ These routines handle the painting of these display modes on LinnStument's 208 L
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 
 unsigned long displayModeStart = 0;    // indicates when the current display mode was activated

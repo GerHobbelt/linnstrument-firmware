@@ -17,6 +17,7 @@ These implement the polyphonic expressive step sequencer, independently for each
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 struct SequencerConstantsT {
   constexpr static const byte FADER_TOP = 3;

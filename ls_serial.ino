@@ -17,6 +17,7 @@ limitations under the License.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 #include <string.h>
 

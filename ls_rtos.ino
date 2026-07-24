@@ -20,6 +20,7 @@ Arduino's delayMicroseconds() function.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 // delayUsec:
 // use to insert a brief time delay.

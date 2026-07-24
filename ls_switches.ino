@@ -24,6 +24,7 @@ normally-open and normally-closed switches.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 void initializeSwitches() {
   // read initial state of each in order to determine if nornally-open or

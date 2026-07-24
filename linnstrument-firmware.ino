@@ -131,6 +131,7 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 #include "ls_channelbucket.h"
 #include "ls_midi.h"
 #include "ls_alignToWord.h"
+#include "ls_calcTimeDelta.h"
 
 /******************************************** CONSTANTS ******************************************/
 
@@ -400,9 +401,6 @@ const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS + 1) * LED_LAYER_SIZE;
 // convenience macros to easily access the cells with touch information
 #define cell(col, row)             touchInfo[col][row]
 #define virtualCell()              virtualTouchInfo[sensorRow]
-
-// calculate the difference between now and a previous timestamp, taking a possible single overflow into account
-#define calcTimeDelta(now, last)   (now < last ? now + ~last : now - last)
 
 // obtain the focused cell for a channel in a split
 #define focus(split, channel)      focusCell[split][channel - 1]

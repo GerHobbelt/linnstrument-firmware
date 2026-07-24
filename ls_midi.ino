@@ -19,6 +19,7 @@ These are the MIDI functions for the LinnStrument
 #include "ls_compiler_tweaks.h"
 #include "ls_bytebuffer.h"
 #include "ls_midi.h"
+#include "ls_calcTimeDelta.h"
 
 #define MAX_SYSEX_LENGTH 256
 
