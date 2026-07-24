@@ -18,6 +18,8 @@ limitations under the License.
 
 #include "ls_compiler_tweaks.h"
 
+#include <string.h>
+
 // Handshake codes for settings transfer
 static const struct HandshakeCodes {
   const char* countDownCode;
@@ -590,8 +592,8 @@ regular serial listening...
 TweakSettings is a group of human console/terminal mode usable subcommands,
 such as:
 
-  updt <N>      set ram & other diagnostics update time in seconds.
-                0 resets to the default period.
+  updt <N>      set ram & other diagnostics display update time in milliseconds.
+                0 resets to the default period (500 msecs).
   dbgl <N>      set the debug level to N: higher is more verbose.
 
   (note: when no <N> parameter has been specified, the current value will
@@ -609,8 +611,10 @@ Enjoy!
 static bool strieq(const char *s1, const char *s2) {
   if (!s1 || !s2)
     return false;
-  return stricmp(s1, s2) == 0;
+  return strcasecmp(s1, s2) == 0;
 }
+
+extern unsigned long debugDisplayUpdatePeriod;
 
 void serialTweakSettings() {
   // expect subcommand, with optional parameter(s):
@@ -651,13 +655,13 @@ void serialTweakSettings() {
     if (param) {
       int l = atoi(param);
       if (l <= 0)
-        l = 5;
-      diagFreeRamUpdatePeriod = l;
+        l = 500;
+      debugDisplayUpdatePeriod = l * 1000;
     }
     // else: report current debug level.
-    Serial.print("diagFreeRam update period = ");
-    Serial.print(diagFreeRamUpdatePeriod);
-    Serial.println(" seconds");
+    Serial.print("debugDisplay info blurbs update period = ");
+    Serial.print(debugDisplayUpdatePeriod / 1000);
+    Serial.println(" milliseconds");
   }
   else if (cmd) {
     Serial.print("unsupported subcommand: ");

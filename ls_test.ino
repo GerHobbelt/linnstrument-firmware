@@ -133,10 +133,14 @@ void debugprint_funcname_L0(const char *fname) {
   }
 }
 
+// -----------------------------------------------------------------------
+
+unsigned long debugDisplayUpdatePeriod = 500000;
+
 void displayDigitalPins() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
     Serial.println();
@@ -204,7 +208,7 @@ void displayXFrame() {
 
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
     Serial.println();
@@ -236,7 +240,7 @@ void displayYFrame() {
 
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
     
     Serial.println();
@@ -264,7 +268,7 @@ void displayYFrame() {
 void displayZFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
     
     Serial.println();
@@ -295,7 +299,7 @@ void displaySurfaceScanTime() {
     static int scanCount = 0; 
     static unsigned long scanPeriod = micros();
     ++scanCount;
-    if (calcTimeDelta(now, lastFrame) >= 500000 && scanCount > 0) {
+    if (calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod && scanCount > 0) {
       lastFrame = now;
       Serial.print("Total surface scan time in microseconds: ");
       Serial.print((micros() - scanPeriod) / scanCount);
@@ -313,7 +317,7 @@ void displaySurfaceScanTime() {
 void displayCellTouchedFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
     Serial.println();
@@ -470,7 +474,7 @@ char* ramend = (char*)0x20088000;
 void debugFreeRam() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (Device.serialMode && sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (Device.serialMode && sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
     register char* stack_ptr asm ("sp");
