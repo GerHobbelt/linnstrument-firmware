@@ -1700,7 +1700,7 @@ void loop() {
   }
 }
 
-inline void modeLoopPerformance() {
+void modeLoopPerformance() {
   if (displayMode == displayReset) {                             // if reset is active, don't process any input data
     if (calcTimeDelta(millis(), lastReset) > 3000) {             // restore normal operations three seconds after the reset started
       applySystemState();
