@@ -25,47 +25,47 @@ void TC0_Handler(void) {
   // As parameters use the first two parameters used in startTimer (TCx, ch) in this case.
   TC_GetStatus(TC0, 0);
 
-  TC_hitcount[0]++;
+  TC_hitcount[0] += 1;
 }
 void TC1_Handler(void) {
   TC_GetStatus(TC0, 1);
 
-    TC_hitcount[1]++;
+    TC_hitcount[1] += 1;
 }
 void TC2_Handler(void) {  
   TC_GetStatus(TC0, 2);
 
-  TC_hitcount[2]++;
+  TC_hitcount[2] += 1;
 }
 void TC3_Handler(void) {
   TC_GetStatus(TC1, 0);
 
-    TC_hitcount[3]++;
+    TC_hitcount[3] += 1;
 }
 void TC4_Handler(void) {
   TC_GetStatus(TC1, 1);
 
-    TC_hitcount[4]++;
+    TC_hitcount[4] += 1;
 }
 void TC5_Handler(void) {
   TC_GetStatus(TC1, 2);
 
-    TC_hitcount[5]++;
+    TC_hitcount[5] += 1;
 }
 void TC6_Handler(void) {
   TC_GetStatus(TC2, 0);
 
-    TC_hitcount[6]++;
+    TC_hitcount[6] += 1;
 }
 void TC7_Handler(void) {
   TC_GetStatus(TC2, 1);
 
-    TC_hitcount[7]++;
+    TC_hitcount[7] += 1;
 }
 void TC8_Handler(void) {
   TC_GetStatus(TC2, 2);
 
-    TC_hitcount[8]++;
+    TC_hitcount[8] += 1;
 }
 
 // https://forum.arduino.cc/t/timer-interrupts-on-due/127643/19

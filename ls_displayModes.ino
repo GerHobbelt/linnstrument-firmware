@@ -13,7 +13,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ***************************************************************************************************
-There are 13 different display modes.
+There are N different display modes.
 
 These are the possible values of the global variable displayMode:
 
@@ -1653,15 +1653,19 @@ void paintOctave(byte color, byte midcol, byte row, short octave) {
     case -60:
       setLed(midcol-5, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      FALLTHROUGH; // fall through
     case -48:
       setLed(midcol-4, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      FALLTHROUGH; // fall through
     case -36:
       setLed(midcol-3, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      FALLTHROUGH; // fall through
     case -24:
       setLed(midcol-2, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      FALLTHROUGH; // fall through
     case -12:
       setLed(midcol-1, row, color, cellOn);
       break;
@@ -1669,15 +1673,19 @@ void paintOctave(byte color, byte midcol, byte row, short octave) {
     case 60:
       setLed(midcol+5, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      FALLTHROUGH; // fall through
     case 48:
       setLed(midcol+4, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      FALLTHROUGH; // fall through
     case 36:
       setLed(midcol+3, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      FALLTHROUGH; // fall through
     case 24:
       setLed(midcol+2, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      FALLTHROUGH; // fall through
     case 12:
       setLed(midcol+1, row, color, cellOn);
       break;
@@ -2027,7 +2035,7 @@ void paintGlobalSettingsDisplay() {
 
   if (displayMode == displayGlobalWithTempo) {
     byte color = Split[LEFT].colorMain;
-    char str[4];
+    char str[12];
     snprintf(str, sizeof(str), "%3d", FXD4_TO_INT(fxd4CurrentTempo));
     tinyfont_draw_string(0, 4, str, color);
   }

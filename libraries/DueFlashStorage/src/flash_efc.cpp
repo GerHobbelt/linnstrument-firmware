@@ -62,23 +62,8 @@ extern "C" {
  * @{
  */
 
-#if SAM4E
 /* User signature size */
 # define FLASH_USER_SIG_SIZE   (512)
-#endif
-
-#if SAM4S
-/* Internal Flash Controller 0. */
-# define EFC     EFC0
-/* User signature size */
-# define FLASH_USER_SIG_SIZE   (512)
-/* Internal Flash 0 base address. */
-# define IFLASH_ADDR     IFLASH0_ADDR
-/* Internal flash page size. */
-# define IFLASH_PAGE_SIZE     IFLASH0_PAGE_SIZE
-/* Internal flash lock region size. */
-# define IFLASH_LOCK_REGION_SIZE     IFLASH0_LOCK_REGION_SIZE
-#endif
 
 /* Internal Flash Controller 0. */
 # define EFC     EFC0
@@ -485,7 +470,9 @@ uint32_t flash_erase_sector(uint32_t ul_address)
 int flash_memcmp(const uint8_t *p_dst_address, const uint8_t *p_src_address, uint32_t size)
 {
   int state = 0;
+#if 0	     // this code chunk is more suitable for EEPROM; the SAM3 flash has some very specific non-EEPROM-alike behaviour though!
   while (size > 0) {
+    size--;
     uint8_t dv = *p_dst_address++;
     uint8_t sv = *p_src_address++;
 	uint8_t change = dv ^ sv;
@@ -503,6 +490,31 @@ int flash_memcmp(const uint8_t *p_dst_address, const uint8_t *p_src_address, uin
 	  state = 1;
 	}
   }
+#else
+  // Atmel/Microchip SAM3X datasheet says the flash can only be be programmed in strips of 128 bits,
+  // so everything must be 0XFF in there before we go and try to write anything without erasing first!
+  while (size > 0) {
+    size--;
+    uint8_t dv = *p_dst_address++;
+    uint8_t sv = *p_src_address++;
+	uint8_t change = dv ^ sv;
+	if (change != 0) {
+	  // when any of the bits are 1 in the XOR result, then that implies change.
+	  // Now we need to find out if the addressed 128-bit strip is empty or not. If it isn't: erase required.
+      intptr_t d = (intptr_t)(p_dst_address - 1);
+	  d &= ~(intptr_t)0x1F;	// align to 128-bit boundary
+	  uint64_t *dp = (uint64_t *)d;
+	  if (~dp[0] != 0 || ~dp[1] != 0) {
+	    // entire chunk carries some non-0xFF bytes: erase required!
+        return -1;
+	  }
+	  // when the current byte does not require a mandatory erase cycle, that doesn't mean
+	  // any subsequent byte in the buffer may not require such, so we better make sure and scan
+	  // the remainder of the buffer, until we hit either the worst-case scenario or reach the end.
+	  state = 1;
+	}
+  }
+#endif
   return state;
 }
 
@@ -645,7 +657,7 @@ uint32_t flash_write(uint32_t ul_address, const void *p_buffer,
 			}
 
 			if ((match < 0) && !ul_erase_flag) {
-				return EFC_RC_NEEDS_ERASE;
+				return FLASH_RC_NEEDS_ERASE;
 			}
 
 			if (ul_erase_flag) {
@@ -661,7 +673,7 @@ uint32_t flash_write(uint32_t ul_address, const void *p_buffer,
 			}
 		}
 		else {
-			flash_debug(1, "Flash sector already contains matching data: skipping write operation\n");
+			flash_debug(1, "Flash sector already contains matching data: skipping write operation.");
 		}
 		
 		/* Progression */
