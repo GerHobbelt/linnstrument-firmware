@@ -49,11 +49,8 @@
 
 /* Internal Flash 0 base address. */
 #define IFLASH_ADDR     IFLASH0_ADDR
-	/* Internal flash page size. */
+/* Internal flash page size. */
 #define IFLASH_PAGE_SIZE     IFLASH0_PAGE_SIZE
-
-/* Last page start address. */
-#define IFLASH_LAST_PAGE_ADDRESS (IFLASH1_ADDR + IFLASH1_SIZE - IFLASH1_PAGE_SIZE)
 
 /// @cond 0
 /**INDENT-OFF**/
@@ -69,8 +66,9 @@ typedef enum flash_rc {
 	FLASH_RC_OK = 0,        //!< Operation OK
 	FLASH_RC_YES = 0,       //!< Yes
 	FLASH_RC_NO = 1,        //!< No
-	FLASH_RC_ERROR = 0x10,  //!< General error
-	FLASH_RC_INVALID,       //!< Invalid argument input
+	FLASH_RC_ERROR = 0x10,               //!< General error
+	FLASH_RC_INVALID = 0x20,             //!< Invalid argument input
+	FLASH_RC_NEEDS_ERASE = 0x40,         //!< (Write) Operation failed: the region must be erased before this one can succeed.
 	FLASH_RC_NOT_SUPPORT = 0xFFFFFFFF    //!< Operation is not supported
 } flash_rc_t;
 //! @}
