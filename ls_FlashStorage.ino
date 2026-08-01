@@ -10,11 +10,39 @@
 
 #if FLASH_DEBUG
 
-void flash_debug(int level, const char* message) {
-	static const char* levels[] = { "Info", "Warning", "Error" };
-	DEBUGPRINT((0, levels[level]));
-	DEBUGPRINT((0, ": "));
-	DEBUGPRINT((0, message));
+#pragma pack(push, 1)
+struct FlashDebugMessageStore {
+  uint8_t depth;
+  int8_t level[3];
+  const char *message[3];
+} flash_debug_msg_store{0, {}, {}};
+#pragma pack(pop)
+
+// non-weak: this one overrides the default debug output function in the library
+extern "C"
+void flash_debug(int level, const char *message) {
+  uint8_t d = flash_debug_msg_store.depth;
+  if (d < 3) {
+    flash_debug_msg_store.level[d] = level;
+    flash_debug_msg_store.message[d] = message;
+    flash_debug_msg_store.depth = d + 1;
+  }
+}
+
+void display_flash_debug_messages() {
+  static const char* levels[] = { "Info", "Warning", "Error" };
+  
+  uint8_t d = flash_debug_msg_store.depth;
+  for (uint8_t i = 0; i < d; i++) {
+    DEBUGPRINT((0, "  flash ["));
+    DEBUGPRINT((0, (int)i));
+    DEBUGPRINT((0, "] level "));
+    DEBUGPRINT((0, levels[flash_debug_msg_store.level[i]]));
+    DEBUGPRINT((0, ": "));
+    DEBUGPRINT((0, flash_debug_msg_store.message[i]));
+    DEBUGPRINT((0, "\n"));
+  }
+  flash_debug_msg_store.depth = 0;
 }
 
 #endif
@@ -32,8 +60,8 @@ void flash_debug(int level, const char* message) {
 #define IRAM0_SIZE (0x10000u)
 #define IRAM1_SIZE (0x8000u)
 #define NFCRAM_SIZE (0x1000u)
-#define IFLASH_SIZE (IFLASH0_SIZE + IFLASH1_SIZE)
-#define IRAM_SIZE (IRAM0_SIZE + IRAM1_SIZE)
+//#define IFLASH_SIZE (IFLASH0_SIZE + IFLASH1_SIZE)
+//#define IRAM_SIZE (IRAM0_SIZE + IRAM1_SIZE)
 
 byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
 
@@ -78,7 +106,7 @@ struct FlashBlockFooter {
 uint32_t locateSettingsBootBlock() {
 	DEBUGPRINT_FUNCNAME();
 
-	uint32_t pos = IFLASH0_SIZE;
+	//uint32_t pos = IFLASH0_SIZE;
 	//byte bootblock = dueFlashStorage.read(pos);
 	//settingsBootBlockOffset;  // getFirstFreeBlock
 
@@ -138,22 +166,22 @@ AddressInfo AppDataFlashStorage::allocateSettingsStorageSpace(uint32_t size) {
 }
 
 
-	const AddressInfo AppDataFlashStorage::getConfigPresetAddressInfo(uint16_t presetId) const {
+const AddressInfo AppDataFlashStorage::getConfigPresetAddressInfo(uint16_t presetId) const {
 	return {
 		.address = nullptr,
 		.size = 0
 	};
 }
 
-	AddressInfo AppDataFlashStorage::allocateConfigPresetStorageSpace(uint16_t presetId, uint32_t size) {
+AddressInfo AppDataFlashStorage::allocateConfigPresetStorageSpace(uint16_t presetId, uint32_t size) {
 	return {
 		.address = nullptr,
 		.size = 0
 	};
 }
 
-   void AppDataFlashStorage::markSectionAsValid(const AddressInfo &chunkInfo) {
-	 }
+void AppDataFlashStorage::markSectionAsValid(const AddressInfo &chunkInfo) {
+}
 
 #else
 
@@ -262,7 +290,7 @@ AddressInfo AppDataFlashStorage::allocateSettingsStorageSpace(uint32_t size) {
 	};
 }
 
-   void AppDataFlashStorage::markSectionAsValid(const AddressInfo &chunkInfo) {
-	 }
+void AppDataFlashStorage::markSectionAsValid(const AddressInfo &chunkInfo) {
+}
 
 #endif
