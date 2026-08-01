@@ -24,6 +24,7 @@ normally-open and normally-closed switches.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 void initializeSwitches() {
   // read initial state of each in order to determine if nornally-open or
@@ -163,7 +164,7 @@ void doSwitchReleasedForSplit(byte whichSwitch, byte assignment, byte split) {
   // the last time the switch was pressed
   boolean isHeld = (calcTimeDelta(millis(), lastSwitchPress[whichSwitch]) > SWITCH_HOLD_DELAY);
 
-  // foot switches have no hold or toggle havior based on time, but rather based on function
+  // foot switches have no hold or toggle behavior based on time, but rather based on function
   if (whichSwitch == SWITCH_FOOT_L || whichSwitch == SWITCH_FOOT_R || whichSwitch == SWITCH_FOOT_B) {
     if (isStatefulSwitchAssignment(assignment)) {
       isHeld = true;
