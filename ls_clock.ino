@@ -20,7 +20,7 @@ active tempo will be calculated.
 
 #include "ls_compiler_tweaks.h"
 
-constexpr const unsigned long INTERNAL_CLOCK_UNIT_BASE = 2500000;  // 1000000 ( microsecond) * 60 ( minutes - bpm) / 24 ( frames per beat)
+constexpr const unsigned long INTERNAL_CLOCK_UNIT_BASE = 2500000;  // 1000000 (microsecond) * 60 (minutes - bpm) / 24 (frames per beat)
 
 unsigned long prevClockTimerCount;                       // the last time the microsecond timer was updated for the musical clock
 
