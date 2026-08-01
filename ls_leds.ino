@@ -17,6 +17,7 @@ These functions handle the low-level communication with LinnStrument's 208 RGB L
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 /*
  LinnStrument contains an array of 208 RGB LEDs arranged in a 26 by 8 matrix.

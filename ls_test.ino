@@ -17,6 +17,9 @@ Assorted debug functions.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
+
+#include <alloca.h>
 
 
 static void debugPrint1(const char* msg) {
@@ -133,10 +136,14 @@ void debugprint_funcname_L0(const char *fname) {
   }
 }
 
+// -----------------------------------------------------------------------
+
+unsigned long debugDisplayUpdatePeriod = 500000;
+
 void displayDigitalPins() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
     Serial.println();
@@ -204,7 +211,7 @@ void displayXFrame() {
 
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
     Serial.println();
@@ -236,7 +243,7 @@ void displayYFrame() {
 
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
     
     Serial.println();
@@ -264,7 +271,7 @@ void displayYFrame() {
 void displayZFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
     
     Serial.println();
@@ -295,7 +302,7 @@ void displaySurfaceScanTime() {
     static int scanCount = 0; 
     static unsigned long scanPeriod = micros();
     ++scanCount;
-    if (calcTimeDelta(now, lastFrame) >= 500000 && scanCount > 0) {
+    if (calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod && scanCount > 0) {
       lastFrame = now;
       Serial.print("Total surface scan time in microseconds: ");
       Serial.print((micros() - scanPeriod) / scanCount);
@@ -313,7 +320,7 @@ void displaySurfaceScanTime() {
 void displayCellTouchedFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
     Serial.println();
@@ -470,8 +477,18 @@ char* ramend = (char*)0x20088000;
 void debugFreeRam() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (Device.serialMode && sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (Device.serialMode && sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
+
+    Serial.println("-----------------------------------------------------");
+
+    Serial.print("Serial console: waitingForCommands=");
+    Serial.print(waitingForCommands);
+    Serial.print(", controlModeActive=");
+    Serial.print(controlModeActive);
+    Serial.print(", codePos=");
+    Serial.print(codePos);
+    Serial.println(" -- send '?' to see the online help.");
 
     register char* stack_ptr asm ("sp");
     Serial.print("RAM static:");
@@ -488,45 +505,96 @@ void debugFreeRam() {
     Serial.print(stack_ptr - &_end);
     Serial.print("\n");
 
+    static bool stack_init_for_usage_scan_done = false;
+    if (!stack_init_for_usage_scan_done) {
+      // do NOT adjust the stack frame pointer, merely get us an 4K memory area below the current stack frame:
+#if 0
+      uint32_t *chunk_4K = (uint32_t *)alloca(4096);
+#else
+      uint32_t *chunk_4K = (uint32_t *)alloca(16);
+      chunk_4K -= (4096 - 16) / 4;
+#endif      
+
+      Serial.println("Stack Scan init: writing a 4K pattern.");
+
+      for (unsigned int i = 0; i < 1024; i++) {
+        // write a special pattern in this chunk:
+        chunk_4K[i++] = 0xA5DEADA5U;
+        chunk_4K[i] = 0xDEADBEADU + i;
+      }
+
+      stack_init_for_usage_scan_done = true;
+    }
+    else {
+      Serial.println("Stack Scan exec: scan stack downwards towards 4K pattern occurrence.");
+
+      // scan the stack to see how much we used...
+      uint32_t *spp = (uint32_t *)(((intptr_t)stack_ptr) & ~0x03); // align at 32-bit boundary, just like alloca() did before.
+      uint32_t *chunk_4K = spp - 1200;  // scan a little more area than we previously initialized, just for argument sake...
+      uint32_t *first = nullptr;
+      uint32_t *last = nullptr;
+      for (unsigned int i = 0; i < 1200; i++) {
+        // try to locate the special pattern in this chunk:
+        if (chunk_4K[i] == 0xA5DEADA5U && chunk_4K[i + 1] >= 0xDEADBEADU && chunk_4K[i + 1] < 0xDEADBEADU + 1024) {
+          if (!first)
+            first = chunk_4K + i;
+          last = chunk_4K + i;
+        }
+      }
+
+      Serial.print("Stack Scan: unused area pattern @ first = ");
+      Serial.print(stack_ptr - (char *)first);
+      Serial.print(", last = ");
+      Serial.print(stack_ptr - (char *)last);
+      Serial.print(" ==> max stack usage until now = ");
+      Serial.print(&_estack - (char *)last);
+      Serial.println(" bytes.");
+    }
+
     // read RTT (Real Time Timer) value (seconds elapsed):
     const RoReg& rtt_vr = REG_RTT_VR;
     Serial.print("Real Time Timer: RTT_VR:");
     Serial.print(rtt_vr);
     Serial.print("\n");
 
-    Serial.print("Chip Identifier: 	CHIPID_CIDR:");
-    const RoReg& cidr = REG_CHIPID_CIDR;
-    const RoReg& cidr_ext = REG_CHIPID_EXID;
-    const auto v = cidr;
-    const auto ext = v >> 31;
-    const auto nvptyp = (v >> 28) & 0b0111;
-    const auto arch = (v >> 20) & 0b11111111;
-    const auto sramsiz = (v >> 16) & 0b1111;
-    const auto nvpsiz2 = (v >> 12) & 0b1111;
-    const auto nvpsiz1 = (v >> 8) & 0b1111;
-    const auto eproc = (v >> 5) & 0b0111;
-    const auto version = (v >> 0) & 0b00011111;
-    Serial.print(v, 16);
-    Serial.print(" EXT:");
-    Serial.print(ext, 16);
-    Serial.print(" NVPTYP:");
-    Serial.print(nvptyp, 16);
-    Serial.print(" ARCH:");
-    Serial.print(arch, 16);
-    Serial.print(" SRAMSIZ:");
-    Serial.print(sramsiz, 16);
-    Serial.print(" NVPSIZ2:");
-    Serial.print(nvpsiz2, 16);
-    Serial.print(" NVPSIZ1:");
-    Serial.print(nvpsiz1, 16);
-    Serial.print(" EPROC:");
-    Serial.print(eproc, 16);
-    Serial.print(" VERSION:");
-    Serial.print(version, 16);
+    static bool chip_shown = false;
+    if (!chip_shown) {
+      chip_shown = true;
+        
+      Serial.print("Chip Identifier: 	CHIPID_CIDR:");
+      const RoReg& cidr = REG_CHIPID_CIDR;
+      const RoReg& cidr_ext = REG_CHIPID_EXID;
+      const auto v = cidr;
+      const auto ext = v >> 31;
+      const auto nvptyp = (v >> 28) & 0b0111;
+      const auto arch = (v >> 20) & 0b11111111;
+      const auto sramsiz = (v >> 16) & 0b1111;
+      const auto nvpsiz2 = (v >> 12) & 0b1111;
+      const auto nvpsiz1 = (v >> 8) & 0b1111;
+      const auto eproc = (v >> 5) & 0b0111;
+      const auto version = (v >> 0) & 0b00011111;
+      Serial.print(v, 16);
+      Serial.print(" EXT:");
+      Serial.print(ext, 16);
+      Serial.print(" NVPTYP:");
+      Serial.print(nvptyp, 16);
+      Serial.print(" ARCH:");
+      Serial.print(arch, 16);
+      Serial.print(" SRAMSIZ:");
+      Serial.print(sramsiz, 16);
+      Serial.print(" NVPSIZ2:");
+      Serial.print(nvpsiz2, 16);
+      Serial.print(" NVPSIZ1:");
+      Serial.print(nvpsiz1, 16);
+      Serial.print(" EPROC:");
+      Serial.print(eproc, 16);
+      Serial.print(" VERSION:");
+      Serial.print(version, 16);
 
-    Serial.print("    CIDR_EXT:");
-    Serial.print(cidr_ext, 16);
-    Serial.print("\n");
+      Serial.print("    CIDR_EXT:");
+      Serial.print(cidr_ext, 16);
+      Serial.print("\n");
+    }
 
     // TC_hitcount
     Serial.print("TC_hitcount: t=");

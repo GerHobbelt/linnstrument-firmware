@@ -89,12 +89,14 @@ void SPIClass::usingInterrupt(uint8_t interruptNumber)
 			} else if (pio == PIOB) {
 				interruptMode |= 2;
 				interruptMask[1] |= mask;
+#if defined(PIOC) && defined(PIOD)
 			} else if (pio == PIOC) {
 				interruptMode |= 4;
 				interruptMask[2] |= mask;
 			} else if (pio == PIOD) {
 				interruptMode |= 8;
 				interruptMask[3] |= mask;
+#endif
 			} else {
 				interruptMode = 16;
 			}
@@ -110,8 +112,10 @@ void SPIClass::beginTransaction(uint8_t pin, SPISettings settings)
 		if (mode < 16) {
 			if (mode & 1) PIOA->PIO_IDR = interruptMask[0];
 			if (mode & 2) PIOB->PIO_IDR = interruptMask[1];
+#if defined(PIOC) && defined(PIOD)
 			if (mode & 4) PIOC->PIO_IDR = interruptMask[2];
 			if (mode & 8) PIOD->PIO_IDR = interruptMask[3];
+#endif
 		} else {
 			interruptSave = interruptsStatus();
 			noInterrupts();
@@ -132,8 +136,10 @@ void SPIClass::endTransaction(void)
 		if (mode < 16) {
 			if (mode & 1) PIOA->PIO_IER = interruptMask[0];
 			if (mode & 2) PIOB->PIO_IER = interruptMask[1];
+#if defined(PIOC) && defined(PIOD)
 			if (mode & 4) PIOC->PIO_IER = interruptMask[2];
 			if (mode & 8) PIOD->PIO_IER = interruptMask[3];
+#endif
 		} else {
 			if (interruptSave) interrupts();
 		}
@@ -161,7 +167,7 @@ void SPIClass::setDataMode(uint8_t _pin, uint8_t _mode) {
 	mode[ch] = _mode | SPI_CSR_CSAAT;
 	// SPI_CSR_DLYBCT(1) keeps CS enabled for 32 MCLK after a completed
 	// transfer. Some device needs that for working properly.
-	SPI_ConfigureNPCS(spi, ch, mode[ch] | SPI_CSR_SCBR(divider[ch]) | dataWidth[ch] | SPI_CSR_DLYBCT(1));
+	SPI_ConfigureNPCS(spi, ch, mode[ch] | SPI_CSR_SCBR(divider[ch]) | uint32_t(dataWidth[ch]) | SPI_CSR_DLYBCT(1));
 }
 
 void SPIClass::setDataWidth(uint8_t _pin, uint8_t _dataWidth) {
@@ -169,7 +175,7 @@ void SPIClass::setDataWidth(uint8_t _pin, uint8_t _dataWidth) {
 	dataWidth[ch] = _dataWidth;
 	// SPI_CSR_DLYBCT(1) keeps CS enabled for 32 MCLK after a completed
 	// transfer. Some device needs that for working properly.
-	SPI_ConfigureNPCS(spi, ch, mode[ch] | SPI_CSR_SCBR(divider[ch]) | dataWidth[ch] | SPI_CSR_DLYBCT(1));
+	SPI_ConfigureNPCS(spi, ch, mode[ch] | SPI_CSR_SCBR(divider[ch]) | uint32_t(dataWidth[ch]) | SPI_CSR_DLYBCT(1));
 }
 
 void SPIClass::setClockDivider(uint8_t _pin, uint8_t _divider) {
@@ -177,7 +183,7 @@ void SPIClass::setClockDivider(uint8_t _pin, uint8_t _divider) {
 	divider[ch] = _divider;
 	// SPI_CSR_DLYBCT(1) keeps CS enabled for 32 MCLK after a completed
 	// transfer. Some device needs that for working properly.
-	SPI_ConfigureNPCS(spi, ch, mode[ch] | SPI_CSR_SCBR(divider[ch]) | dataWidth[ch] | SPI_CSR_DLYBCT(1));
+	SPI_ConfigureNPCS(spi, ch, mode[ch] | SPI_CSR_SCBR(divider[ch]) | uint32_t(dataWidth[ch]) | SPI_CSR_DLYBCT(1));
 }
 
 // only works if data mode is set correctly to SPI_CSR_BITS_16_BIT
