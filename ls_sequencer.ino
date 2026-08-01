@@ -17,6 +17,7 @@ These implement the polyphonic expressive step sequencer, independently for each
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 struct SequencerConstantsT {
   constexpr static const byte FADER_TOP = 3;
@@ -3330,40 +3331,6 @@ void StepSequencerState::selectPattern(byte pattern) {
 }
 
 boolean checkProjectIntegrity(const AddressInfo& info) {
-
-#if 0
-
-struct StepData {
-  void clear();
-
-  //void operator=(const StepData& d);
-  
-  StepEvent events[MAX_SEQUENCER_STEP_EVENTS];  // the events for each step
-};
-struct SequencerPattern {
-  void clear();
-
-  //void operator=(const SequencerPattern& p);
-
-  StepData steps[MAX_SEQUENCER_STEPS];
-  SequencerStepSize stepSize;             // see SequencerStepSize
-  SequencerDirection sequencerDirection;  // see SequencerDirection
-  boolean loopScreen;                     // on or off
-  boolean swing;                          // on or off
-  byte length;                            // between 1 to 32 steps
-};
-struct StepSequencer {
-  SequencerPattern patterns[MAX_SEQUENCER_PATTERNS];  // patterns available for each sequencer
-  byte seqDrumNotes[SEQ_DRUM_NOTES];                  // note numbers from 0 to 127
-};
-struct SequencerProject {
-  StepSequencer sequencer[MAX_SEQUENCERS];            // the sequencers available in a project
-  unsigned short tempo;
-};
-#define Project config.project
-
-#endif
-
   const SequencerProject* project = (const SequencerProject*)info.address;
   if (!project || info.size != sizeof(SequencerProject))
     return false;
