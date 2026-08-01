@@ -117,7 +117,7 @@ extern "C" {
 /*
  * Pins descriptions
  */
-extern const PinDescription g_APinDescription[]=
+extern const PinDescription g_APinDescription[] =
 {
   // 0 .. 53 - Digital pins
   // ----------------------
@@ -286,7 +286,8 @@ extern const PinDescription g_APinDescription[]=
   { PIOA, PIO_PA1A_CANRX0|PIO_PA0A_CANTX0, ID_PIOA, PIO_PERIPH_A, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC,  NO_ADC, NOT_ON_PWM,  NOT_ON_TIMER },
   // 91 - CAN1 all pins
   { PIOB, PIO_PB15A_CANRX1|PIO_PB14A_CANTX1, ID_PIOB, PIO_PERIPH_A, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC, NO_ADC, NOT_ON_PWM,  NOT_ON_TIMER },
-
+  // 92 - USART2 (Serial4) all pins
+  { PIOB, PIO_PB20A_TXD2|PIO_PB21A_RXD2, ID_PIOB, PIO_PERIPH_A, PIO_DEFAULT, (PIN_ATTR_DIGITAL|PIN_ATTR_COMBO), NO_ADC, NO_ADC, NOT_ON_PWM, NOT_ON_TIMER },
   // END
   { NULL, 0, 0, PIO_NOT_A_PIN, PIO_DEFAULT, 0, NO_ADC, NO_ADC, NOT_ON_PWM, NOT_ON_TIMER }
 } ;
@@ -301,14 +302,16 @@ uint8_t g_pinStatus[PINS_COUNT] = {0};
 /*
  * UART objects
  */
-RingBuffer rx_buffer1;
-RingBuffer tx_buffer1;
+TinyRingBuffer rx_buffer1;
+TinyRingBuffer tx_buffer1;
 
 UARTClass Serial(UART, UART_IRQn, ID_UART, &rx_buffer1, &tx_buffer1);
+
 void serialEvent() __attribute__((weak));
 void serialEvent() { }
 
 // IT handlers
+void UART_Handler(void)  __attribute__((weak));
 void UART_Handler(void)
 {
   Serial.IrqHandler();
@@ -318,12 +321,14 @@ void UART_Handler(void)
 /*
  * USART objects
  */
-RingBuffer rx_buffer2;
-RingBuffer rx_buffer3;
-RingBuffer rx_buffer4;
-RingBuffer tx_buffer2;
-RingBuffer tx_buffer3;
-RingBuffer tx_buffer4;
+TinyRingBuffer rx_buffer2;
+TinyRingBuffer rx_buffer3;
+TinyRingBuffer rx_buffer4;
+TinyRingBuffer rx_buffer5;
+TinyRingBuffer tx_buffer2;
+TinyRingBuffer tx_buffer3;
+TinyRingBuffer tx_buffer4;
+TinyRingBuffer tx_buffer5;
 
 USARTClass Serial1(USART0, USART0_IRQn, ID_USART0, &rx_buffer2, &tx_buffer2);
 void serialEvent1() __attribute__((weak));
@@ -334,21 +339,29 @@ void serialEvent2() { }
 USARTClass Serial3(USART3, USART3_IRQn, ID_USART3, &rx_buffer4, &tx_buffer4);
 void serialEvent3() __attribute__((weak));
 void serialEvent3() { }
+USARTClass Serial4(USART2, USART2_IRQn, ID_USART2, &rx_buffer5, &tx_buffer5);
+void serialEvent4() __attribute__((weak));
+void serialEvent4() { }
 
 // IT handlers
-void USART0_Handler(void)
+__attribute__((weak)) void USART0_Handler(void)
 {
   Serial1.IrqHandler();
 }
 
-void USART1_Handler(void)
+__attribute__((weak)) void USART1_Handler(void)
 {
   Serial2.IrqHandler();
 }
 
-void USART3_Handler(void)
+__attribute__((weak)) void USART3_Handler(void)
 {
   Serial3.IrqHandler();
+}
+
+__attribute__((weak)) void USART2_Handler(void)
+{
+  Serial4.IrqHandler();
 }
 
 // ----------------------------------------------------------------------------
@@ -359,6 +372,7 @@ void serialEventRun(void)
   if (Serial1.available()) serialEvent1();
   if (Serial2.available()) serialEvent2();
   if (Serial3.available()) serialEvent3();
+  if (Serial4.available()) serialEvent4();
 }
 
 // ----------------------------------------------------------------------------
@@ -379,9 +393,6 @@ void init( void )
     // Capture error
     while (true);
   }
-
-  // Initialize C library
-  __libc_init_array();
 
   // Disable pull-up on every pin
   for (unsigned i = 0; i < PINS_COUNT; i++)
@@ -415,6 +426,11 @@ void init( void )
     g_APinDescription[PINS_USART3].ulPinType,
     g_APinDescription[PINS_USART3].ulPin,
     g_APinDescription[PINS_USART3].ulPinConfiguration);
+  PIO_Configure(
+    g_APinDescription[PINS_USART2].pPort,
+    g_APinDescription[PINS_USART2].ulPinType,
+    g_APinDescription[PINS_USART2].ulPin,
+    g_APinDescription[PINS_USART2].ulPinConfiguration);    
 
   // Initialize USB pins
   PIO_Configure(
@@ -445,6 +461,9 @@ void init( void )
 
   // Initialize analogOutput module
   analogOutputInit();
+
+  // Initialize C library and run C++ constructors
+  __libc_init_array();
 }
 
 #ifdef __cplusplus

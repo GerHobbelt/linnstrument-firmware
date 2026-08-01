@@ -19,6 +19,7 @@ active tempo will be calculated.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 constexpr const unsigned long INTERNAL_CLOCK_UNIT_BASE = 2500000;  // 1000000 (microsecond) * 60 (minutes - bpm) / 24 (frames per beat)
 

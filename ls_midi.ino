@@ -19,6 +19,7 @@ These are the MIDI functions for the LinnStrument
 #include "ls_compiler_tweaks.h"
 #include "ls_bytebuffer.h"
 #include "ls_midi.h"
+#include "ls_calcTimeDelta.h"
 
 #define MAX_SYSEX_LENGTH 256
 
@@ -107,12 +108,12 @@ void applyMidiIo() {
     if (isMidiUsingDIN()) {
       digitalWrite(36, LOW);   // Set LOW for DIN jacks
       Serial.begin(31250);     // set serial port at MIDI DIN speed 31250
-      Serial.flush();          // clear the serial port
+      Serial.drop();          // clear the serial port
     }
     else {
       digitalWrite(36, HIGH);  // Set HIGH for USB
-      Serial.begin(115200);    // set serial port at fastest speed 115200
-      Serial.flush();          // clear the serial port
+      Serial.begin(DEBUG_SERIAL_BAUDRATE);    // set serial port at fastest speed 115200
+      Serial.drop();          // clear the serial port
     }
   }
 

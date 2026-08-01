@@ -27,7 +27,7 @@ USARTClass::USARTClass( Usart* pUsart, IRQn_Type dwIrq, uint32_t dwId, RingBuffe
   : UARTClass((Uart*)pUsart, dwIrq, dwId, pRx_buffer, pTx_buffer)
 {
   // In case anyone needs USART specific functionality in the future
-  _pUsart=pUsart;
+  _pUsart = pUsart;
 }
 
 // Public Methods //////////////////////////////////////////////////////////////

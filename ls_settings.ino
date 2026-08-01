@@ -17,6 +17,7 @@ These functions handle the changing of any of LinnStrument's panel settings.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 // These messages correspond to the scrolling texts that will be displayed by default when pressing
 // the top-most row in global settings. Only the first 30 characters will be used.
@@ -80,7 +81,9 @@ void GlobalSettings::setSwitchAssignment(byte whichSwitch, byte assignment, bool
 }
 
 void switchSerialMode(boolean flag) {
-  DEBUGPRINT((3, "switchSerialMode:SOF\n"));
+  DEBUGPRINT((3, "switchSerialMode:SOF,"));
+  DEBUGPRINT((3, flag));
+  DEBUGPRINT((3, "\n"));
 
   if (controlModeActive) {
     controlModeActive = false;
@@ -117,9 +120,9 @@ void applySerialMode() {
   if (Device.serialMode) {
     lastMidiIO = getMidiSerialMode();
     digitalWrite(35, HIGH);
-    digitalWrite(36, HIGH);
-    Serial.begin(115200);
-    Serial.flush();
+    digitalWrite(36, HIGH);  // Set HIGH for USB
+    Serial.begin(DEBUG_SERIAL_BAUDRATE);
+    Serial.drop();
   } else {
     //lastMidiIO = getMidiSerialMode();  <-- this one is delt with in applyMidiIo() itself, hence DO NOT call here!
     digitalWrite(35, LOW);
