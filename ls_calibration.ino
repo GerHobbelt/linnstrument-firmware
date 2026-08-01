@@ -95,7 +95,7 @@ void initializeCalibrationSamples() {
 
 int32_t calculateReferenceX(byte col) {
   if (col == 0) {
-    return FXD_MUL(FXD_FROM_INT(-1), FXD_CALX_HALF_UNIT) + FXD_CALX_BORDER_OFFSET;;
+    return FXD_MUL(FXD_FROM_INT(-1), FXD_CALX_HALF_UNIT) + FXD_CALX_BORDER_OFFSET;
   }
   else if (col < NUMCOLS) {
     return FXD_MUL(FXD_CALX_FULL_UNIT, FXD_FROM_INT(col - 1)); // center in the middle of the cells
