@@ -16,11 +16,14 @@ limitations under the License.
 This shows a promotional animation that explains what's unique about the LinnStrument
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 void playPromoAnimation() {
   Device.sleepAnimationActive = true;
   storeSettings();
 
   setDisplayMode(displayAnimation);
+  clearFullDisplay();
 
   while (!stopAnimation) {
     clearFullDisplay();
@@ -206,7 +209,7 @@ void playPromoAnimation() {
   clearFullDisplay();
   Device.sleepAnimationActive = false;
   storeSettings();
-  
+
   lastTouchMoment = millis();
   setDisplayMode(displayNormal);
   updateDisplay();

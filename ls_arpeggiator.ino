@@ -18,7 +18,9 @@ system clock when that is active and with the internal tracking of how notes map
 the actual cell that was pressed, allowing velocity to be continuously varied during the arpeggiator
 sequence.
 ***************************************************************************************************/
-     
+
+#include "ls_compiler_tweaks.h"
+
 signed char playingArpNote[NUMSPLITS];                // the last note played by the arpeggiator or -1 if no note is still playing
 signed char playingArpChannel[NUMSPLITS];             // the last channel played by the arpeggiator or -1 if no note is still playing
 signed char stepArpNote[NUMSPLITS];                   // the current step note of the arpeggiator or -1 if it should be starting from scratch
@@ -50,21 +52,21 @@ void resetArpeggiatorState(byte split) {
   arpOctaveState[split] = 0;
 }
 
-byte getArpeggiatorNote(byte split, byte notenum) {
+inline byte getArpeggiatorNote(byte split, byte notenum) {
   return getOctaveNote(arpOctaveState[split], notenum);
 }
 
-byte getOctaveNote(byte octave, byte notenum) {
+inline byte getOctaveNote(byte octave, byte notenum) {
   return notenum + (octave * 12);
 }
 
-void temporarilyEnableArpeggiator() {
+inline void temporarilyEnableArpeggiator() {
   arpTempoDelta[sensorSplit] = 0;
   midiSendNoteOffForAllTouches(sensorSplit);
   resetArpeggiatorState(sensorSplit);
 }
 
-void disableTemporaryArpeggiator() {
+inline void disableTemporaryArpeggiator() {
   turnArpeggiatorOff(sensorSplit);
 }
 
@@ -94,7 +96,7 @@ void handleArpeggiatorNoteOff(byte split, byte notenum, byte channel) {
   }
 }
 
-void turnArpeggiatorOff(byte split) {
+inline void turnArpeggiatorOff(byte split) {
   sendArpeggiatorStepMidiOff(split);
   resetArpeggiatorState( split);
 }

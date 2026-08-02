@@ -23,6 +23,9 @@ are read subsequently, state is compared to these OFF states to insure valid pre
 normally-open and normally-closed switches.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
+
 void initializeSwitches() {
   // read initial state of each in order to determine if nornally-open or
   // normally-closed (like VFP2) switches are connected, or if nothing's connected.
@@ -62,7 +65,7 @@ void initializeSwitches() {
   }
 }
 
-boolean isStatefulSwitchAssignment(byte assignment) {
+inline boolean isStatefulSwitchAssignment(byte assignment) {
   return assignment == ASSIGNED_AUTO_OCTAVE ||
          assignment == ASSIGNED_SUSTAIN ||
          assignment == ASSIGNED_CC_65 ||
@@ -150,7 +153,7 @@ void doSwitchReleasedForSplit(byte whichSwitch, byte assignment, byte split) {
   // the last time the switch was pressed
   boolean isHeld = (calcTimeDelta(millis(), lastSwitchPress[whichSwitch]) > SWITCH_HOLD_DELAY);
 
-  // foot switches have no hold or toggle havior based on time, but rather based on function
+  // foot switches have no hold or toggle behavior based on time, but rather based on function
   if (whichSwitch == SWITCH_FOOT_L || whichSwitch == SWITCH_FOOT_R || whichSwitch == SWITCH_FOOT_B) {
     if (isStatefulSwitchAssignment(assignment)) {
       isHeld = true;
@@ -193,7 +196,7 @@ void doSwitchReleasedForSplit(byte whichSwitch, byte assignment, byte split) {
       }
     }
   }
-  // this is a toggle action, however only some assignment have toggle behavior
+  // this is a toggle action, however only some of the assignments have toggle behavior
   // only proceed when the switch is on
   else if (switchState[whichSwitch][split] || assignment == ASSIGNED_ALTSPLIT) {
     // non-stateful assignments don't have visible toggle behaviours, they're more
@@ -206,7 +209,7 @@ void doSwitchReleasedForSplit(byte whichSwitch, byte assignment, byte split) {
 
 void changeSwitchState(byte whichSwitch, byte assignment, byte split, boolean enabled) {
   // all switches are mutually exclusive, so we always reset the state of other switches with the same target assignment
-  for (byte sw = 0; sw < 4; ++sw) {
+  for (byte sw = 0; sw < countof(lastSwitchPress); ++sw) {
     if (sw != whichSwitch && Global.switchAssignment[sw] == assignment) {
       switchState[sw][split] = false;
       lastSwitchPress[sw] = 0;

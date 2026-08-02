@@ -28,25 +28,120 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 =======================================================================================================================
 =====================================================================================================================*/
 
+/*
+ * DUE Board pin   |  PORT  | Label
+ * ----------------+--------+-------
+ *   0             |  PA8   | "RX0"
+ *   1             |  PA9   | "TX0"
+ *   2       TIOA0 |  PB25  |
+ *   3       TIOA7 |  PC28  |
+ *   4       NPCS1 |  PA29  | SPI_SENSOR : touch sensor control over SPI
+ *           TIOB6 |  PC26  |
+ *   5       TIOA6 |  PC25  |
+ *   6       PWML7 |  PC24  |
+ *   7       PWML6 |  PC23  |
+ *   8       PWML5 |  PC22  |
+ *   9       PWML4 |  PC21  |
+ *  10       NPCS0 |  PA28  | SPI_LEDS : LED control over SPI
+ *           TIOB7 |  PC29  |
+ *  11       TIOA8 |  PD7   |
+ *  12       TIOB8 |  PD8   |
+ *  13       TIOB0 |  PB27  | ~~LED AMBER "L"~~
+ *  14       TXD3  |  PD4   | "TX3"
+ *  15       RXD3  |  PD5   | "RX3"
+ *  16       TXD1  |  PA13  | "TX2"
+ *  17       RXD1  |  PA12  | "RX2"
+ *  18       TXD0  |  PA11  | "TX1"
+ *  19       RXD0  |  PA10  | "RX1"
+ *  20             |  PB12  | "SDA"
+ *  21             |  PB13  | "SCL"
+ *  22             |  PB26  |
+ *  23             |  PA14  |
+ *  24             |  PA15  |
+ *  25             |  PD0   |
+ *  26             |  PD1   |
+ *  27             |  PD2   |
+ *  28             |  PD3   |
+ *  29             |  PD6   |
+ *  30             |  PD9   |
+ *  31             |  PA7   |
+ *  32             |  PD10  |
+ *  33             |  PC1   | FOOT_SW_LEFT
+ *  34             |  PC2   | FOOT_SW_RIGHT
+ *  35             |  PC3   | MIDI or SERIAL operation (output) : set it HIGH for serial operation i.e. debug output & firmware uploads
+ *  36             |  PC4   | DIN or USB connector (output) : set it HIGH for USB operation
+ *  37             |  PC5   | the output enable line for the 2 LED display chips (output) : set HIGH to enable the LEDs.
+ *  38             |  PC6   | LINNMODEL (input) : high = Model 200, low = Model 128
+ *  39             |  PC7   |
+ *  40             |  PC8   |
+ *  41             |  PC9   |
+ *  42             |  PA19  |
+ *  43             |  PA20  |
+ *  44             |  PC19  |
+ *  45             |  PC18  |
+ *  46             |  PC17  |
+ *  47             |  PC16  |
+ *  48             |  PC15  |
+ *  49             |  PC14  |
+ *  50             |  PC13  |
+ *  51             |  PC12  |
+ *  52       NPCS2 |  PB21  | SPI_ADC : input from TI ADS7883 12-bit A/D converter
+ *  53             |  PB14  |
+ *  54             |  PA16  | "A0"
+ *  55             |  PA24  | "A1"
+ *  56             |  PA23  | "A2"
+ *  57             |  PA22  | "A3"
+ *  58       TIOB2 |  PA6   | "A4"
+ *  69             |  PA4   | "A5"
+ *  60       TIOB1 |  PA3   | "A6"
+ *  61       TIOA1 |  PA2   | "A7"
+ *  62             |  PB17  | "A8"
+ *  63             |  PB18  | "A9"
+ *  64             |  PB19  | "A10"
+ *  65             |  PB20  | "A11"
+ *  66             |  PB15  | "DAC0"
+ *  67             |  PB16  | "DAC1"
+ *  68             |  PA1   | "CANRX"
+ *  69             |  PA0   | "CANTX"
+ *  70             |  PA17  | "SDA1"
+ *  71             |  PA18  | "SCL1"
+ *  72             |  PC30  | ~~LED AMBER "RX"~~
+ *  73             |  PA21  | ~~LED AMBER "TX"~~
+ *  74       MISO  |  PA25  |
+ *  75       MOSI  |  PA26  |
+ *  76       SCLK  |  PA27  |
+ *  77       NPCS0 |  PA28  |
+ *  78       NPCS3 |  PB23  | ~~unconnected!~~
+ *
+ * USB pin         |  PORT
+ * ----------------+--------
+ *  ID             |  PB11
+ *  VBOF           |  PB10
+ *
+ */
 
-
+#include "ls_compiler_tweaks.h"
 
 /*************************************** INCLUDED LIBRARIES **************************************/
 #include <SPI.h>
 #include <limits.h>
-#include <DueFlashStorage.h>
-#include <efc.h>
-#include <flash_efc.h>
 
+#include "ls_FlashStorage.h"
 #include "ls_debug.h"
 #include "ls_channelbucket.h"
 #include "ls_midi.h"
-
+#include "ls_alignToWord.h"
+#include "ls_calcTimeDelta.h"
 
 /******************************************** CONSTANTS ******************************************/
 
-const char* OSVersion = "234";
-const char* OSVersionBuild = ".074";
+static const struct OSinfo {
+  const char* OSVersion;
+  const char* OSVersionBuild;
+} OSinfo = {
+  .OSVersion = "234.",
+  .OSVersionBuild = ".076",
+};
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -56,12 +151,14 @@ const char* OSVersionBuild = ".074";
 // Uncomment to immediately start X, Y, or Z frame debugging when the LinnStrument launches
 // This is useful when having to inspect the sensor data without being able to
 // use the switches to change the active settings
-// #define DISPLAY_XFRAME_AT_LAUNCH
-// #define DISPLAY_YFRAME_AT_LAUNCH
-// #define DISPLAY_ZFRAME_AT_LAUNCH
-// #define DISPLAY_SURFACESCAN_AT_LAUNCH
-// #define DISPLAY_FREERAM_AT_LAUNCH
-// #define TESTING_SENSOR_DISABLE
+//
+//#define DISPLAY_XFRAME_AT_LAUNCH
+//#define DISPLAY_YFRAME_AT_LAUNCH
+//#define DISPLAY_ZFRAME_AT_LAUNCH
+#define DISPLAY_SURFACESCAN_AT_LAUNCH
+#define DISPLAY_FREERAM_AT_LAUNCH
+#define DISPLAY_DEBUGMIDI_AT_LAUNCH
+//#define TESTING_SENSOR_DISABLE
 
 // Touch surface constants
 byte LINNMODEL = 200;
@@ -70,7 +167,7 @@ byte LINNMODEL = 200;
 #define MAXROWS 8
 
 byte NUMCOLS = 26;                   // number of touch sensor columns currently used for device
-byte NUMROWS = 8;                    // number of touch sensor rows
+constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 
 #define NUMSPLITS  2                 // number of splits supported
 #define LEFT       0
@@ -85,19 +182,68 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define READ_Y  1
 #define READ_Z  2
 
-// Supported colors
-#define COLOR_OFF      0
-#define COLOR_RED      1
-#define COLOR_YELLOW   2
-#define COLOR_GREEN    3
-#define COLOR_CYAN     4
-#define COLOR_BLUE     5
-#define COLOR_MAGENTA  6
-#define COLOR_BLACK    7
-#define COLOR_WHITE    8
-#define COLOR_ORANGE   9
-#define COLOR_LIME     10
-#define COLOR_PINK     11
+// Supported colors (5 bits, hence max 32 ids available including COLOR_OFF):
+//
+// RGB led ==>
+// - Red
+// - Green
+// - Blue
+// plus all its permutations:
+// - Yellow         : Red + Green
+// - Purple/Magenta : Red + Blue
+// - Cyan           : Green + Blue
+// - White          : Red + Green + Blue
+// - Black          : all OFF
+// Then there's also the 50% duty cycle remixes: half the time color A, the other half it's color B:
+// a.k.a. 'composite colors':
+//
+//                  : Red            : Green          : Blue           : Yellow         : Purple/Magenta : Cyan           : White          : 
+// -----------------:----------------:----------------:----------------:----------------:----------------:----------------:----------------:
+// - Red            : (Red)          : Yellow/2       : Purple/2       : Orange         : ?R+RB  Wine    : ?RGB  WhiteX/2 : Rosa           :
+// - Green          :                : (Green)        : Cyan/2         : Lime           : ?RGB/2 WhiteA/2: ?G+GB Malachite: Mint           :
+// - Blue           :                :                : (Blue)         : ?RGB/2 WhiteB/2: ?RB+B DeepPrple: ?GB+B  Lapis   : Turquoise      :
+// - Yellow         :                :                :                : (Yellow)       : Pink           : ?RG+GB Lettuce : Warm White     :
+// - Purple/Magenta :                :                :                :                : (Magenta)      : ?RB+GB Sky     : Cold Pink      :
+// - Cyan           :                :                :                :                :                : (Cyan)         : Cold White     :
+// - White          :                :                :                :                :                :                : (White)        :
+//                  :                :                :                :                :                :                :                :
+// - Black          : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       : (dimmed)       :
+//
+// ==> 1(OFF) + 3 + 5 + (6+5+4+3+2+1) = 30 colors total: 0..29
+//
+#define COLOR_OFF         0
+#define COLOR_RED         1
+#define COLOR_YELLOW      2
+#define COLOR_GREEN       3
+#define COLOR_CYAN        4
+#define COLOR_BLUE        5
+#define COLOR_MAGENTA     6
+#define COLOR_BLACK       7
+#define COLOR_WHITE       8
+
+#define COLOR_ORANGE      9
+#define COLOR_LIME        10
+#define COLOR_PINK        11
+#define COLOR_COLD_WHITE  12
+#define COLOR_WARM_WHITE  13
+#define COLOR_ROSA        14
+#define COLOR_MINT        15
+#define COLOR_SKY         16
+#define COLOR_COLD_PINK   17
+#define COLOR_LAPIS       18
+#define COLOR_MALACHITE   19
+#define COLOR_LETTUCE     20
+#define COLOR_DEEP_PURPLE 21
+#define COLOR_WINE        22
+#define COLOR_PURPLE_2    23
+#define COLOR_YELLOW_2    24
+#define COLOR_CYAN_2      25
+#define COLOR_WHITE_X2    26
+#define COLOR_WHITE_A2    27
+#define COLOR_WHITE_B2    28
+#define COLOR_TURQUOISE   29
+
+#define COLOR_LAST        29
 
 // Special row offset values, for legacy reasons
 #define ROWOFFSET_NOOVERLAP        0x00
@@ -107,11 +253,9 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 
 #define COLOFFSET_UNDEF            -128
 
-#define LED_FLASH_DELAY  50000        // the time before a led is turned off when flashing or pulsing, in microseconds
-
 #define DEFAULT_MAINLOOP_DIVIDER      2
-#define DEFAULT_LED_REFRESH           333
-#define DEFAULT_MIDI_DECIMATION       8000
+#define DEFAULT_LED_REFRESH           333      // microseconds per column (was 333) — lower reduces flicker
+#define DEFAULT_MIDI_DECIMATION       8000     // use a decimation rate of 8 ms
 #define DEFAULT_MIDI_INTERVAL         235
 
 // Differences for low power mode
@@ -124,12 +268,12 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 
 // Values related to the Z sensor, continuous pressure
 #define DEFAULT_SENSOR_SENSITIVITY_Z  75       // by default the sensor Z sensitivity is unchanged, ie. 75%
-#define DEFAULT_SENSOR_LO_Z           120      // lowest acceptable raw Z value to start a touch
-#define DEFAULT_SENSOR_FEATHER_Z      80       // lowest acceptable raw Z value to continue a touch
+#define DEFAULT_SENSOR_LO_Z           40       // lowest acceptable raw Z value to start a touch (was 100/120)
+#define DEFAULT_SENSOR_FEATHER_Z      20       // lowest acceptable raw Z value to continue a touch (was 65/80)
 #define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
-#define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure                          
+#define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure
 
-#define MAX_TOUCHES_IN_COLUMN  3
+#define MAX_TOUCHES_IN_COLUMN  MAXROWS
 
 // Sequencer constants
 #define MAX_PROJECTS              16
@@ -167,6 +311,7 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define LED_LAYER_PLAYED    4
 #define LED_LAYER_SEQUENCER 5
 #define LED_LAYER_COMBINED  6
+
 #define MAX_LED_LAYERS      6
 
 // The values here MUST be the same as the row numbers of the cells in GlobalSettings
@@ -223,16 +368,16 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 
 #define TEMPO_ARP_SIXTEENTH_SWING 0xff
 
-const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+static const unsigned short ccFaderDefaults[8] = {1, 2, 3, 4, 5, 6, 7, 8};
 
-const int LED_PATTERNS = 3;
+constexpr const int LED_PATTERNS = 3;
 
 // Two buffers of ...
 // A 26 by 8 byte array containing one byte for each LED:
-// bits 4-6: 3 bits to select the color: 0:off, 1:red, 2:yellow, 3:green, 4:cyan, 5:blue, 6:magenta
+// bits 3-6: 4 bits to select the color: 0:off, 1:red, 2:yellow, 3:green, 4:cyan, 5:blue, 6:magenta, etc.
 // bits 0-2: 0:off, 1: on, 2: pulse
 const unsigned long LED_LAYER_SIZE = MAXCOLS * MAXROWS;
-const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS+1) * LED_LAYER_SIZE;
+const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS + 1) * LED_LAYER_SIZE;
 
 /******************************************** VELOCITY *******************************************/
 
@@ -259,17 +404,14 @@ const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS+1) * LED_LAYER_SIZE;
 #define cell(col, row)             touchInfo[col][row]
 #define virtualCell()              virtualTouchInfo[sensorRow]
 
-// calculate the difference between now and a previous timestamp, taking a possible single overflow into account
-#define calcTimeDelta(now, last)   (now < last ? now + ~last : now - last)
-
-// obtain the focused cell for a channel in a asplit
+// obtain the focused cell for a channel in a split
 #define focus(split, channel)      focusCell[split][channel - 1]
 
 
 /****************************************** TOUCH TRACKING ***************************************/
 
 // Current cell in the scan routine
-byte cellCount = 0;                         // the number of the cell that's currently being processed
+byte cellCount = 0;                         // the index of the cell that's currently being processed
 byte sensorCol = 0;                         // currently read column in touch sensor
 byte sensorRow = 0;                         // currently read row in touch sensor
 byte sensorSplit = 0;                       // the split of the currently read touch sensor
@@ -278,9 +420,9 @@ byte sensorSplit = 0;                       // the split of the currently read t
 // saved as the specific column and row for the focus cell.
 // If in 1Ch/Poly mode, continuous X and Y messages are sent only from movements within the focused cell.
 // If in 1Ch/Chan mode, continuous X, Y and Z messages are sent only from movements within the focused cell.
-struct __attribute__ ((packed)) FocusCell {
-  byte col:5;
-  byte row:3;
+struct __attribute__((packed)) FocusCell {
+  byte col : 5;
+  byte row : 3;
 };
 FocusCell focusCell[NUMSPLITS][16];             // 2 splits and 16 MIDI channels for each split
 
@@ -297,7 +439,7 @@ enum TouchState {
   touchedCell = 3
 };
 
-struct __attribute__ ((packed)) TouchInfo {
+struct __attribute__((packed)) TouchInfo {
   void shouldRefreshData();                  // indicate that the X, Y and Z data should be refreshed
   unsigned short rawX();                     // ensure that X is updated to the latest scan and return its raw value
   short calibratedX();                       // ensure that X is updated to the latest scan and return its calibrated value
@@ -368,13 +510,14 @@ int :3;
   byte velocity:7;                           // velocity from 0 to 127
   boolean shouldRefreshZ:1;                  // indicate whether it's necessary to refresh Z
   byte velocityZ:7;                          // the Z value with velocity sensitivity
+  unsigned short peakRawZ:12;                // peak raw Z seen during this touch, for ghost note release detection
 };
 TouchInfo touchInfo[MAXCOLS][MAXROWS];       // store as much touch information instances as there are cells
 
 TouchInfo* sensorCell = &touchInfo[0][0];
 
 int32_t rowsInColsTouched[MAXCOLS];          // keep track of which rows inside each column and which columns inside each row are touched, using a bitmask
-int32_t colsInRowsTouched[MAXROWS];          // to makes it possible to quickly identify square formations that generate phantom presses
+int32_t colsInRowsTouched[MAXROWS];          // to make it possible to quickly identify square formations that generate phantom presses
 unsigned short cellsTouched;                 // counts the number of active touches on cells
 
 struct VirtualTouchInfo {
@@ -442,7 +585,8 @@ enum CellDisplay {
   cellOn = 1,
   cellFastPulse = 2,
   cellSlowPulse = 3,
-  cellFocusPulse = 4
+  cellFocusPulse = 4,
+  cellTempoPulse = 5
 };
 
 enum DisplayMode {
@@ -506,13 +650,13 @@ enum CalibrationPhase {
 };
 byte calibrationPhase = calibrationInactive;
 
-struct __attribute__ ((packed)) CalibrationSample {
-  unsigned short minValue:12;
-  unsigned short maxValue:12;
-  byte pass:4;
+struct __attribute__((packed)) CalibrationSample {
+  unsigned short minValue : 12;
+  unsigned short maxValue : 12;
+  byte pass : 4;
 };
-CalibrationSample calSampleRows[MAXCOLS][4]; // store four rows of calibration measurements
-CalibrationSample calSampleCols[9][MAXROWS]; // store nine columns of calibration measurements
+CalibrationSample calSampleRows[MAXCOLS][4];  // store four rows of calibration measurements
+CalibrationSample calSampleCols[9][MAXROWS];  // store nine columns of calibration measurements
 
 struct CalibrationX {
   int32_t fxdMeasuredX;
@@ -520,9 +664,9 @@ struct CalibrationX {
   int32_t fxdRatio;
 };
 
-struct __attribute__ ((packed)) CalibrationY {
-  unsigned short minY:12;
-  unsigned short maxY:12;
+struct __attribute__((packed)) CalibrationY {
+  unsigned short minY : 12;
+  unsigned short maxY : 12;
   int32_t fxdRatio;
 };
 
@@ -567,6 +711,13 @@ enum LowRowBendBehavior {
 enum LowRowCCBehavior {
   lowRowCCHold = 0,
   lowRowCCFader = 1
+};
+
+enum SeqFaderRowBehavior {
+  seqFaderTimbre = 0,
+  seqFaderPitchOffset = 1,
+  seqFaderDuration = 2,
+  seqFaderVelocity = 3,
 };
 
 enum MidiMode {
@@ -686,7 +837,7 @@ enum SplitHandednessType {
 struct DeviceSettings {
   byte version;                                   // the version of the configuration format
   boolean serialMode;                             // 0 = normal MIDI I/O, 1 = Arduino serial mode for OS update and serial monitor
-  CalibrationX calRows[MAXCOLS+1][4];             // store four rows of calibration data
+  CalibrationX calRows[MAXCOLS + 1][4];           // store four rows of calibration data
   CalibrationY calCols[9][MAXROWS];               // store nine columns of calibration data
   uint32_t calCrc;                                // the CRC check value of the calibration data to see if it's still valid
   boolean calCrcCalculated;                       // indicates whether the CRC of the calibration was calculated, previous firmware versions didn't
@@ -799,10 +950,15 @@ enum SequencerStepSize {
   StepFourthTriplet = 16,
   StepEighthDotted = 18,
   StepFourth = 24,
-  StepFourthDotted = 36
+  StepFourthDotted = 36,
+  StepTwosTriplet = 32,
+  StepTwos = 48,
+  StepTwosDotted = 72,
+  StepOnesTriplet = 64,
+  StepOnes = 96,
 };
 
-struct StepEvent {
+struct __attribute__((packed)) StepEvent {
   boolean hasData();
   void clear();
 
@@ -826,41 +982,89 @@ struct StepEvent {
   int getFaderNeutral(byte fader, byte split);
   boolean calculateSequencerFaderValue(boolean newVelocity);
 
-  void operator=(const StepEvent& e);
+  //void operator=(const StepEvent& e);
 
   // the bit-wise arrangement is like below,
-  // we can't rely on structure packing since
-  // it will align each element on byte boundaries
-  // byte note:7;                // 0 to 127
-  // byte duration:10;           // 1 to 768 in 24 PPQ ticks
-  // byte velocity:7;            // 1 to 127
-  // signed char pitchOffset:8;  // -96 to 96 semitones
-  // byte timbre:7;              // 0 to 127
-  // byte row:3;                 // 1 to 7
-  byte data[6];
+  // while the struct hierarchy is marked as 'packed' as well
+  // to ensure that each StepEvent in any array is placed at a
+  // BYTE boundary, rather than the default word boundary for classes.
+  struct __attribute__((packed)) StepEventData {
+    unsigned short note : 7;       // 0 to 127
+    unsigned short duration : 10;  // 1 to 768 in 24 PPQ ticks
+    unsigned short velocity : 7;   // 1 to 127
+    signed short pitchOffset : 8;  // -96 to 96 semitones
+    unsigned short timbre : 7;     // 0 to 127
+    unsigned short row : 3;        // 1 to 7
+                                   // ^^^^^^^^^ total: 42 bits (5.25 bytes => cost: 6 bytes)
+
+#if 0  // TODO / future music
+
+    unsigned short probability : 3;         // a la Novation MK4 & Circuit Tracks Groovebox: 12.5% steps: 100% .. 12.5%
+    unsigned short microstepOffset : 3;     // novation has 6 microsteps per step; I prefer 12 or more but we are running at SequencerStepSize, which is 1/6th of a 1/16th, so exactly like Novation.
+    unsigned short legato : 1;              // legato with next note. NOTE: could also be encoded as a 'magic value' in duration field?
+    // unsigned short sostenuto : 1;        // sustain playing(!) notes <-- this is a global config setting; it's results while recording should become visible in the recorded note durations...
+    unsigned short aftertouchEnvelope : 5;  // selected ADSR envelope for aftertouch output: 0(none), 1..31
+    unsigned short isChord : 2;             // 0: no chord. 1: `timbre`+`legato`+`microstepOffset` determine the chord pattern to play, based at `note` in `Sequence.Scale`: chord X, inversion I, bank B. 
+                                            // NOTE: technically, our chords and arps are (mini-)sequences, thus interchangeable.
+                                            // 2: ditto as 1, but now it's an ARP pattern we want played for the duration.
+    // ^^^^^^^^^ total: 42+14=56 bits => cost: 7 bytes per note step record.
+
+#endif
+  };
+
+#if 0  // TODO / future music
+
+  struct __attribute__ ((packed)) ChordEventData {
+    unsigned short rootNote : 7;            // 0 to 127
+    unsigned short duration : 10;           // 1 to 768 in 24 PPQ ticks
+    unsigned short velocity : 7;            // 1 to 127
+    signed short   pitchOffset : 8;         // -96 to 96 semitones
+    unsigned short row : 3;                 // 1 to 7
+
+    unsigned short chordId : 56 - 45;       // # of the chord/arp in the chord/arp pattern bank; high numbers are patterns in ROM.
+
+    unsigned short probability : 3;         // a la Novation MK4 & Circuit Tracks Groovebox: 12.5% steps: 100% .. 12.5%
+    unsigned short aftertouchEnvelope : 5;  // selected ADSR envelope for aftertouch output: 0(none), 1..31
+    unsigned short isChord : 2;             // 0: no chord. 1: `timbre`+`legato`+`microstepOffset` determine the chord pattern to play, based at `note` in `Sequence.Scale`: chord X, inversion I, bank B. 
+                                            // NOTE: technically, our chords and arps are (mini-)sequences, thus interchangeable.
+                                            // 2: ditto as 1, but now it's an ARP pattern we want played for the duration.
+    // ^^^^^^^^^ total: 56 bits => cost: 7 bytes per note step record.
+  };
+
+  union  __attribute__ ((packed)) EventData {
+    StepEventData  note;
+    ChordEventData chord;
+  } data;
+
+#else
+
+  StepEventData data;
+
+#endif
 };
-struct StepData {
+struct __attribute__((packed)) StepData {
   void clear();
 
-  void operator=(const StepData& d);
-  
+  //void operator=(const StepData& d);
+
   StepEvent events[MAX_SEQUENCER_STEP_EVENTS];  // the events for each step
 };
-struct SequencerPattern {
+struct __attribute__((packed)) SequencerPattern {
   void clear();
 
-  void operator=(const SequencerPattern& p);
+  //void operator=(const SequencerPattern& p);
 
   StepData steps[MAX_SEQUENCER_STEPS];
-  SequencerStepSize stepSize;             // see SequencerStepSize
-  SequencerDirection sequencerDirection;  // see SequencerDirection
-  boolean loopScreen;                     // on or off
-  boolean swing;                          // on or off
-  byte length;                            // between 1 to 32 steps
+
+  SequencerStepSize stepSize : 7;             // see SequencerStepSize, 1..96
+  boolean loopScreen : 1;                     // on or off
+  SequencerDirection sequencerDirection : 2;  // see SequencerDirection, 0..2
+  boolean swing : 1;                          // on or off
+  byte length : 5;                            // between 1 to 32 steps
 };
 struct StepSequencer {
   SequencerPattern patterns[MAX_SEQUENCER_PATTERNS];  // patterns available for each sequencer
-  byte seqDrumNotes[SEQ_DRUM_NOTES];                  // note numbers from 0 to 127
+  byte seqDrumNotes[SEQ_DRUM_NOTES];                  // note numbers from 0 to 127, mapping drum notes to MIDI notes
 };
 struct SequencerProject {
   StepSequencer sequencer[MAX_SEQUENCERS];            // the sequencers available in a project
@@ -872,22 +1076,24 @@ struct SequencerProject {
 struct Configuration {
   DeviceSettings device;
   PresetSettings settings;
-  PresetSettings preset[NUMPRESETS];
+  PresetSettings preset[NUMPRESETS];  // TODO: move off to flash, load as necessary...
   SequencerProject project;
 };
 struct Configuration config;
 
 /**************************************** SECRET SWITCHES ****************************************/
 
-#define SECRET_SWITCHES 6
-#define SWITCH_DEBUGMIDI secretSwitch[0]
-#define SWITCH_XFRAME secretSwitch[1]
-#define SWITCH_YFRAME secretSwitch[2]
-#define SWITCH_ZFRAME secretSwitch[3]
+#define SECRET_SWITCHES 8
+#define SWITCH_DEBUGMIDI   secretSwitch[0]
+#define SWITCH_XFRAME      secretSwitch[1]
+#define SWITCH_YFRAME      secretSwitch[2]
+#define SWITCH_ZFRAME      secretSwitch[3]
 #define SWITCH_SURFACESCAN secretSwitch[4]
-#define SWITCH_FREERAM secretSwitch[5]
+#define SWITCH_FREERAM     secretSwitch[5]
+#define SWITCH_MCU_PINS    secretSwitch[6]
+#define SWITCH_TOUCHFRAME  secretSwitch[7] 
 
-boolean secretSwitch[SECRET_SWITCHES];  // The secretSwitch* values are controlled by cells in column 18
+boolean secretSwitch[SECRET_SWITCHES] = { 0 };  // The secretSwitch* values are controlled by cells in column 18
 
 
 /***************************************** OPERATING MODE ****************************************/
@@ -902,43 +1108,26 @@ OperatingMode operatingMode = modePerformance;
 
 /************************************** FLASH STORAGE LAYOUT *************************************/
 
-static int alignToByteBoundary(int value) {
-  if (value % 4 == 0) {
-    return value;
-  }
-
-  return ((value / 4) + 1) * 4;
-}
-
-const int PROJECTS_OFFSET = 4;
-const int PROJECT_VERSION_MARKER_SIZE = 4;
-const int PROJECT_INDEXES_COUNT = 20;
-const int PROJECTS_MARKERS_SIZE = alignToByteBoundary(PROJECT_VERSION_MARKER_SIZE + 2 * PROJECT_INDEXES_COUNT);    // one version marker, two series on indexes for project references
-const int SINGLE_PROJECT_SIZE = alignToByteBoundary(sizeof(SequencerProject));
-const int ALL_PROJECTS_SIZE = PROJECTS_MARKERS_SIZE + (MAX_PROJECTS + 1)*SINGLE_PROJECT_SIZE;
-const int SETTINGS_OFFSET = PROJECTS_OFFSET + alignToByteBoundary(ALL_PROJECTS_SIZE);
-
-#define PROJECT_INDEX_OFFSET(marker, index)   (PROJECTS_OFFSET + PROJECT_VERSION_MARKER_SIZE + marker * PROJECT_INDEXES_COUNT + index)
+constexpr const int SINGLE_PROJECT_SIZE = alignToWord32Boundary(sizeof(SequencerProject));
 
 
 /**************************************** FIXED POINT MATH ***************************************/
 
 #define FXD_FBITS        8
-#define FXD_FROM_INT(a)  (int32_t)((a) << FXD_FBITS)
-#define FXD_MAKE(a)      (int32_t)((a*(1 << FXD_FBITS)))
+#define FXD_FROM_INT(a)  (int32_t)(((uint32_t)(a)) << FXD_FBITS)
+#define FXD_MAKE(a)      (int32_t)(((a) * (1 << FXD_FBITS)))
 
 inline int FXD_TO_INT(int32_t a) {
-  a = a + ((a & (int32_t)1 << (FXD_FBITS-1)) << 1);   // rounding instead of truncation
-  return ((a) >> FXD_FBITS);
+  a += ((a & (int32_t)1 << (FXD_FBITS - 1)) << 1);  // rounding instead of truncation
+  return (a >> FXD_FBITS);
 }
 
 inline int32_t FXD_MUL(int32_t a, int32_t b) {
   int32_t t = a * b;
-  t = t + ((t & (int32_t)1 << (FXD_FBITS-1)) << 1);   // rounding instead of truncation
-  return t >> FXD_FBITS;
+  return FXD_TO_INT(t);
 }
 
-inline int32_t FXD_DIV(int32_t a, int32_t b) {
+constexpr inline int32_t FXD_DIV(int32_t a, int32_t b) {
   return ((int32_t)a << FXD_FBITS) / (int32_t)b;
 }
 
@@ -946,17 +1135,16 @@ inline int32_t FXD_DIV(int32_t a, int32_t b) {
 
 #define FXD4_FBITS        4
 #define FXD4_FROM_INT(a)  (int32_t)((a) << FXD4_FBITS)
-#define FXD4_MAKE(a)      (int32_t)((a*(1 << FXD4_FBITS)))
+#define FXD4_MAKE(a)      (int32_t)(((a) * (1 << FXD4_FBITS)))
 
 inline int FXD4_TO_INT(int32_t a) {
-  a = a + ((a & (int32_t)1 << (FXD4_FBITS-1)) << 1);   // rounding instead of truncation
-  return ((a) >> FXD4_FBITS);
+  a += ((a & (int32_t)1 << (FXD4_FBITS - 1)) << 1);  // rounding instead of truncation
+  return (a >> FXD4_FBITS);
 }
 
 inline int32_t FXD4_MUL(int32_t a, int32_t b) {
   int32_t t = a * b;
-  t = t + ((t & (int32_t)1 << (FXD4_FBITS-1)) << 1);   // rounding instead of truncation
-  return t >> FXD4_FBITS;
+  return FXD4_TO_INT(t);
 }
 
 inline int32_t FXD4_DIV(int32_t a, int32_t b) {
@@ -975,7 +1163,7 @@ const int32_t FXD_CONST_1016 = FXD_FROM_INT(1016);
 
 const int CALX_VALUE_MARGIN = 85;                         // 4095 / 48
 const int32_t FXD_CALX_HALF_UNIT = FXD_MAKE(85.3125);     // 4095 / 48
-const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(128);     // 4095 / 32
+const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(170);     // full cell width (~ 4095 / 24), accept any X within cell bounds
 const int32_t FXD_CALX_FULL_UNIT = FXD_MAKE(170.625);     // 4095 / 24
 const int32_t CALX_QUARTER_UNIT = FXD_TO_INT(FXD_CALX_FULL_UNIT) / 4;
 
@@ -984,7 +1172,7 @@ const int32_t FXD_CALY_FULL_UNIT = FXD_FROM_INT(127);     // range of 7-bit CC
 
 /*************************************** OTHER RUNTIME STATE *************************************/
 
-DueFlashStorage dueFlashStorage;                    // access to the persistent flash storage
+AppDataFlashStorage appDataFlashStorage;  // access to the persistent flash storage
 
 boolean setupDone = false;                          // indicates whether the setup routine is finished
 
@@ -995,9 +1183,9 @@ unsigned long lastReset;                            // the last time a reset was
 
 short lastReadSensorRawZ = 0;                       // the last pressure value that was read straight off of the sensor without any sensor bias nor sensitivity calibration
 
-byte globalColor = COLOR_BLUE;                      // color for global, split point and transpose settings
-byte globalAltColor = COLOR_CYAN;                   // alternate color for global, split point and transpose settings
-byte globalLowRowColor = COLOR_GREEN;               // color for low row painting in global settings
+constexpr const byte globalColor = COLOR_BLUE;                      // color for global, split point and transpose settings
+constexpr const byte globalAltColor = COLOR_CYAN;                   // alternate color for global, split point and transpose settings
+constexpr const byte globalLowRowColor = COLOR_GREEN;               // color for low row painting in global settings
 
 boolean changedSplitPoint = false;                  // reflects whether the split point was changed
 boolean splitButtonDown = false;                    // reflects state of Split button
@@ -1008,12 +1196,9 @@ unsigned long lastControlPress[MAXROWS];
 byte mainLoopDivider = DEFAULT_MAINLOOP_DIVIDER;         // loop divider at which continuous tasks are ran
 unsigned long ledRefreshInterval = DEFAULT_LED_REFRESH;  // LED timing
 unsigned long prevLedTimerCount;                         // timer for refreshing leds
-unsigned long prevGlobalSettingsDisplayTimerCount;       // timer for refreshing the global settings display
 unsigned long prevTouchAnimTimerCount;                   // timer for refreshing the touch animation
 
 boolean customLedPatternActive = false;                  // was a custom led pattern loaded from flash
-
-unsigned long tempoLedOn = 0;                       // indicates when the tempo clock led was turned on
 
 ChannelBucket splitChannels[NUMSPLITS];             // the MIDI channels that are being handed out
 unsigned short midiPreset[NUMSPLITS];               // preset number 0-127
@@ -1025,8 +1210,8 @@ unsigned long lastSwitchPress[5];                     // the last moment a parti
 boolean switchState[5][NUMSPLITS];                    // the current state of each switch for each split
 boolean switchTargetEnabled[NUMSPLITS][MAX_ASSIGNED]; // we keep track of switch targets individually for each split and whether they're active
 boolean switchCCEnabled[NUMSPLITS][128];              // we keep track of the switch targets that send out CC numbers for each split to determine whether they're active
-boolean footSwitchState[5];                           // holds the last read footswitch state, so that we only react on state changes of the input signal
-boolean footSwitchOffState[5];                        // holds the OFF state of foot switch, read at startup, thereby permit normally-closed or normally-open switches
+boolean footSwitchState[5];                           // holds the last read footswitch state, so that we only react on state changes of the input signal (L/R/B -- SW1/SW2 slots are unused in this array)
+boolean footSwitchOffState[2];                        // holds the OFF state of both foot switches, as read at startup, thereby permitting normally-closed or normally-open switches (L/R)
 unsigned long prevFootSwitchTimerCount;               // time interval (in microseconds) between foot switch reads
 boolean switchFootBothReleased = false;               // keep track of whether the last release was for both switches, in order to prevent individual releases to happen
 
@@ -1091,8 +1276,8 @@ byte customLedColor = COLOR_GREEN;                  // color is used for drawing
 
 inline void selectSensorCell(byte col, byte row, byte switchCode);
 
-void setLed(byte col, byte row, byte color, CellDisplay disp);
-void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer);
+inline void setLed(byte col, byte row, byte color, CellDisplay disp);
+inline void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer);
 void initializeNoteLights(GlobalSettings& g);
 
 boolean ensureCellBeforeHoldWait(byte resetColor, CellDisplay resetDisplay);
@@ -1102,7 +1287,7 @@ void exitDisplayMode(DisplayMode mode);
 
 void applyBendRange(SplitSettings& target, byte bendRange);
 
-void cellTouched(TouchState state);
+inline void cellTouched(TouchState state);
 void cellTouched(byte col, byte row, TouchState state);
 
 VelocityState calcVelocity(unsigned short z);
@@ -1153,7 +1338,9 @@ boolean switchPressAtStartup(byte switchRow) {
   sensorRow = switchRow;
   updateSensorCell();
   // initially we need read Z a few times for the readings to stabilize
-  readZ(); readZ(); unsigned short switchZ = readZ();
+  readZ();
+  readZ();
+  unsigned short switchZ = readZ();
   if (switchZ > Device.sensorLoZ + 128) {
     return true;
   }
@@ -1162,7 +1349,7 @@ boolean switchPressAtStartup(byte switchRow) {
 
 void activateSleepMode() {
   clearSwitches();
-  clearDisplayImmediately();
+  disableLedDisplay();  // clearDisplayImmediately();
   setDisplayMode(displaySleep);
 }
 
@@ -1171,8 +1358,7 @@ void applyLedInterval() {
   if (Device.operatingLowPower) {
     mainLoopDivider = LOWPOWER_MAINLOOP_DIVIDER;
     ledRefreshInterval = LOWPOWER_LED_REFRESH;
-  }
-  else {
+  } else {
     mainLoopDivider = DEFAULT_MAINLOOP_DIVIDER;
     ledRefreshInterval = DEFAULT_LED_REFRESH;
   }
@@ -1182,8 +1368,7 @@ void applyMidiInterval() {
   if (isMidiUsingDIN()) {
     // 256 microseconds between bytes on Serial ports
     midiMinimumInterval = 256;
-  }
-  else {
+  } else {
     midiMinimumInterval = Device.minUSBMIDIInterval;
   }
 
@@ -1224,12 +1409,12 @@ void setup() {
   /*!!*/  if (digitalRead(38) == HIGH) {
   /*!!*/    LINNMODEL = 200;
   /*!!*/    NUMCOLS = 26;
-  /*!!*/    NUMROWS = 8;
+  /*!!*/    //NUMROWS = 8;
   /*!!*/  }
   /*!!*/  else {
   /*!!*/    LINNMODEL = 128;
   /*!!*/    NUMCOLS = 17;
-  /*!!*/    NUMROWS = 8;
+  /*!!*/    //NUMROWS = 8;
   /*!!*/  }
   /*!!*/
   /*!!*/  initializeSensors();
@@ -1254,28 +1439,36 @@ void setup() {
   /*!!*/  // initialize the SPI port for setting one column of LEDs
   /*!!*/  SPI.begin(SPI_LEDS);
   /*!!*/  SPI.setDataMode(SPI_LEDS, SPI_MODE0);
+  SPI.setDataWidth(SPI_LEDS, SPI_CSR_BITS_16_BIT);
   /*!!*/  SPI.setClockDivider(SPI_LEDS, 4);                   // max clock is about 20 mHz. 4 = 21 mHz. Transferring all 4 bytes takes 1.9 uS.
   /*!!*/
+
+  startHFLEDpaintTimer(1 /* Hz */);
+
   /*!!*/  // initialize the SPI port for setting analog switches in touch sensor
   /*!!*/  SPI.begin(SPI_SENSOR);
   /*!!*/  SPI.setDataMode(SPI_SENSOR, SPI_MODE0);
   /*!!*/  SPI.setClockDivider(SPI_SENSOR, 4);                 // set clock speed to 84/4 = 21 mHz. Max clock is 25mHz @ 4.5v
-  /*!!*/  selectSensorCell(0, 0, READ_Z);                     // set it analog switches to read column 0, row 0 and to read pressure
+  /*!!*/  selectSensorCell(0, 0, READ_Z);                     // set its analog switches to read column 0, row 0 and to read pressure
+  SPI.setDataWidth(SPI_SENSOR, SPI_CSR_BITS_16_BIT);
+
   /*!!*/
   /*!!*/  // initialize the SPI input port for reading the TI ADS7883 ADC
   /*!!*/  SPI.begin(SPI_ADC);
   /*!!*/  SPI.setDataMode(SPI_ADC, SPI_MODE0);
   /*!!*/  SPI.setClockDivider(SPI_ADC, 4);                    // set speed to 84/4 = 21 mHz. Max clock for ADC is 32 mHz @ 2.7-4.5v, 48mHz @ 4.5-5.5v
   /*!!*/
+  SPI.setDataWidth(SPI_ADC, SPI_CSR_BITS_16_BIT);
+
   /*!!*/  // Initialize the output enable line for the 2 LED display chips
   /*!!*/  pinMode(37, OUTPUT);
-  /*!!*/  digitalWrite(37, HIGH);
+  /*!!*/  digitalWrite(37, HIGH); // clearDisplayImmediately();
   /*!!*/
-  /*!!*/  if (switchPressAtStartup(0)) {
+  /*!!*/  if (switchPressAtStartup(GLOBAL_SETTINGS_ROW)) {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
-  /*!!*/    if (switchPressAtStartup(2)) {
+  /*!!*/    if (switchPressAtStartup(SWITCH_2_ROW)) {
   /*!!*/      globalReset = true;
-  /*!!*/      dueFlashStorage.write(0, 254);
+  /*!!*/      appDataFlashStorage.factoryReset();
   /*!!*/    }
   /*!!*/    // if only the global settings button is pressed at startup, activate firmware upgrade mode
   /*!!*/    else {
@@ -1298,10 +1491,80 @@ void setup() {
   /*!!*/
   //*************************************************************************************************************************************************
 
+
+
+
+
+
+
+
+#if 0
+
+  /*
+     43.5.4:: Temperature Sensor
+
+     The temperature sensor is connected to Channel 15 of the ADC.
+     The temperature sensor provides an output voltage VT that is proportional to absolute temperature (PTAT). To
+     activate the temperature sensor, TSON bit (ADC_ACR) needs to be set.
+
+     Note: ADC_ACR: This register can only be written if the WPEN bit is cleared in “ADC Write Protect Mode Register” on page 1353.
+
+     Notes: 
+     1. Use ADC_ACR.IBCTL = 00 for sampling frequency below 500 kHz.
+     2. Use ADC_ACR.IBCTL = 01 for sampling frequency between 500 kHz and 1 MHz.
+
+     45.8:: Temperature Sensor
+
+     The temperature sensor is connected to channel 15 of the ADC.
+     The temperature sensor provides an output voltage (VO_TS) that is proportional to absolute temperature (PTAT).
+     VO_TS linearly varies with a temperature slope dVO_TS/dT = 2.65 mV/°C.
+     VO_TS equals 0.8V at TA 27°C, with a ±15% accuracy. The VO_TS slope versus temperature dVO_TS/dT = 2.65
+     mV/°C only shows a ±5% slight variation over process, mismatch and supply voltage.
+     The user needs to calibrate it (offset calibration) at ambient temperature to eliminate the VO_TS spread at ambient
+     temperature (±15%).
+
+     Table 45-39 :: Temperature Sensor Characteristics
+     Symbol              Parameter                 Conditions      Min      Typ      Max       Unit
+     VO_TS               Output Voltage            TA = 27° C               0.800              V
+     VO_TS(accuracy)     Output Voltage Accuracy   TA = 27° C      -15               +15       %
+     dVO_TS/dT           Temperature Sensitivity (Slope Voltage vs Temperature)
+                                                                            2.65               mV/°C
+                         Slope accuracy                            -5                +5        %
+                         Temperature accuracy
+                         After offset calibration
+                         Over temperature range -40 to 85 °C       -5                +5        °C
+                         After offset calibration
+                         Over temperature range 0 to 80 °C         -3                +3        °C
+     tSTART              Startup Time              After ADC_ACR.TSON=1
+                                                                   20                40        µs
+
+     43.5.3:: Analog Inputs
+
+     The analog input pins can be multiplexed with PIO lines. In this case, the assignment of the ADC input is
+     automatically done as soon as the corresponding channel is enabled by writing the register ADC_CHER. By
+     default, after reset, the PIO line is configured as input with its pull-up enabled and the ADC input is connected to
+     the GND.                                                                   
+  */
+
+  // TODO -- see also the separate repo about the hardware bug in SAM3X8E re internal temp sensor.
+
+#endif  // 0
+
+
+
+
+
+
+
+
+
+
+
+
   // initialize input pins for 2 foot switches
   pinMode(FOOT_SW_LEFT, INPUT_PULLUP);
   pinMode(FOOT_SW_RIGHT, INPUT_PULLUP);
-  
+
   // initialize the calibration data for it to be a no-op, unless it's loaded from a previous calibration sample result
   initializeCalibrationData();
 
@@ -1315,24 +1578,24 @@ void setup() {
 
   // ensure that the switches that are pressed down for the global reset at boot are not taken into account any further
   if (globalReset) {
-    cellTouched(0, 0, touchedCell);
-    cellTouched(0, 2, touchedCell);
+    cellTouched(0, GLOBAL_SETTINGS_ROW, touchedCell);
+    cellTouched(0, SWITCH_2_ROW, touchedCell);
   }
 
   // setup system timers for interval between LED column refreshes and foot switch reads
-  prevLedTimerCount = prevFootSwitchTimerCount = prevGlobalSettingsDisplayTimerCount = micros();
+  prevLedTimerCount = prevFootSwitchTimerCount = micros();
 
   // perform some initialization
   initializeCalibrationSamples();
   initializeStorage();
   applyConfiguration();
 
-  for (byte ss=0; ss<SECRET_SWITCHES; ++ss) {
+  for (byte ss = 0; ss < SECRET_SWITCHES; ++ss) {
     secretSwitch[ss] = false;
   }
 
   // detect if test mode is active by holding down the per-split button at startup
-  if (switchPressAtStartup(7)) {
+  if (switchPressAtStartup(PER_SPLIT_ROW)) {
     operatingMode = modeManufacturingTest;
 
     Global.velocitySensitivity = velocityLow;
@@ -1359,11 +1622,11 @@ void setup() {
     operatingMode = modePerformance;
 
     // detect if low power mode is toggled by holding down the octave/transpose button at startup
-    if (switchPressAtStartup(4)) {
+    if (switchPressAtStartup(OCTAVE_ROW)) {
       Device.operatingLowPower = true;
       Device.serialMode = false;
       storeSettings();
-      cellTouched(0, 4, touchedCell);
+      cellTouched(0, OCTAVE_ROW, touchedCell);
     }
 
     applyLedInterval();
@@ -1376,33 +1639,40 @@ void setup() {
   }
 
 #ifdef DISPLAY_XFRAME_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_XFRAME = true;
 #endif
 
 #ifdef DISPLAY_YFRAME_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_YFRAME = true;
 #endif
 
 #ifdef DISPLAY_ZFRAME_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_ZFRAME = true;
 #endif
 
 #ifdef DISPLAY_SURFACESCAN_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_SURFACESCAN = true;
 #endif
 
 #ifdef DISPLAY_FREERAM_AT_LAUNCH
-  #define DEBUG_ENABLED
+#define DEBUG_ENABLED
   Device.serialMode = true;
   SWITCH_FREERAM = true;
+#endif
+
+#ifdef DISPLAY_DEBUGMIDI_AT_LAUNCH
+#define DEBUG_ENABLED
+  Device.serialMode = true;
+  SWITCH_DEBUGMIDI = true;
+  debugLevel = 5;
 #endif
 
   setupDone = true;
@@ -1424,7 +1694,7 @@ void loop() {
   if (operatingMode == modePerformance) {
     modeLoopPerformance();
   }
-  // manufactoring test mode where leds are shows for specific signals
+  // manufactoring test mode where leds are shown for specific signals
   else if (operatingMode == modeManufacturingTest) {
     modeLoopManufacturingTest();
   }
@@ -1435,7 +1705,7 @@ void loop() {
   }
 }
 
-inline void modeLoopPerformance() {
+void modeLoopPerformance() {
   if (displayMode == displayReset) {                             // if reset is active, don't process any input data
     if (calcTimeDelta(millis(), lastReset) > 3000) {             // restore normal operations three seconds after the reset started
       applySystemState();
@@ -1444,8 +1714,7 @@ inline void modeLoopPerformance() {
       setDisplayMode(displayNormal);                             // this should make the reset operation feel more predictable
       updateDisplay();
     }
-  }
-  else {
+  } else {
     TouchState previousTouch = sensorCell->touched;                              // get previous touch status of this cell
 
     boolean canShortCircuit = false;
@@ -1453,13 +1722,11 @@ inline void modeLoopPerformance() {
     if (previousTouch != touchedCell && previousTouch != ignoredCell &&
         sensorCell->isMeaningfulTouch()) {                                       // if touched now but not before, it's a new touch
       canShortCircuit = handleNewTouch();
-    }
-    else if (previousTouch == touchedCell && sensorCell->isActiveTouch()) {      // if touched now and touched before
-      canShortCircuit = handleXYZupdate();                                       // handle any X, Y or Z movements
-    }
-    else if (previousTouch != untouchedCell && !sensorCell->isActiveTouch() &&   // if not touched now but touched before, it's been released
-             sensorCell->isPastDebounceDelay()) {
-        handleTouchRelease();
+    } else if (previousTouch == touchedCell && sensorCell->isActiveTouch()) {     // if touched now and touched before
+      canShortCircuit = handleXYZupdate();                                        // handle any X, Y or Z movements
+    } else if (previousTouch != untouchedCell && !sensorCell->isActiveTouch() &&  // if not touched now but touched before, it's been released
+               sensorCell->isPastDebounceDelay()) {
+      handleTouchRelease();
     }
 
     if (canShortCircuit) {
@@ -1475,7 +1742,7 @@ inline void modeLoopPerformance() {
   }
 
   // We're iterating so quickly, that it makes no sense to perform the continuous tasks
-  // at each sensor cell, only call this every three cells.
+  // at each sensor cell, only call this every N cells.
   // Note that this is very much dependent on the speed of the main loop, if it slows down
   // lights will start flickering and this ratio might have to be adapted.
   if (cellCount % mainLoopDivider == 0) {
@@ -1486,8 +1753,10 @@ inline void modeLoopPerformance() {
   if (SWITCH_XFRAME) displayXFrame();                            // Turn on secret switch to display the X value of all cells in grid at the end of each total surface scan
   if (SWITCH_YFRAME) displayYFrame();                            // Turn on secret switch to display the Y value of all cells in grid at the end of each total surface scan
   if (SWITCH_ZFRAME) displayZFrame();                            // Turn on secret switch to display the pressure value of all cells in grid at the end of each total surface scan
+  if (SWITCH_TOUCHFRAME) displayCellTouchedFrame();              // Turn on secret switch to display the 'touched' state of all cells in grid at the end of each total surface scan
   if (SWITCH_SURFACESCAN) displaySurfaceScanTime();              // Turn on secret switch to display the total time for a total surface scan
   if (SWITCH_FREERAM) debugFreeRam();                            // Turn on secret switch to display the available free RAM
+  if (SWITCH_MCU_PINS) displayDigitalPins();                     // Turn on secret switch to display the SAM3X digital pins' status
 #endif
 
   nextSensorCell();                                              // done-- move on to the next sensor cell

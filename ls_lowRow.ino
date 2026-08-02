@@ -17,9 +17,11 @@ These are the functions for the low row functionality of the LinnStrument
 
 The low row operations are designed to be driven by the main cell scanning loop. When actions
 occur, they are registered to provide the appropriate state during the handleLowRowState() function.
-This function also takes cell that are outside the low row into account, to trigger to relevant
+This function also takes cell that are outside the low row into account, to trigger the relevant
 operations for those when needed.
 **************************************************************************************************/
+
+#include "ls_compiler_tweaks.h"
 
 enum ColumnState {
   inactive,

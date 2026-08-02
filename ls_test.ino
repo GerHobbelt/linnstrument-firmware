@@ -16,49 +16,190 @@ limitations under the License.
 Assorted debug functions. 
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
-void debugPrint(int level, const char* msg) {
+#include <alloca.h>
+
+
+static void debugPrint1(const char* msg) {
+  Serial.print(msg);
+}
+
+static void debugPrintln1(const char* msg) {
+  Serial.println(msg);
+}
+
+static void debugPrint1(int val) {
+  Serial.print(val);
+}
+
+static void debugPrintln1(int val) {
+  Serial.println(val);
+}
+
+inline void debugPrint(int level, const char* msg) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.print(msg);
+    debugPrint1(msg);
   }
 }
 
-void debugPrintln(int level, const char* msg) {
+inline void debugPrintln(int level, const char* msg) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.println(msg);
+    debugPrintln1(msg);
   }
 }
 
-void debugPrint(int level, int val) {
+inline void debugPrint(int level, int val) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.print(val);
+    debugPrint1(val);
   }
 }
 
-void debugPrintln(int level, int val) {
+inline void debugPrintln(int level, int val) {
   if (Device.serialMode && (debugLevel >= level)) {
-    Serial.println(val);
+    debugPrintln1(val);
   }
 }
+
+void debugprint_funcname(const char *fname) {
+  if (SWITCH_SURFACESCAN) {
+    static const char *touchInfoStr[] = { "untouched", "ignored", "transfer", "touched" };
+
+    DEBUGPRINT((2,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((2, align_ws - l));
+    }
+    DEBUGPRINT((2,": col="));DEBUGPRINT((2,(int)sensorCol));
+    DEBUGPRINT((2," row="));DEBUGPRINT((2,(int)sensorRow));
+    DEBUGPRINT((2," veloZ="));DEBUGPRINT((2,(int)sensorCell->velocityZ));
+    DEBUGPRINT((2," pressZ="));DEBUGPRINT((2,(int)sensorCell->pressureZ));
+    DEBUGPRINT((2," velo="));DEBUGPRINT((2,(int)sensorCell->velocity));
+    DEBUGPRINT((2," touch="));DEBUGPRINT((2,touchInfoStr[int(sensorCell->touched)]));
+    DEBUGPRINT((2,"\n"));
+  }
+}
+
+void debugprint_funcname_L5(const char *fname) {
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((4,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((4, align_ws - l));
+    }
+    DEBUGPRINT((4,": anim="));
+    DEBUGPRINT((4,int(animationActive)));
+    DEBUGPRINT((4," mode="));
+    DEBUGPRINT((4,int(displayMode)));
+    DEBUGPRINT((4,"\n"));
+  }
+}
+
+void debugprint_funcname_L5(const char *fname, const char *addenda) {
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((4,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((4, align_ws - l));
+    }
+    DEBUGPRINT((4,": anim="));
+    DEBUGPRINT((4,int(animationActive)));
+    DEBUGPRINT((4," mode="));
+    DEBUGPRINT((4,int(displayMode)));
+    DEBUGPRINT((4,", "));
+    DEBUGPRINT((4,addenda));
+    DEBUGPRINT((4,"\n"));
+  }
+}
+
+void debugprint_funcname_L0(const char *fname) {
+  if (SWITCH_SURFACESCAN) {
+    DEBUGPRINT((0,fname));
+    auto l = strlen(fname);
+    static const char *align_ws = "                              ";
+    const auto ws_len = sizeof(align_ws) - 1;
+    if (l < ws_len) {
+      DEBUGPRINT((0, align_ws - l));
+    }
+    DEBUGPRINT((0,": anim="));
+    DEBUGPRINT((0,int(animationActive)));
+    DEBUGPRINT((0," mode="));
+    DEBUGPRINT((0,int(displayMode)));
+    DEBUGPRINT((0,"\n"));
+  }
+}
+
+// -----------------------------------------------------------------------
+
+unsigned long debugDisplayUpdatePeriod = 500000;
 
 void displayDigitalPins() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
     Serial.println();
-    for (byte p = 0; p < 54; ++p) {
-      Serial.print(p);
-      Serial.print("\t");
-    }
+    Serial.print("MCU/Pins info:\n");
+    displayDigitalPins(0, 27);
     Serial.println();
-    for (byte p = 0; p < 54; ++p) {
-      Serial.print(digitalRead(p));
-      Serial.print("\t");
-    }
-    Serial.println();
+    displayDigitalPins(27, 54);
   }
+}
+
+void displayDigitalPins(byte start, byte end) {
+  for (byte p = start; p < end; ++p) {
+    Serial.print(p);
+    Serial.print("\t");
+  }
+  Serial.println();
+  for (byte p = start; p < end; ++p) {
+    // ripped from the Arduino RTL:
+  	if (g_APinDescription[p].ulPinType == PIO_NOT_A_PIN) {
+      Serial.print("---");
+    }
+    else {
+      byte mode = g_pinStatus[p] & 0xF;
+      switch (mode) {
+      default:
+        Serial.print("?_");
+        Serial.print(mode);
+        break;
+      case 0:
+        Serial.print("<~>");
+        break;
+      case PIN_STATUS_ANALOG:
+        Serial.print("ANA");
+        break;
+      case PIN_STATUS_DIGITAL_OUTPUT:
+        Serial.print("OUT");
+        break;
+      case PIN_STATUS_DIGITAL_INPUT:
+        Serial.print("IN");
+        break;
+      case PIN_STATUS_DIGITAL_INPUT_PULLUP:
+        Serial.print("IN+P");
+        break;
+      case PIN_STATUS_PWM:
+        Serial.print("PWM");
+        break;
+      }
+    }
+    Serial.print("\t");
+  }
+  Serial.println();
+  for (byte p = start; p < end; ++p) {
+    Serial.print(digitalRead(p));
+    Serial.print("\t");
+  }
+  Serial.println();
 }
 
 // displayXFrame:
@@ -70,10 +211,11 @@ void displayXFrame() {
 
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
     Serial.println();
+    Serial.print("XFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
@@ -81,11 +223,9 @@ void displayXFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
+        Serial.print(cell(x, y-1).currentRawX);
         if (cell(x, y-1).touched == touchedCell) {
-          Serial.print(cell(x, y-1).currentRawX);
-        }
-        else {
-          Serial.print("-");
+          Serial.print("_#");
         }
         Serial.print("\t");
       }
@@ -103,10 +243,11 @@ void displayYFrame() {
 
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
     
     Serial.println();
+    Serial.print("YFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
@@ -114,11 +255,9 @@ void displayYFrame() {
     Serial.println();
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
+        Serial.print(cell(x, y-1).currentRawY);
         if (cell(x, y-1).touched == touchedCell) {
-          Serial.print(cell(x, y-1).currentRawY);
-        }
-        else {
-          Serial.print("-");
+          Serial.print("_#");
         }
         Serial.print("\t");
       }
@@ -132,10 +271,11 @@ void displayYFrame() {
 void displayZFrame() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
     
     Serial.println();
+    Serial.print("ZFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
       Serial.print(x);
       Serial.print("\t");
@@ -144,6 +284,9 @@ void displayZFrame() {
     for (byte y = NUMROWS; y > 0; --y) {
       for (byte x = 0; x < NUMCOLS; ++x) {
         Serial.print(cell(x, y-1).currentRawZ);
+        if (cell(x, y-1).touched == touchedCell) {
+          Serial.print("_#");
+        }
         Serial.print("\t");
       }
       Serial.println();
@@ -153,12 +296,19 @@ void displayZFrame() {
 
 // For debug, displays an entire frame of raw Z values in the Arduino serial monitor. Values are collected during each full read of the touch surface.
 void displaySurfaceScanTime() { 
+  unsigned long now = micros();
+  static unsigned long lastFrame = now;
   if (sensorCol == 1 && sensorRow == 0) {
-    static int scanCount; 
-    static unsigned long scanPeriod; 
-    if (++scanCount > 255) { 
+    static int scanCount = 0; 
+    static unsigned long scanPeriod = micros();
+    ++scanCount;
+    if (calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod && scanCount > 0) {
+      lastFrame = now;
       Serial.print("Total surface scan time in microseconds: ");
-      Serial.println((micros() - scanPeriod) / 256); 
+      Serial.print((micros() - scanPeriod) / scanCount);
+      Serial.print(", calculated across ");
+      Serial.print(scanCount);
+      Serial.println(" scans.");
       scanPeriod = micros(); 
       scanCount = 0;   
     }
@@ -166,20 +316,41 @@ void displaySurfaceScanTime() {
 }
 
 // displayCellTouchedFrame:
-// For debug, displays an entire frame of raw Z values in the Arduino serial monitor. Values are collected during each full read of the touch surface.
+// For debug, displays an entire frame of 'touch' states in the Arduino serial monitor. Values are collected during each full read of the touch surface.
 void displayCellTouchedFrame() {
-  Serial.println();
-  for (byte x = 0; x < NUMCOLS; ++x) {
-    Serial.print(x);
-    Serial.print("\t");
-  }
-  Serial.println();
-  for (byte y = NUMROWS; y > 0; --y) {
+  static unsigned long lastFrame = 0;
+  unsigned long now = micros();
+  if (sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
+    lastFrame = now;
+
+    Serial.println();
+    Serial.print("CellTouchedFrame:\n");
     for (byte x = 0; x < NUMCOLS; ++x) {
-      Serial.print(cell(x, y-1).touched);
+      Serial.print(x);
       Serial.print("\t");
     }
     Serial.println();
+    for (byte y = NUMROWS; y > 0; --y) {
+      for (byte x = 0; x < NUMCOLS; ++x) {
+        switch (cell(x, y-1).touched) {
+        case untouchedCell:
+          Serial.print("-");
+          break;
+        case ignoredCell:
+          Serial.print("ignor");
+          break;
+        case transferCell:
+          Serial.print("TRANS");
+          break;
+        case touchedCell:
+          Serial.print("TOUCH");
+          break;
+        }
+        //Serial.print(cell(x, y-1).touched);
+        Serial.print("\t");
+      }
+      Serial.println();
+    }
   }
 }
 
@@ -277,28 +448,211 @@ void modeLoopManufacturingTest() {
 
 #ifdef DEBUG_ENABLED
 
-#include <malloc.h>
+/*
+ COMMON         0x200842ac        0x4 
+                0x200842ac                errno
+                0x200842b0                . = ALIGN (0x4)
+                0x200842b0                _ebss = .
+                0x200842b0                _ezero = .
+                0x200842b0                . = ALIGN (0x4)
+                0x200842b0                _end = .
 
+.stack_dummy    0x200842b0        0x0
+ *(.stack*)
+                0x20088000                __StackTop = (ORIGIN (ram) + 0x18000)
+                0x20088000                __StackLimit = (__StackTop - SIZEOF (.stack_dummy))
+                0x20088000                PROVIDE (_sstack, __StackLimit)
+                0x20088000                PROVIDE (_estack, __StackTop)
+*/
+
+extern char _ebss;
+extern char _ezero;
 extern char _end;
-extern "C" char* sbrk(int i);
+extern char _sstack;
+extern char _estack;
+
 char* ramstart = (char*)0x20070000;
 char* ramend = (char*)0x20088000;
 
 void debugFreeRam() {
   static unsigned long lastFrame = 0;
   unsigned long now = micros();
-  if (Device.serialMode && sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= 500000) {
+  if (Device.serialMode && sensorCol == 1 && sensorRow == 0 && calcTimeDelta(now, lastFrame) >= debugDisplayUpdatePeriod) {
     lastFrame = now;
 
-    char* heapend = sbrk(0);
+    Serial.println("-----------------------------------------------------");
+
+    Serial.print("Serial console: waitingForCommands=");
+    Serial.print(waitingForCommands);
+    Serial.print(", controlModeActive=");
+    Serial.print(controlModeActive);
+    Serial.print(", codePos=");
+    Serial.print(codePos);
+    Serial.println(" -- send '?' to see the online help.");
+
     register char* stack_ptr asm ("sp");
-    struct mallinfo mi = mallinfo();
-    Serial.print("RAM dynamic:");
-    Serial.print(mi.uordblks);
-    Serial.print(" static:");
+    Serial.print("RAM static:");
     Serial.print(&_end - ramstart);
+    Serial.print(" stack:");
+    Serial.print(ramend - stack_ptr);
+    Serial.print(" stacksize:");
+    Serial.print(ramend - &_sstack);
+    Serial.print(" stacksize:");
+    Serial.print(ramend - &_estack);
+    Serial.print(" stacksize:");
+    Serial.print(&_sstack - &_estack);
     Serial.print(" free:");
-    Serial.println(stack_ptr - heapend + mi.fordblks);
+    Serial.print(stack_ptr - &_end);
+    Serial.print("\n");
+
+    static bool stack_init_for_usage_scan_done = false;
+    if (!stack_init_for_usage_scan_done) {
+      // do NOT adjust the stack frame pointer, merely get us an 4K memory area below the current stack frame:
+#if 0
+      uint32_t *chunk_4K = (uint32_t *)alloca(4096);
+#else
+      uint32_t *chunk_4K = (uint32_t *)alloca(16);
+      chunk_4K -= (4096 - 16) / 4;
+#endif      
+
+      Serial.println("Stack Scan init: writing a 4K pattern.");
+
+      for (unsigned int i = 0; i < 1024; i++) {
+        // write a special pattern in this chunk:
+        chunk_4K[i++] = 0xA5DEADA5U;
+        chunk_4K[i] = 0xDEADBEADU + i;
+      }
+
+      stack_init_for_usage_scan_done = true;
+    }
+    else {
+      Serial.println("Stack Scan exec: scan stack downwards towards 4K pattern occurrence.");
+
+      // scan the stack to see how much we used...
+      uint32_t *spp = (uint32_t *)(((intptr_t)stack_ptr) & ~0x03); // align at 32-bit boundary, just like alloca() did before.
+      uint32_t *chunk_4K = spp - 1200;  // scan a little more area than we previously initialized, just for argument sake...
+      uint32_t *first = nullptr;
+      uint32_t *last = nullptr;
+      for (unsigned int i = 0; i < 1200; i++) {
+        // try to locate the special pattern in this chunk:
+        if (chunk_4K[i] == 0xA5DEADA5U && chunk_4K[i + 1] >= 0xDEADBEADU && chunk_4K[i + 1] < 0xDEADBEADU + 1024) {
+          if (!first)
+            first = chunk_4K + i;
+          last = chunk_4K + i;
+        }
+      }
+
+      Serial.print("Stack Scan: unused area pattern @ first = ");
+      Serial.print(stack_ptr - (char *)first);
+      Serial.print(", last = ");
+      Serial.print(stack_ptr - (char *)last);
+      Serial.print(" ==> max stack usage until now = ");
+      Serial.print(&_estack - (char *)last);
+      Serial.println(" bytes.");
+    }
+
+    // read RTT (Real Time Timer) value (seconds elapsed):
+    const RoReg& rtt_vr = REG_RTT_VR;
+    Serial.print("Real Time Timer: RTT_VR:");
+    Serial.print(rtt_vr);
+    Serial.print("\n");
+
+    static bool chip_shown = false;
+    if (!chip_shown) {
+      chip_shown = true;
+        
+      Serial.print("Chip Identifier: 	CHIPID_CIDR:");
+      const RoReg& cidr = REG_CHIPID_CIDR;
+      const RoReg& cidr_ext = REG_CHIPID_EXID;
+      const auto v = cidr;
+      const auto ext = v >> 31;
+      const auto nvptyp = (v >> 28) & 0b0111;
+      const auto arch = (v >> 20) & 0b11111111;
+      const auto sramsiz = (v >> 16) & 0b1111;
+      const auto nvpsiz2 = (v >> 12) & 0b1111;
+      const auto nvpsiz1 = (v >> 8) & 0b1111;
+      const auto eproc = (v >> 5) & 0b0111;
+      const auto version = (v >> 0) & 0b00011111;
+      Serial.print(v, 16);
+      Serial.print(" EXT:");
+      Serial.print(ext, 16);
+      Serial.print(" NVPTYP:");
+      Serial.print(nvptyp, 16);
+      Serial.print(" ARCH:");
+      Serial.print(arch, 16);
+      Serial.print(" SRAMSIZ:");
+      Serial.print(sramsiz, 16);
+      Serial.print(" NVPSIZ2:");
+      Serial.print(nvpsiz2, 16);
+      Serial.print(" NVPSIZ1:");
+      Serial.print(nvpsiz1, 16);
+      Serial.print(" EPROC:");
+      Serial.print(eproc, 16);
+      Serial.print(" VERSION:");
+      Serial.print(version, 16);
+
+      Serial.print("    CIDR_EXT:");
+      Serial.print(cidr_ext, 16);
+      Serial.print("\n");
+    }
+
+    // TC_hitcount
+    Serial.print("TC_hitcount: t=");
+    Serial.print(millis() / 1000);
+    auto ck_en = pmc_is_periph_clk_enabled(ID_TC1);
+    Serial.print(" TC1.clock_enable=");
+    Serial.print(ck_en);
+
+    for (byte i = 0; i <= 8; i++) {
+      Serial.print(" [");
+      Serial.print(i);
+      Serial.print("]=");
+      Serial.print(TC_hitcount[i]);
+      
+      static Tc * const idToTC[] = {
+        TC0, TC0, TC0, 
+        TC1, TC1, TC1, 
+        TC2, TC2, TC2 };
+
+      auto v = TC_ReadCV(idToTC[i], i % 3);
+      Serial.print(" / CV=");
+      Serial.print(v);
+    }
+    Serial.print("\n");
+
+    Tc *tc = TC1;
+    Serial.print("TC1: CCR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_CCR, 16); // Write-only
+    Serial.print(" CMR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_CMR, 16);
+    Serial.print(" SMMR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_SMMR, 16);
+    Serial.print(" CV=");
+    Serial.print(tc->TC_CHANNEL[0].TC_CV, 16);
+    Serial.print(" RA=");
+    Serial.print(tc->TC_CHANNEL[0].TC_RA, 16);
+    Serial.print(" RB=");
+    Serial.print(tc->TC_CHANNEL[0].TC_RB, 16);
+    Serial.print(" RC=");
+    Serial.print(tc->TC_CHANNEL[0].TC_RC, 16);
+    Serial.print(" SR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_SR, 16);
+    Serial.print(" IER=");
+    Serial.print(tc->TC_CHANNEL[0].TC_IER, 16); // Write-only
+    Serial.print(" IDR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_IDR, 16); // Write-only
+    Serial.print(" IMR=");
+    Serial.print(tc->TC_CHANNEL[0].TC_IMR, 16);
+
+    Serial.print("   TC_BCR=");
+    Serial.print(tc->TC_BCR, 16);
+    Serial.print(" TC_BMR=");
+    Serial.print(tc->TC_BMR, 16);
+    Serial.print(" TC_FMR=");
+    Serial.print(tc->TC_FMR, 16);
+    Serial.print(" TC_WPMR=");
+    Serial.print(tc->TC_WPMR, 16);
+    Serial.print("\n");
   }
 }
 

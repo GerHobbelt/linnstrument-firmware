@@ -16,13 +16,31 @@ limitations under the License.
 
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
+
+#include <string.h>
+
 // Handshake codes for settings transfer
-const char* countDownCode = "5, 4, 3, 2, 1 ...\n";
-const byte countDownLength = 18;
-const char* linnGoCode = "LinnStruments are go!\n"; 
-const char* ackCode = "ACK\n";
-const char* linnStrumentControlCode = "LC\n";
-const byte linnStrumentControlLength = 3;
+static const struct HandshakeCodes {
+  const char* countDownCode;
+  //constexpr const byte countDownLength = 18;
+  const char* linnGoCode;
+  const char* ackCode;
+  const char* failCode;
+  const char* linnStrumentControlCode;
+  //constexpr const byte linnStrumentControlLength = 3;
+} HandshakeCodes = {
+  .countDownCode = "5, 4, 3, 2, 1 ...\n",
+  //constexpr const byte countDownLength = 18;
+  .linnGoCode = "LinnStruments are go!\n",
+  .ackCode = "ACK\n",
+  .failCode = "FAIL\n",
+  .linnStrumentControlCode = "LC\n",
+  //constexpr const byte linnStrumentControlLength = 3;
+};
+static constexpr const byte countDownLength = 18;
+static constexpr const byte linnStrumentControlLength = 3;
 
 boolean waitingForCommands = false;
 
@@ -36,29 +54,37 @@ enum linnCommands {
   SendProjects = 'p',
   RestoreProject = 'q',
   RestoreSettings = 'r',
-  SendSettings = 's'
+  SendSettings = 's',
+  ShowInfo = '?',
+  TweakSettings = 't',
 };
 
 byte codePos = 0;
-uint32_t lastSerialMoment = 0;
 
-static PROGMEM prog_uint32_t crc_table[16] = {
-    0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
-    0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
-    0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
-    0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
+static const prog_uint32_t crc_table[16] = {
+  0x00000000, 0x1db71064, 0x3b6e20c8, 0x26d930ac,
+  0x76dc4190, 0x6b6b51f4, 0x4db26158, 0x5005713c,
+  0xedb88320, 0xf00f9344, 0xd6d6a3e8, 0xcb61b38c,
+  0x9b64c2b0, 0x86d3d2d4, 0xa00ae278, 0xbdbdf21c
 };
 
-uint32_t crc_update(uint32_t crc, uint8_t data) {
-    uint8_t tbl_idx;
-    tbl_idx = crc ^ (data >> (0 * 4));
-    crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
-    tbl_idx = crc ^ (data >> (1 * 4));
-    crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
-    return crc;
+inline uint32_t crc_update(uint32_t crc, uint8_t data) {
+  uint8_t tbl_idx;
+  tbl_idx = crc ^ (data >> (0 * 4));
+  crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
+  tbl_idx = crc ^ (data >> (1 * 4));
+  crc = pgm_read_dword_near(crc_table + (tbl_idx & 0x0f)) ^ (crc >> 4);
+  return crc;
 }
 
-uint32_t crc_byte_array(uint8_t* s, uint8_t size) {
+inline uint32_t crc_append_byte_array(uint32_t crc, const uint8_t* s, uint32_t size) {
+  for (uint32_t i = 0; i < size; ++i) {
+    crc = crc_update(crc, *s++);
+  }
+  return crc;
+}
+
+inline uint32_t crc_byte_array(const uint8_t* s, uint8_t size) {
   uint32_t crc = ~0L;
   for (uint8_t i = 0; i < size; ++i) {
     crc = crc_update(crc, *s++);
@@ -75,64 +101,95 @@ void handleSerialIO() {
 
   // get the next byte from the serial bus
   byte d = Serial.read();
+  DEBUGPRINT((5, "handleSerialIO: input="));
+  DEBUGPRINT((5, d));
+  if (isascii(d) && isprint(d)) {
+    char chdisp[] = " ('X')";
+    chdisp[3] = d;
+    DEBUGPRINT((5, chdisp));
+  }
+  DEBUGPRINT((5, ", waitingForCommands="));
+  DEBUGPRINT((5, waitingForCommands));
+  DEBUGPRINT((5, ", controlModeActive="));
+  DEBUGPRINT((5, controlModeActive));
+  DEBUGPRINT((5, ", codePos="));
+  DEBUGPRINT((5, codePos));
+  DEBUGPRINT((5, "\n"));
 
   // check for a recognized command
-  if (waitingForCommands) {
+  if (d == ShowInfo && codePos == 0) {
+    serialShowInfo();
+  }
+  else if (waitingForCommands) {
     switch (d) {
       case SendSettings:
-      {
-        serialSendSettings();
-        break;
-      }
+        {
+          serialSendSettings();
+          break;
+        }
 
       case RestoreSettings:
-      {
-        serialRestoreSettings();
-        break;
-      }
+        {
+          serialRestoreSettings();
+          break;
+        }
 
       case LightLed:
-      {
-        serialLightLed();
-        break;
-      }
+        {
+          serialLightLed();
+          break;
+        }
 
       case SendSingleProject:
-      {
-        serialSendSingleProject();
-        break;
-      }
+        {
+          serialSendSingleProject();
+          break;
+        }
 
       case SendProjects:
-      {
-        serialSendProjects();
-        break;
-      }
+        {
+          serialSendProjects();
+          break;
+        }
 
       case RestoreProject:
-      {
-        serialRestoreProject();
+        {
+          serialRestoreProject();
+          break;
+        }
+
+      case TweakSettings:
+        {
+          serialTweakSettings();
+          break;
+        }
+
+      // ignore CR, LF and whitespace (SPACE, TAB) to allow easier use of the command mode from line-oriented simple terminal applications too:
+      case '\n':
+      case '\r':
+      case '\t':
+      case ' ':
         break;
-      }
 
       default:
-      {
-        waitingForCommands = false;
-        break;
-      }
+        {
+          DEBUGPRINT((5, "Unsupported/unrecognized command; dropping out of serial command mode.\n"));
+
+          waitingForCommands = false;
+          break;
+        }
     }
   }
   // handle readyness countdown state
   else {
-    if (d == countDownCode[codePos]) {
+    if (d == HandshakeCodes.countDownCode[codePos]) {
       codePos++;
       if (codePos == countDownLength) {
         codePos = 0;
         waitingForCommands = true;
-        Serial.write(linnGoCode);
+        Serial.write(HandshakeCodes.linnGoCode);
       }
-    }
-    else if (d == linnStrumentControlCode[codePos]) {
+    } else if (d == HandshakeCodes.linnStrumentControlCode[codePos]) {
       codePos++;
       if (codePos == linnStrumentControlLength) {
         codePos = 0;
@@ -140,41 +197,37 @@ void handleSerialIO() {
         controlModeActive = true;
         clearDisplay();
         updateDisplay();
-        Serial.write(ackCode);
+        Serial.write(HandshakeCodes.ackCode);
       }
-    }
-    else {
+    } else {
       codePos = 0;
     }
   }
 }
 
-boolean waitForSerialAck() {
+inline boolean waitForSerialAck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
-  lastSerialMoment = millis();
   if (ack != ACK) return false;
   return true;
 }
 
-boolean waitForSerialCheck() {
+inline boolean waitForSerialCheck() {
   if (!serialWaitForMaximumTwoSeconds()) return false;
   char ack = Serial.read();
-  lastSerialMoment = millis();
   if (ack != CRCCheck) return false;
   return true;
 }
 
-char waitForSerialCRC() {
+inline char waitForSerialCRC() {
   if (!serialWaitForMaximumTwoSeconds()) return 0;
   char ack = Serial.read();
-  lastSerialMoment = millis();
   return ack;
 }
 
-int negotiateOutgoingCRC(byte* buffer, uint8_t size) {
+int negotiateOutgoingCRC(const byte* buffer, uint8_t size) {
   uint32_t crc = crc_byte_array(buffer, size);
-  Serial.write((byte*)&crc, sizeof(uint32_t));
+  Serial.write((const byte*)&crc, sizeof(uint32_t));
 
   char crcresponse = waitForSerialCRC();
   if (crcresponse == 0) return -1;
@@ -189,7 +242,6 @@ int negotiateIncomingCRC(byte* buffer, uint8_t size) {
   for (byte k = 0; k < sizeof(uint32_t); ++k) {
     if (!serialWaitForMaximumTwoSeconds()) return -1;
     buff_crc[k] = Serial.read();
-    lastSerialMoment = millis();
   }
   uint32_t remote_crc;
   memcpy(&remote_crc, buff_crc, sizeof(uint32_t));
@@ -205,7 +257,7 @@ int negotiateIncomingCRC(byte* buffer, uint8_t size) {
 }
 
 void serialSendSettings() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
@@ -218,7 +270,6 @@ void serialSendSettings() {
   // send the actual settings
   const uint8_t batchsize = 96;
   byte* src = (byte*)&config;
-  lastSerialMoment = millis();
   while (confSize > 0) {
     int actual = min(confSize, batchsize);
     Serial.write(src, actual);
@@ -233,10 +284,11 @@ void serialSendSettings() {
     src += actual;
   }
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 }
 
 boolean serialWaitForMaximumTwoSeconds() {
+  uint32_t lastSerialMoment = millis();
   // retry if there's no data available
   while (Serial.available() <= 0) {
     // timeout after 2s if no data is coming in anymore
@@ -244,64 +296,69 @@ boolean serialWaitForMaximumTwoSeconds() {
       waitingForCommands = false;
       return false;
     }
+    delayUsec(10);
   }
 
   return true;
 }
 
 void serialRestoreSettings() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
 
   // retrieve the size of the settings
-  lastSerialMoment = millis();
-
   byte buff1[sizeof(int32_t)];
   for (byte i = 0; i < sizeof(int32_t); ++i) {
     if (!serialWaitForMaximumTwoSeconds()) return;
     buff1[i] = Serial.read();
-    lastSerialMoment = millis();
   }
   int32_t settingsSize;
   memcpy(&settingsSize, buff1, sizeof(int32_t));
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
+
+  boolean settingsApplied;
 
   // restore the actual settings
-  uint32_t projectOffset = SETTINGS_OFFSET;
-  const uint8_t batchsize = 96;
-  byte buff2[batchsize];
-  lastSerialMoment = millis();
-  int32_t remaining = settingsSize;
-  while (remaining > 0) {
-    int actual = min(remaining, batchsize);
-    for (byte k = 0; k < actual; ++k) {
-      if (!serialWaitForMaximumTwoSeconds()) return;
-      buff2[k] = Serial.read();
-      lastSerialMoment = millis();
+  AddressInfo dataBuffer = appDataFlashStorage.allocateSettingsStorageSpace(settingsSize);
+  if (dataBuffer.address && dataBuffer.size > 0) {
+    byte* projectOffset = dataBuffer.address;
+    const uint8_t batchsize = 96;
+    byte buff2[batchsize];
+    int32_t remaining = settingsSize;
+    while (remaining > 0) {
+      int actual = min(remaining, batchsize);
+      for (byte k = 0; k < actual; ++k) {
+        if (!serialWaitForMaximumTwoSeconds()) goto fail;
+        buff2[k] = Serial.read();
+      }
+
+      int crc = negotiateIncomingCRC(buff2, actual);
+      if (crc == -1)     goto fail;
+      else if (crc == 0) continue;
+
+      appDataFlashStorage.writePartialData(projectOffset, buff2, actual);
+
+      remaining -= actual;
+      projectOffset += actual;
     }
 
-    int crc = negotiateIncomingCRC(buff2, actual);
-    if (crc == -1)      return;
-    else if (crc == 0)  continue;
+    settingsApplied = upgradeConfigurationSettings(settingsSize, dataBuffer.address);
+    if (!settingsApplied)
+      goto fail;
 
-    dueFlashStorage.write(projectOffset, buff2, actual);
-
-    remaining -= actual;
-    projectOffset += actual;
-  }
-
-  boolean settingsApplied = upgradeConfigurationSettings(settingsSize, dueFlashStorage.readAddress(SETTINGS_OFFSET));
-
-  // activate the retrieved settings
-  if (settingsApplied) {
+    // activate the retrieved settings
     applyConfiguration();
-  }
 
-  // send the acknowledgement of success
-  Serial.write(ackCode);
+    // send the acknowledgement of success
+    Serial.write(HandshakeCodes.ackCode);
+  } else {
+fail:
+    settingsApplied = false;
+    Serial.write(HandshakeCodes.failCode);
+  }
   delayUsec(1000000);
 
   // Turn off OS upgrade mode
@@ -326,15 +383,12 @@ void serialRestoreSettings() {
 }
 
 void serialLightLed() {
-  lastSerialMoment = millis();
-
   byte buff[3];
   for (byte i = 0; i < 3; ++i) {
     if (!serialWaitForMaximumTwoSeconds()) return;
 
     // read the next byte of the configuration size
     buff[i] = Serial.read();
-    lastSerialMoment = millis();
   }
 
   setLed(buff[0], buff[1], buff[2], cellOn);
@@ -342,25 +396,23 @@ void serialLightLed() {
   updateDisplay();
 }
 
-int32_t serialSendProjectSize() {
+inline int32_t serialSendProjectSize() {
   // send the size of a project
   int32_t projectSize = sizeof(SequencerProject);
   Serial.write((byte*)&projectSize, sizeof(int32_t));
-  lastSerialMoment = millis();
   return projectSize;
 }
 
 void serialSendProjectRaw(int32_t projectSize, byte projectNumber) {
-  byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
-
   // send the actual settings
   const uint8_t batchsize = 96;
 
-  byte prjIndex = dueFlashStorage.read(PROJECT_INDEX_OFFSET(marker, projectNumber));
-  uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + prjIndex * SINGLE_PROJECT_SIZE;
-  int32_t remaining = projectSize;
+  const AddressInfo flashInfo = appDataFlashStorage.getProjectAddressInfo(projectNumber);
+  if (!flashInfo.address || flashInfo.size == 0)
+    return;
 
-  byte* src = (byte*)dueFlashStorage.readAddress(projectOffset);
+  int32_t remaining = flashInfo.size;
+  const byte* src = flashInfo.address;
   while (remaining > 0) {
     int actual = min(remaining, batchsize);
     Serial.write(src, actual);
@@ -368,8 +420,8 @@ void serialSendProjectRaw(int32_t projectSize, byte projectNumber) {
     if (!waitForSerialCheck()) return;
 
     int crc = negotiateOutgoingCRC(src, actual);
-    if (crc == -1)      return;
-    else if (crc == 0)  continue;
+    if (crc == -1)     return;
+    else if (crc == 0) continue;
 
     remaining -= actual;
     src += actual;
@@ -377,28 +429,26 @@ void serialSendProjectRaw(int32_t projectSize, byte projectNumber) {
 }
 
 void serialSendSingleProject() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
 
-  lastSerialMoment = millis();
-
   if (!serialWaitForMaximumTwoSeconds()) return;
-  
+
   uint8_t projectNumber = Serial.read();
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   Serial.write(Device.version);
 
   int32_t projectSize = serialSendProjectSize();
   serialSendProjectRaw(projectSize, projectNumber);
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 }
 
 void serialSendProjects() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
@@ -412,74 +462,219 @@ void serialSendProjects() {
     serialSendProjectRaw(projectSize, p);
   }
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 }
 
 
-void serialRestoreProject() {
-  Serial.write(ackCode);
+static boolean serialRestoreProject___L() {
+  Serial.write(HandshakeCodes.ackCode);
 
   clearDisplayImmediately();
   delayUsec(1000);
 
-  lastSerialMoment = millis();
-
-  if (!serialWaitForMaximumTwoSeconds()) return;
+  if (!serialWaitForMaximumTwoSeconds()) return false;
   uint8_t version = Serial.read();
-  if (version < 9) return;
-  Serial.write(ackCode);
-  lastSerialMoment = millis();
+  if (version < 9) return false;
+  Serial.write(HandshakeCodes.ackCode);
 
   // retrieve the size of a project
   byte buff1[sizeof(int32_t)];
   for (byte i = 0; i < 4; ++i) {
-    if (!serialWaitForMaximumTwoSeconds()) return;
+    if (!serialWaitForMaximumTwoSeconds()) return false;
 
     // read the next byte of the project size
     buff1[i] = Serial.read();
-    lastSerialMoment = millis();
   }
 
   int32_t projectSize;
   memcpy(&projectSize, buff1, sizeof(int32_t));
 
-  if (projectSize != sizeof(SequencerProject)) return;
+  if (projectSize != sizeof(SequencerProject)) return false;
 
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
-  if (!serialWaitForMaximumTwoSeconds()) return;
+  if (!serialWaitForMaximumTwoSeconds()) return false;
 
   uint8_t p = Serial.read();
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
 
   // write the actual project
-  byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
-  byte prjIndex = dueFlashStorage.read(PROJECT_INDEX_OFFSET(marker, p));
-  uint32_t projectOffset = PROJECTS_OFFSET + PROJECTS_MARKERS_SIZE + prjIndex * SINGLE_PROJECT_SIZE;
+  AddressInfo flashInfo = appDataFlashStorage.allocateProjectStorageSpace(p, projectSize);
+  if (flashInfo.address && flashInfo.size > 0) {
+    const uint8_t batchsize = 96;
+    byte buff2[batchsize];
+    byte* dst = flashInfo.address;
+    int32_t remaining = flashInfo.size;
+    while (remaining > 0) {
+      int actual = min(remaining, batchsize);
+      for (byte k = 0; k < actual; ++k) {
+        if (!serialWaitForMaximumTwoSeconds()) return false;
+        buff2[k] = Serial.read();
+      }
 
-  const uint8_t batchsize = 96;
-  byte buff2[batchsize];
-  lastSerialMoment = millis();
-  int32_t remaining = projectSize;
-  while (remaining > 0) {
-    int actual = min(remaining, batchsize);
-    for (byte k = 0; k < actual; ++k) {
-      if (!serialWaitForMaximumTwoSeconds()) return;
-      buff2[k] = Serial.read();
-      lastSerialMoment = millis();
+      int crc = negotiateIncomingCRC(buff2, actual);
+      if (crc == -1) return false;
+      else if (crc == 0) continue;
+
+      appDataFlashStorage.writePartialData(dst, buff2, actual);
+
+      remaining -= actual;
+      dst += actual;
     }
 
-    int crc = negotiateIncomingCRC(buff2, actual);
-    if (crc == -1)      return;
-    else if (crc == 0)  continue;
+    // validate loaded project
+    if (!checkProjectIntegrity(flashInfo))
+      return false;
 
-    dueFlashStorage.write(projectOffset, buff2, actual);
+    appDataFlashStorage.markSectionAsValid(flashInfo);
 
-    remaining -= actual;
-    projectOffset += actual;
+    // finished
+    Serial.write(HandshakeCodes.ackCode);
+
+    return true;
   }
+  return false;
+}
 
-  // finished
-  Serial.write(ackCode);
+void serialRestoreProject() {
+  // __try:
+  if (!serialRestoreProject___L()) {
+    // __catch/fail:
+    Serial.write(HandshakeCodes.failCode);
+  }
+  // __always:
   delayUsec(500000);
 }
+
+void serialShowInfo() {
+  const char *msg = R"LINN(
+LinnStrument serial console info
+================================
+
+The LinnStrument has a USB/serial console mode which listens for some specific
+commands (listed below) which can be used to backup/restore projects from
+the instrument and/or control it (in a limited way).
+
+To ensure the LinnStrument acts on any given command, you first need to send
+it a magic handshake string, which will activate 'waitingForCommands' mode.
+
+These magic handshakes are supported:
+
+- countDownCode = "5, 4, 3, 2, 1 ...\n"
+
+  to which the LinnStrument will respond with "LinnStruments are go!\n"
+  when accepted and 'waitingForCommands' mode has been activated.
+
+- linnStrumentControlCode = "LC\n"
+
+  to which the LinnStrument will respond with "ACK\n" when accepted.
+  This handshake activates Control Mode, which enables a kind of fast typing
+  mode on the Linn, where every touch is transmitted as a message to
+  the serial port.
+
+The following commands are supported:
+
+  CRCCheck = 'c'
+  CRCWrong = 'w'
+  CRCOk = 'o'
+  LightLed = 'l'
+  SendSingleProject = 'j'
+  SendProjects = 'p'
+  RestoreProject = 'q'
+  RestoreSettings = 'r'
+  SendSettings = 's'
+  TweakSettings = 't'
+  ShowInfo = '?'
+
+and entering any unsupported command/character (except your regular space
+and CR LF end-of-line) will drop the Linn out of Command Mode and back into
+regular serial listening...
+
+TweakSettings is a group of human console/terminal mode usable subcommands,
+such as:
+
+  updt <N>      set ram & other diagnostics display update time in milliseconds.
+                0 resets to the default period (500 msecs).
+  dbgl <N>      set the debug level to N: higher is more verbose.
+
+  (note: when no <N> parameter has been specified, the current value will
+   be reported instead.)
+
+Enjoy!
+-------------------------------------------------------------------------
+)LINN";
+
+  Serial.println(msg);
+  // __always:
+  delayUsec(500000);
+}
+
+static bool strieq(const char *s1, const char *s2) {
+  if (!s1 || !s2)
+    return false;
+  return strcasecmp(s1, s2) == 0;
+}
+
+extern unsigned long debugDisplayUpdatePeriod;
+
+void serialTweakSettings() {
+  // expect subcommand, with optional parameter(s):
+  char subcmdbuf[60];
+
+  Serial.write(HandshakeCodes.ackCode);
+  Serial.write(" ...waiting for subcommand line (terminated by LF)\n");
+
+  unsigned int i = 0;
+  for (;;) {
+    byte d = Serial.read();
+    if (d == '\r' || d == '\n' || d == 0) {
+      subcmdbuf[i] = 0;
+      break;
+    }
+    if (i == sizeof(subcmdbuf) - 1) {
+      Serial.write(" ...subcommand line overflows input buffer. Ignoring the entire line!\n");
+      subcmdbuf[0] = 0;
+      break;
+    }
+    subcmdbuf[i++] = d;
+  }
+
+  // parse command line:
+  char *cmd = strtok(subcmdbuf, " \t");
+
+  // send ACK/FAIL response to show a command line has been received:
+  if (cmd)
+    Serial.write(HandshakeCodes.ackCode);
+  else
+    Serial.write("Empty command line ignored...");
+
+  if (strieq(cmd, "dbgl")) {
+    char *param = strtok(nullptr, " \t");
+    if (param) {
+      int l = atoi(param);
+      debugLevel = l;
+    }
+    // else: report current debug level.
+    Serial.print("Active debug level = ");
+    Serial.println(debugLevel);
+  }
+  else if (strieq(cmd, "updt")) {
+    char *param = strtok(nullptr, " \t");
+    if (param) {
+      int l = atoi(param);
+      if (l <= 0)
+        l = 500;
+      debugDisplayUpdatePeriod = l * 1000;
+    }
+    // else: report current debug level.
+    Serial.print("debugDisplay info blurbs update period = ");
+    Serial.print(debugDisplayUpdatePeriod / 1000);
+    Serial.println(" milliseconds");
+  }
+  else if (cmd) {
+    Serial.print("unsupported subcommand: ");
+    Serial.print(cmd);
+    Serial.println(" --> ignored!");
+  }
+}
+

@@ -16,8 +16,10 @@ limitations under the License.
 This cycles through a series of images to creation an animated playbook.
 **************************************************************************************************/
 
+#include "ls_compiler_tweaks.h"
+
 const int CHRISTMAS_FRAME_COUNT = 7;
-const char* CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
+static const char* const CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
     " W    W       W    W  W   "
     "  W W  G    W  W    W    W"
     "      GGRW    W      G    "
@@ -81,7 +83,7 @@ const char* CHRISTMAS_FRAMES_200[CHRISTMAS_FRAME_COUNT] = {
     " W  GGRGGGG   WGRGGGGGGRG "
     " WWWWWWYWWWWWWWWWYWWWYWWWW"
   };
-const char* CHRISTMAS_FRAMES_128[CHRISTMAS_FRAME_COUNT] = {
+static const char* const CHRISTMAS_FRAMES_128[CHRISTMAS_FRAME_COUNT] = {
     "  W    W       W          "
     " W W W  G    W  W         "
     "       GGRW    W          "
@@ -146,7 +148,7 @@ const char* CHRISTMAS_FRAMES_128[CHRISTMAS_FRAME_COUNT] = {
     " WWWWWWWYWWWWWWWW         "
   };
 
-void playChristmasAnimation() {
+inline void playChristmasAnimation() {
   if (LINNMODEL == 200) {
     playPlayBook(CHRISTMAS_FRAME_COUNT, CHRISTMAS_FRAMES_200);
   }
@@ -155,7 +157,7 @@ void playChristmasAnimation() {
   }
 }
 
-void playPlayBook(int totalFrames, const char** playbook) {
+void playPlayBook(int totalFrames, const char* const * playbook) {
   Device.sleepAnimationActive = true;
   storeSettings();
 
@@ -167,7 +169,7 @@ void playPlayBook(int totalFrames, const char** playbook) {
     animationActive = true;
     const char* frameData = playbook[frameIndex];
     startBufferedLeds();
-    for (int r = MAXROWS-1; r >= 0; --r) {
+    for (int r = MAXROWS - 1; r >= 0; --r) {
       for (int c = 0; c < MAXCOLS; ++c) {
         setLed(c, r, colorCharToNumber(*frameData), cellOn);
         frameData++;
@@ -195,16 +197,16 @@ void playPlayBook(int totalFrames, const char** playbook) {
 
 byte colorCharToNumber(char color) {
   switch (color) {
-    case 'B': return 5;
-    case 'C': return 4;
-    case 'G': return 3;
-    case 'L': return 10;
-    case 'M': return 6;
-    case 'O': return 9;
-    case 'P': return 11;
-    case 'R': return 1;
-    case 'W': return 8;
-    case 'Y': return 2;
+    case 'B': return COLOR_BLUE;
+    case 'C': return COLOR_CYAN;
+    case 'G': return COLOR_GREEN;
+    case 'L': return COLOR_LIME;
+    case 'M': return COLOR_MAGENTA;
+    case 'O': return COLOR_ORANGE;
+    case 'P': return COLOR_PINK;
+    case 'R': return COLOR_RED;
+    case 'W': return COLOR_WHITE;
+    case 'Y': return COLOR_YELLOW;
   }
   return 0;
 }
