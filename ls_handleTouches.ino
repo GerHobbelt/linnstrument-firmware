@@ -321,6 +321,29 @@ boolean hasOtherTouchInSplit(byte split) {
   return false;
 }
 
+// find the highest pressure currently held among the touches that are playing a note on the
+// given split and MIDI channel, used to implement peak pressure hold for legato pressure continuity
+unsigned short peakPressureZForChannel(byte split, byte channel) {
+  unsigned short peakZ = 0;
+
+  for (byte row = 0; row < NUMROWS; ++row) {
+    int32_t colsInRowTouched = colsInRowsTouched[row];
+    while (colsInRowTouched) {
+      byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
+      TouchInfo& touch = cell(touchedCol, row);
+
+      if (touch.hasNote() && touch.channel == channel && getSplitOf(touchedCol) == split &&
+          touch.pressureZ > peakZ) {
+        peakZ = touch.pressureZ;
+      }
+
+      colsInRowTouched &= ~(int32_t)(1 << touchedCol);
+    }
+  }
+
+  return peakZ;
+}
+
 boolean hasTouchInSplitOnRow(byte split, byte row) {
   if (colsInRowsTouched[row]) {
     // if split is not active and there's a touch on the row, it's obviously in the current split
@@ -1211,12 +1234,15 @@ void prepareNewNote(signed char notenum) {
   focused.col = sensorCol;
   focused.row = sensorRow;
 
-  // reset the pitch bend and pressure right before sending the note on
+  // reset the pitch bend and pressure right before sending the note on, unless legato pressure
+  // continuity is active and another touch is already sounding in this split, in which case the
+  // pressure should carry over smoothly instead of being forced to restart from 0
+  boolean legatoOverlap = Split[sensorSplit].legatoPressure && hasOtherTouchInSplit(sensorSplit);
   if (!userFirmwareActive) {
     if (Split[sensorSplit].sendX && isXExpressiveCell() && !isLowRowBendActive(sensorSplit)) {
       resetLastMidiPitchBend(sensorCell->channel);
     }
-    if (Split[sensorSplit].sendZ && isZExpressiveCell()) {
+    if (Split[sensorSplit].sendZ && isZExpressiveCell() && !legatoOverlap) {
       preResetLastLoudness(sensorSplit, sensorCell->note, sensorCell->channel);
     }
     if (Split[sensorSplit].sendY && isYExpressiveCell()) {
@@ -1253,8 +1279,11 @@ void sendNewNote() {
     }
 
     // reset pressure to 0 before sending the note, the actually pressure value will
-    // be sent right after the note on
-    if (Split[sensorSplit].sendZ && isZExpressiveCell()) {
+    // be sent right after the note on, unless legato pressure continuity is active and
+    // another touch is already sounding in this split, in which case skipping the reset
+    // avoids an audible volume dip on overlapping note changes
+    if (Split[sensorSplit].sendZ && isZExpressiveCell() &&
+        !(Split[sensorSplit].legatoPressure && hasOtherTouchInSplit(sensorSplit))) {
       preSendLoudness(sensorSplit, 0, 0, sensorCell->note, sensorCell->channel);
     }
 
@@ -1335,6 +1364,16 @@ unsigned short handleZExpression() {
   // the adjacent Z value is added the active cell's pressure to make
   // up for the pressure differential while moving across cells
   preferredPressure = constrain(preferredPressure + adjacentZ, 0, 1016);
+
+  // when legato pressure continuity is active, use the peak pressure among all the touches
+  // that share this note's MIDI channel, so that a lighter tap (e.g. a fast trill) played
+  // over a sustained anchor finger doesn't pull the shared pressure signal down
+  if (sensorCell->hasNote() && Split[sensorSplit].legatoPressure) {
+    unsigned short peakZ = peakPressureZForChannel(sensorSplit, sensorCell->channel);
+    if (peakZ > preferredPressure) {
+      preferredPressure = peakZ;
+    }
+  }
 
   // the faster we move the slower the slew rate becomes,
   // if we're holding still the pressure changes are almost instant, if we're moving faster they are averaged out
@@ -1742,8 +1781,11 @@ void handleTouchRelease() {
   }
   else if (sensorCell->hasNote()) {
 
-    // reset the pressure when the note is released and that setting is active
-    if (Split[sensorSplit].sendZ && isZExpressiveCell()) {
+    // reset the pressure when the note is released and that setting is active, unless legato
+    // pressure continuity is active and another touch is still sounding in this split, in which
+    // case zeroing the shared pressure signal would cause an unwanted dip for the remaining notes
+    if (Split[sensorSplit].sendZ && isZExpressiveCell() &&
+        !(Split[sensorSplit].legatoPressure && hasOtherTouchInSplit(sensorSplit))) {
       preSendLoudness(sensorSplit, 0, 0, sensorCell->note, sensorCell->channel);
     }
 

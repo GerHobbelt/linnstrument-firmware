@@ -137,6 +137,7 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 64   | 1     | Split Left Sequencer Next Pattern
 | 65   | 0-3   | Split Left Sequencer Select Pattern Number
 | 66   | 1     | Split Left Sequencer Toggle Mute
+| 67   | 0-1   | Split Left Legato Pressure (0: Off, 1: On)
 | 100  | 0-2   | Split Right MIDI Mode (0: One Channel, 1: Channel Per Note, 2: Channel Per Row)
 | 101  | 1-16  | Split Right MIDI Main Channel
 | 102  | 0-1   | Split Right MIDI Per Note Channel 1 (0: Off, 1: On)
@@ -204,6 +205,7 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 164  | 1     | Split Right Sequencer Next Pattern
 | 165  | 0-3   | Split Right Sequencer Select Pattern Number
 | 166  | 1     | Split Right Sequencer Toggle Mute
+| 167  | 0-1   | Split Right Legato Pressure (0: Off, 1: On)
 | 200  | 0-1   | Global Split Active (0: Inactive, 1: Active)
 | 201  | 0-1   | Global Selected Split (0: Left Split, 1: Right Split)
 | 202  | 2-25  | Global Split Point Column

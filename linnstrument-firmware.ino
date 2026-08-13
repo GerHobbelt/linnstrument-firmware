@@ -638,6 +638,7 @@ struct SplitSettings {
   unsigned short minForZ;                 // 0-127
   unsigned short maxForZ;                 // 0-127
   boolean ccForZ14Bit;                    // true when 14-bit messages should be sent when Z CC is between 0-31, false when only 7-bit messages should be sent
+  boolean legatoPressure;                 // true to keep pressure continuous across overlapping note changes on the same channel instead of flushing it to 0, and to hold the peak pressure among overlapping touches
   unsigned short ccForFader[8];           // each fader can control a CC number ranging from 0-128 (with 128 being placeholder for ChannelPressure)
   byte colorMain;                         // color for non-accented cells
   byte colorAccent;                       // color for accented cells

@@ -346,7 +346,7 @@ void storeSettingsToPreset(byte p) {
 // The first time after new code is loaded into the Linnstrument, this sets the initial defaults of all settings.
 // On subsequent startups, these values are overwritten by loading the settings stored in flash.
 void initializeDeviceSettings() {
-  Device.version = 17;
+  Device.version = 18;
   Device.serialMode = false;
   Device.sleepAnimationActive = false;
   Device.sleepActive = false;
@@ -628,6 +628,7 @@ void initializePresetSettings() {
         p.split[s].maxForZ = 127;
         p.split[s].customCCForZ = 11;
         p.split[s].ccForZ14Bit = false;
+        p.split[s].legatoPressure = false;
         memcpy(&p.split[s].ccForFader, ccFaderDefaults, sizeof(unsigned short)*8);
         p.split[s].colorAccent = COLOR_CYAN;
         p.split[s].colorLowRow = COLOR_YELLOW;
@@ -1723,6 +1724,12 @@ void handlePerSplitSettingRelease() {
           if (ensureCellBeforeHoldWait(getCCForZColor(Global.currentPerSplit),
                                        Split[Global.currentPerSplit].expressionForZ == loudnessCC11 ? cellOn : cellOff)) {
             Split[Global.currentPerSplit].expressionForZ = loudnessCC11;
+          }
+          break;
+        case 3:
+          if (ensureCellBeforeHoldWait(Split[Global.currentPerSplit].colorMain,
+                                       Split[Global.currentPerSplit].legatoPressure ? cellOn : cellOff)) {
+            Split[Global.currentPerSplit].legatoPressure = !Split[Global.currentPerSplit].legatoPressure;
           }
           break;
       }
