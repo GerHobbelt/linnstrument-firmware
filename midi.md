@@ -41,7 +41,7 @@ features, than the CC faders will take precedence.
 | 13            | Configure User Firmware MIDI decimation rate in milliseconds (minimum 12 ms in low power mode)
 | 20            | Column coordinate for cell color change with CC 22 (starts from 0)
 | 21            | Row coordinate for cell color change with CC 22 (starts from 0)
-| 22            | Change the color of the cell with the provided column and row coordinates see color value table below, 11+: default color
+| 22            | Change the color of the cell with the provided column and row coordinates see color value table below, 30+: default color
 | 23            | Make current custom cell colors persistent as pattern (0-2) 
 | 24            | Clear persisted custom cell colors pattern (0-2)
 
@@ -100,10 +100,10 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 27   | 0-1   | Split Left Send Z (0: Off, 1: On)
 | 28   | 0-2   | Split Left MIDI Expression For Z (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #29) 
 | 29   | 0-127 | Split Left MIDI CC For Z (CC 11 is recommended, any CC is possible though)
-| 30   | 1-6   | Split Left Color Main (see color value table below)
-| 31   | 1-6   | Split Left Color Accent (see color value table below)
-| 32   | 0-6   | Split Left Color Played (see color value table below)
-| 33   | 1-6   | Split Left Color LowRow (see color value table below)
+| 30   | 1-29  | Split Left Color Main (see color value table below)
+| 31   | 1-29  | Split Left Color Accent (see color value table below)
+| 32   | 0-29  | Split Left Color Played (see color value table below)
+| 33   | 1-29  | Split Left Color LowRow (see color value table below)
 | 34   | 0-7   | Split Left LowRow Mode (0: Off, 1: Sust, 2: Restr, 3: Strum, 4: Arp, 5: Bend, 6: CC1, 7: CC16-18)
 | 35   | 0-4   | Split Left Special (0: Off, 1: Arpeg, 2: CC Faders, 3: Strum, 4: Sequencer)
 | 36   | 0-10  | Split Left Octave (0: —5, 1: -4, 2: -3, 3: -2, 4: -1, 5: 0, 6: +1, 7: +2, 8: +3, 9: +4. 10: +5)
@@ -137,6 +137,7 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 64   | 1     | Split Left Sequencer Next Pattern
 | 65   | 0-3   | Split Left Sequencer Select Pattern Number
 | 66   | 1     | Split Left Sequencer Toggle Mute
+| 67   | 0-2   | Split Left Quartertone Mode (0: Off, 1: Pitch Bend, 2: Note Number)
 | 100  | 0-2   | Split Right MIDI Mode (0: One Channel, 1: Channel Per Note, 2: Channel Per Row)
 | 101  | 1-16  | Split Right MIDI Main Channel
 | 102  | 0-1   | Split Right MIDI Per Note Channel 1 (0: Off, 1: On)
@@ -167,10 +168,10 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 127  | 0-1   | Split Right Send Z (0: Off, 1: On)
 | 128  | 0-2   | Split Right MIDI Expression For Z (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #129)
 | 129  | 0-127 | Split Right MIDI CC For Z (CC 11 is recommended, any CC is possible though)
-| 130  | 1-6   | Split Right Color Main (see color value table below)
-| 131  | 1-6   | Split Right Color Accent (see color value table below)
-| 132  | 0-6   | Split Right Color Played (see color value table below)
-| 133  | 1-6   | Split Right Color LowRow (see color value table below)
+| 130  | 1-29  | Split Right Color Main (see color value table below)
+| 131  | 1-29  | Split Right Color Accent (see color value table below)
+| 132  | 0-29  | Split Right Color Played (see color value table below)
+| 133  | 1-29  | Split Right Color LowRow (see color value table below)
 | 134  | 0-7   | Split Right LowRow Mode (0: Off, 1: Sust, 2: Restr, 3: Strum, 4: Arp, 5: Bend, 6: CC1, 7: CC16-18)
 | 135  | 0-4   | Split Right Special (0: Off, 1: Arpeg, 2: CC Faders, 3: Strum, 4: Sequencer)
 | 136  | 0-10  | Split Right Octave (0: —5, 1: -4, 2: -3, 3: -2, 4: -1, 5: 0, 6: +1, 7: +2, 8: +3, 9: +4. 10: +5)
@@ -204,6 +205,7 @@ The following table lists all the NRPN input values that LinnStrument understand
 | 164  | 1     | Split Right Sequencer Next Pattern
 | 165  | 0-3   | Split Right Sequencer Select Pattern Number
 | 166  | 1     | Split Right Sequencer Toggle Mute
+| 167  | 0-2   | Split Right Quartertone Mode (0: Off, 1: Pitch Bend, 2: Note Number)
 | 200  | 0-1   | Global Split Active (0: Inactive, 1: Active)
 | 201  | 0-1   | Global Selected Split (0: Left Split, 1: Right Split)
 | 202  | 2-25  | Global Split Point Column
@@ -294,3 +296,80 @@ Color Values
 | 9     | Orange
 | 10    | Lime
 | 11    | Pink
+
+Values 12 and up are blends: the LED hardware can only light seven colours, so these alternate between two
+of them across the refresh intervals fast enough to read as one hue. They cost no brightness and do not
+flicker. They are reachable over MIDI and from the firmware, but not from the tap-to-cycle colour picker in
+the settings, which still stops at Pink so that reaching the common colours stays quick.
+
+| Value | Color      | Blend
+|-------|------------|--------------------------
+| 12    | Amber      | yellow with a third red
+| 13    | Rust       | red with a third yellow
+| 14    | Chartreuse | green with a third yellow
+| 15    | Teal       | cyan with a third green
+| 16    | Azure      | blue with a third cyan
+| 17    | Purple     | half blue, half magenta
+| 18    | Salmon     | red washed out with white
+| 19    | Cream      | yellow washed out with white
+| 20    | Mint       | green washed out with white
+| 21    | Sky        | blue washed out with white
+| 22    | Lavender   | magenta washed out with white
+| 23    | Pale Orange| orange washed out, via yellow with a third magenta
+| 24    | Pale Lime  | lime washed out, via yellow with a third cyan
+| 25    | Shadow Red | half red, half blue
+| 26    | Shadow Yellow | half yellow, half blue
+| 27    | Shadow Green | half green, half blue
+| 28    | Shadow Cyan | half cyan, half blue
+| 29    | Shadow Blue | blue on half the intervals
+
+The shadow shades carry roughly half the light of the colour they are named after, for marking a cell as
+subordinate to a neighbour. They get there by blending towards blue, the dimmest thing the panel can show,
+rather than by going dark: the cell stays lit on every interval, so nothing flickers. Blue has nothing
+dimmer to blend towards, so Shadow Blue is the one shade that does blank intervals, at the same rate as
+low power mode. Note that washing a colour out does the opposite of this -- filling in the primaries a
+colour lacks adds light, so Mint is brighter than Green, not darker.
+
+Orange and lime are washed out by blending with a neighbouring colour rather than with white, because
+white would raise both of the primaries they lack in equal measure and drag the hue towards pink.
+
+There is no washed out cyan or pink. White is already exactly cyan washed out, and pink washed out lands
+on top of Lavender.
+
+Quartertone Mode
+================
+
+Each split can be switched from the standard 12-EDO layout, where one column is one semitone, to a
+24-EDO layout where one column is a quartertone. Quartertone cells are the ones that fall between two
+semitones, and they are displayed in the paired variant of the colour the semitone cell immediately to
+their right would have -- a neighbouring hue in the same family -- so the familiar scale pattern stays
+readable with the quartertones shadowing it. The pairing is by colour rather than by brightness because
+the panel refreshes any given cell only about 115 times a second, which is too slow to dim a cell enough
+to notice without it flickering.
+
+The setting lives on the per-split settings page in the bottom three cells of column 7, below the bend
+range options, and can also be set over NRPN 67 and 167.
+
+| Mode        | What is sent
+|-------------|--------------------------------------------------------------------------------------------------
+| Off         | Standard 12-EDO, unchanged
+| Pitch Bend  | The note number of the semitone to the cell's right, plus a constant pitch bend of -50 cents
+| Note Number | The quartertone step itself as the MIDI note number, with no pitch bend
+
+Row offsets, transposition and light transposition all keep meaning the same musical interval in either
+mode, so a +5 row offset is still a fourth and now spans ten columns rather than five. No overlap mode
+is the exception: its offset is measured in columns rather than semitones and is left alone, so rows
+still tile without repeating a pitch. X-axis slides are scaled to match the narrower cells, so sliding
+across four columns bends by a whole tone.
+
+Things worth knowing:
+
+- Pitch Bend mode is only per-note correct in MPE / Channel Per Note mode. In One Channel or Channel Per
+  Row mode the bend applies to the whole channel, so a quartertone touch detunes every other note
+  sharing that channel and quartertone lines have to be played one note at a time.
+- The receiving instrument's bend range has to match the split's, as it does for ordinary X expression.
+- The arpeggiator and the sequencer replay the stored note number. In Pitch Bend mode that is the
+  rounded semitone, so they play the nearest semitone rather than the quartertone. Note Number mode
+  carries quartertones through both correctly, since the pitch is entirely in the note number.
+- Note Number mode needs a receiver tuned so that consecutive MIDI note numbers are a quartertone apart.
+  It also halves the reachable MIDI note range to roughly five octaves.

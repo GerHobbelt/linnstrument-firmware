@@ -566,7 +566,20 @@ void paintNormalDisplayCell(byte split, byte col, byte row) {
   byte colour = COLOR_OFF;
   CellDisplay cellDisplay = cellOff;
 
-  short displayedNote = getNoteNumber(split, col, row) + Split[split].transposeOctave;
+  // the pitch class the cell is painted as. In quartertone mode a cell between two semitones takes the
+  // scale membership of the semitone immediately to its right, so it reads as a paired variant of that
+  // pad, and semitone cells keep painting exactly as they do in 12-EDO.
+  short displayedNote;
+  boolean quartertone = false;
+  if (Split[split].quartertones == quartertonesOff) {
+    displayedNote = getNoteNumber(split, col, row) + Split[split].transposeOctave;
+  }
+  else {
+    short step = quartertoneStep(split, col, row);
+    displayedNote = semitoneOfQuartertoneStep(step) + Split[split].transposeOctave;
+    quartertone = isQuartertoneStep(step);
+  }
+
   short actualnote = transposedNote(split, col, row);
 
   // the note is out of MIDI note range, disable it
@@ -577,21 +590,25 @@ void paintNormalDisplayCell(byte split, byte col, byte row) {
   else if (!customLedPatternActive) {
     byte octaveNote = abs(displayedNote % 12);
 
-    // first paint all cells in split to its background color
+    // first paint all cells in split to its background color. A quartertone cell takes the washed out
+    // counterpart of whatever colour it would otherwise have, which keeps it the same hue as the semitone
+    // it shadows while reading as subordinate to it. The distinction is carried entirely by colour rather
+    // than by brightness: the panel refreshes a given cell only about 115 times a second, so blanking
+    // intervals to darken a cell flickers long before it gets dark enough to tell apart.
     if (Global.mainNotes[Global.activeNotes] & (1 << octaveNote)) {
-      colour = Split[split].colorMain;
+      colour = quartertone ? variantOf(Split[split].colorMain) : Split[split].colorMain;
       cellDisplay = cellOn;
     }
 
     // then paint only notes marked as Accent notes with Accent color
     if (Global.accentNotes[Global.activeNotes] & (1 << octaveNote)) {
-      colour = Split[split].colorAccent;
+      colour = quartertone ? variantOf(Split[split].colorAccent) : Split[split].colorAccent;
       cellDisplay = cellOn;
     }
   }
 
-  // show pulsating middle root note
-  if (blinkMiddleRootNote && displayedNote == 60) {
+  // show pulsating middle root note, which only ever lands on a real semitone
+  if (blinkMiddleRootNote && displayedNote == 60 && !quartertone) {
     colour = Split[split].colorAccent;
     cellDisplay = cellFastPulse;
   }
@@ -675,6 +692,20 @@ void paintPerSplitDisplay(byte side) {
       break;
     case bendRange24:
       setLed(7, 4, getBendRangeColor(side), cellOn);
+      break;
+  }
+
+  // quartertone mode, using the same paired colour the quartertone cells themselves use so the two
+  // selectable 24-EDO modes advertise what they do to the display
+  switch (Split[side].quartertones) {
+    case quartertonesOff:
+      setLed(7, 2, Split[side].colorMain, cellOn);
+      break;
+    case quartertonesBend:
+      setLed(7, 1, variantOf(Split[side].colorAccent), cellOn);
+      break;
+    case quartertonesNote:
+      setLed(7, 0, variantOf(Split[side].colorAccent), cellOn);
       break;
   }
 

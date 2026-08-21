@@ -266,6 +266,105 @@ void enableLedDisplay() {
   ledDisplayEnabled = true;
 }
 
+// see LedColorMix: the seven colours the hardware can light resolve to themselves, and every colour past
+// them names the two it blends and how much of the second to use. The four original composite colours are
+// even blends, which is exactly what they have always been -- only the phase of the alternation changed.
+static const LedColorMix LED_COLOR_MIXES[COLOR_MAX + 1] = {
+  /* COLOR_OFF        */ { COLOR_OFF,     COLOR_OFF,     0 },
+  /* COLOR_RED        */ { COLOR_RED,     COLOR_RED,     0 },
+  /* COLOR_YELLOW     */ { COLOR_YELLOW,  COLOR_YELLOW,  0 },
+  /* COLOR_GREEN      */ { COLOR_GREEN,   COLOR_GREEN,   0 },
+  /* COLOR_CYAN       */ { COLOR_CYAN,    COLOR_CYAN,    0 },
+  /* COLOR_BLUE       */ { COLOR_BLUE,    COLOR_BLUE,    0 },
+  /* COLOR_MAGENTA    */ { COLOR_MAGENTA, COLOR_MAGENTA, 0 },
+  /* COLOR_BLACK      */ { COLOR_OFF,     COLOR_OFF,     0 },
+  /* COLOR_WHITE      */ { COLOR_WHITE,   COLOR_CYAN,    3 },
+  /* COLOR_ORANGE     */ { COLOR_RED,     COLOR_YELLOW,  3 },
+  /* COLOR_LIME       */ { COLOR_YELLOW,  COLOR_GREEN,   3 },
+  /* COLOR_PINK       */ { COLOR_MAGENTA, COLOR_YELLOW,  3 },
+  // hues between two neighbouring colours, leaning towards the base by taking only a third of the slots
+  /* COLOR_AMBER      */ { COLOR_YELLOW,  COLOR_RED,     2 },
+  /* COLOR_RUST       */ { COLOR_RED,     COLOR_YELLOW,  2 },
+  /* COLOR_CHARTREUSE */ { COLOR_GREEN,   COLOR_YELLOW,  2 },
+  /* COLOR_TEAL       */ { COLOR_CYAN,    COLOR_GREEN,   2 },
+  /* COLOR_AZURE      */ { COLOR_BLUE,    COLOR_CYAN,    2 },
+  /* COLOR_PURPLE     */ { COLOR_BLUE,    COLOR_MAGENTA, 3 },
+  // washed out shades, made by blending a colour with white so that the primaries it lacks come up part of
+  // the time. These read as subordinate to their saturated version while staying the same hue, which is
+  // what brightness could not do. Cyan is missing because white already is cyan blended with white.
+  /* COLOR_SALMON     */ { COLOR_RED,     COLOR_WHITE,   3 },
+  /* COLOR_CREAM      */ { COLOR_YELLOW,  COLOR_WHITE,   3 },
+  /* COLOR_MINT       */ { COLOR_GREEN,   COLOR_WHITE,   3 },
+  /* COLOR_SKY        */ { COLOR_BLUE,    COLOR_WHITE,   3 },
+  /* COLOR_LAVENDER   */ { COLOR_MAGENTA, COLOR_WHITE,   3 },
+  // washing out orange and lime needs the third primary raised only part way rather than to match the
+  // other two, so these pair the colour with a neighbour that carries the missing primary instead of with
+  // white, which would raise both of the primaries it lacks equally and pull the hue towards pink
+  /* COLOR_PALE_ORANGE*/ { COLOR_YELLOW,  COLOR_MAGENTA, 2 },
+  /* COLOR_PALE_LIME  */ { COLOR_YELLOW,  COLOR_CYAN,    2 },
+  // shades that carry less light than the colour they shadow. Blue is the dimmest thing this panel can
+  // show, so giving half a colour's slots to blue roughly halves the light it puts out while shifting its
+  // hue, and both of those read as receding. Note that the cell stays lit on every interval, which is what
+  // separates this from blanking intervals to darken a cell: no interval goes dark, so nothing flickers.
+  // Blue has nothing dimmer to blend towards, so its shadow is the one that has to blank instead, at the
+  // same every-other-interval rate as low power mode, which is slow enough not to flicker.
+  /* COLOR_SHADOW_RED  */ { COLOR_RED,     COLOR_BLUE,    3 },
+  /* COLOR_SHADOW_YELL */ { COLOR_YELLOW,  COLOR_BLUE,    3 },
+  /* COLOR_SHADOW_GREE */ { COLOR_GREEN,   COLOR_BLUE,    3 },
+  /* COLOR_SHADOW_CYAN */ { COLOR_CYAN,    COLOR_BLUE,    3 },
+  /* COLOR_SHADOW_BLUE */ { COLOR_BLUE,    COLOR_OFF,     3 }
+};
+
+// the colour a cell takes when it is a variant of the cell beside it, currently the quartertone cells in
+// 24-EDO mode. These pairings are picked by eye rather than computed, because neither of the two things a
+// formula can do turns out to read on this panel. Darkening does not work: a cell is refreshed only about
+// 115 times a second, so blanking enough intervals to notice makes it flicker, and half -- all that can be
+// held steady -- is not enough to see. Washing a colour out does not work either, since filling in the
+// primaries it lacks adds light rather than removing it, which lands somewhere near white.
+//
+// What does read is a step to a neighbouring hue, and most of these are brighter than the colour they pair
+// with rather than darker. Pairs sit in the same family so the two still look related: greens go to
+// chartreuse, warm colours go to cream, and the palest colours pair back to a muted shade because there is
+// nothing brighter left to step to.
+static const byte LED_COLOR_VARIANTS[COLOR_MAX + 1] = {
+  /* COLOR_OFF        */ COLOR_OFF,
+  /* COLOR_RED        */ COLOR_MAGENTA,
+  /* COLOR_YELLOW     */ COLOR_PALE_LIME,
+  /* COLOR_GREEN      */ COLOR_CHARTREUSE,
+  /* COLOR_CYAN       */ COLOR_WHITE,
+  /* COLOR_BLUE       */ COLOR_CYAN,
+  /* COLOR_MAGENTA    */ COLOR_LAVENDER,
+  /* COLOR_BLACK      */ COLOR_BLACK,
+  /* COLOR_WHITE      */ COLOR_SHADOW_YELLOW,
+  /* COLOR_ORANGE     */ COLOR_CREAM,
+  /* COLOR_LIME       */ COLOR_CHARTREUSE,
+  /* COLOR_PINK       */ COLOR_CREAM,
+  /* COLOR_AMBER      */ COLOR_PALE_LIME,
+  /* COLOR_RUST       */ COLOR_AMBER,
+  /* COLOR_CHARTREUSE */ COLOR_PALE_LIME,
+  /* COLOR_TEAL       */ COLOR_WHITE,
+  // the rest follow the same steps as the colour each one sits nearest to above
+  /* COLOR_AZURE      */ COLOR_CYAN,
+  /* COLOR_PURPLE     */ COLOR_SKY,
+  /* COLOR_SALMON     */ COLOR_CREAM,
+  /* COLOR_CREAM      */ COLOR_SHADOW_YELLOW,
+  /* COLOR_MINT       */ COLOR_CHARTREUSE,
+  /* COLOR_SKY        */ COLOR_WHITE,
+  /* COLOR_LAVENDER   */ COLOR_CREAM,
+  /* COLOR_PALE_ORANGE*/ COLOR_PALE_LIME,
+  /* COLOR_PALE_LIME  */ COLOR_WHITE,
+  /* COLOR_SHADOW_RED */ COLOR_MAGENTA,
+  /* COLOR_SHADOW_YELL*/ COLOR_PALE_LIME,
+  /* COLOR_SHADOW_GREE*/ COLOR_CHARTREUSE,
+  /* COLOR_SHADOW_CYAN*/ COLOR_CYAN,
+  /* COLOR_SHADOW_BLUE*/ COLOR_CYAN
+};
+
+byte variantOf(byte color) {
+  if (color > COLOR_MAX) return color;
+  return LED_COLOR_VARIANTS[color];
+}
+
 // refreshLedColumn:
 // Called when it's time to refresh the next column of LEDs. Internally increments the column number every time it's called.
 void refreshLedColumn(unsigned long now) {
@@ -317,6 +416,16 @@ void refreshLedColumn(unsigned long now) {
     byte color = (ledVisible(LED_LAYER_COMBINED, actualCol, rowCount) & B11111000) >> 3;    // set temp value 'color' to 4 color bits of this LED within array
     byte cellDisplay = ledVisible(LED_LAYER_COMBINED, actualCol, rowCount) & B00000111;     // get cell display value
 
+    // low power mode blanks every other refresh interval to halve the current the panel draws. That is
+    // also as dark as this hardware can go without flickering: a column is refreshed every
+    // DEFAULT_LED_REFRESH microseconds and the board walks its columns one per refresh, so a single cell
+    // comes round only about 115 times a second, and blanking more than every other interval stretches the
+    // gap between lit ones until the cell visibly blinks -- two intervals in three flickers at 38Hz, five
+    // in six at 19Hz. Marking a cell out by making it darker is therefore not available to the display,
+    // which distinguishes cells by colour instead.
+    byte litEvery = 1;
+    if (Device.operatingLowPower) litEvery = 2;
+
     switch (cellDisplay) {
       case cellFastPulse:
         cellDisplay = lastPulseOn ? cellOn : cellOff;
@@ -329,40 +438,26 @@ void refreshLedColumn(unsigned long now) {
         break;
     }
 
-    if (Device.operatingLowPower) {
-      if (displayInterval[actualCol][rowCount] % 2 != 0) {
-        cellDisplay = cellOff;
-      }
+    if (displayInterval[actualCol][rowCount] % litEvery != 0) {
+      cellDisplay = cellOff;
     }
 
     // if this LED is not off, process it
     // set the color bytes to the correct color
     if (cellDisplay) {
-      // construct composite colors
-      if ((!Device.operatingLowPower && displayInterval[actualCol][rowCount] % 2 != 0) ||
-          (Device.operatingLowPower && displayInterval[actualCol][rowCount] % 4 != 0)) {
-        switch (color)
-        {
-          case COLOR_WHITE:
-            color = COLOR_CYAN;
-            break;
-          case COLOR_ORANGE:
-            color = COLOR_YELLOW;
-            break;
-          case COLOR_LIME:
-            color = COLOR_GREEN;
-            break;
-          case COLOR_PINK:
-            color = COLOR_YELLOW;
-            break;
-        }
-      }
+      // resolve the colour down to one of the seven the panel can actually light, blending in time when
+      // the colour asks for it. The slot counts the intervals this cell is lit for rather than every
+      // interval, so a dimmed or low power cell keeps the blend's ratio instead of losing one of its two
+      // colours to the blanked intervals and coming out the wrong hue.
+      const LedColorMix& mix = LED_COLOR_MIXES[color <= COLOR_MAX ? color : COLOR_OFF];
+      byte slot = (displayInterval[actualCol][rowCount] / litEvery) % LED_MIX_SLOTS;
 
-      switch (color)
+      // spread the mixed slots through the cycle instead of bunching them at its start, so that the two
+      // colours interleave and settle into a single hue rather than alternating in visible blocks
+      byte rendered = ((slot * mix.mixedSlots) % LED_MIX_SLOTS) < mix.mixedSlots ? mix.mixed : mix.base;
+
+      switch (rendered)
       {
-        case COLOR_OFF:
-        case COLOR_BLACK:
-          break;
         case COLOR_RED:
           red = red | (B00000001 << rowCount);
           break;
@@ -389,16 +484,7 @@ void refreshLedColumn(unsigned long now) {
           red = red | (B00000001 << rowCount);
           green = green | (B00000001 << rowCount);
           break;
-        case COLOR_ORANGE:
-          red = red | (B00000001 << rowCount);
-          break;
-        case COLOR_LIME:
-          red = red | (B00000001 << rowCount);
-          green = green | (B00000001 << rowCount);
-          break;
-        case COLOR_PINK:
-          blue = blue | (B00000001 << rowCount);
-          red = red | (B00000001 << rowCount);
+        default:                                            // COLOR_OFF and COLOR_BLACK light nothing
           break;
       }
     }

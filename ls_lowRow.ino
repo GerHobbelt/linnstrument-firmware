@@ -165,7 +165,9 @@ void handleLowRowState(boolean newVelocity, short pitchBend, short timbre, byte 
             {
               if (Split[sensorSplit].lowRowBendBehavior == lowRowBendBend) {
                 if (pitchBend != SHRT_MAX) {
-                  preSendPitchBend(sensorSplit, pitchBend);
+                  // scaled like a note slide is, so the same finger travel bends by the same amount
+                  // whether it happens on the low row or on a playing cell
+                  preSendPitchBend(sensorSplit, quartertoneScaledX(sensorSplit, pitchBend));
                 }
               }
               else if (Split[sensorSplit].lowRowBendBehavior == lowRowBendTranspose) {

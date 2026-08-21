@@ -493,7 +493,7 @@ void handleMidiInput(unsigned long nowMicros) {
               if (userFirmwareActive) {
                 layer = LED_LAYER_CUSTOM2;
               }
-              if (midiData2 <= COLOR_PINK && midiData2 != COLOR_OFF) {
+              if (midiData2 <= COLOR_MAX && midiData2 != COLOR_OFF) {
                 setLed(midiCellColCC, midiCellRowCC, midiData2, cellOn, layer);
               }
               else {
@@ -748,25 +748,25 @@ void receivedNrpn(int parameter, int value, int channel) {
       break;
     // Split Color Main
     case 30:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_MAX)) {
         Split[split].colorMain = value;
       }
       break;
     // Split Color Accent
     case 31:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_MAX)) {
         Split[split].colorAccent = value;
       }
       break;
     // Split Color Played
     case 32:
-      if (inRange(value, 0, 11)) {
+      if (inRange(value, 0, COLOR_MAX)) {
         Split[split].colorPlayed = value;
       }
       break;
     // Split Color LowRow
     case 33:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_MAX)) {
         Split[split].colorLowRow = value;
       }
       break;
@@ -1015,6 +1015,12 @@ void receivedNrpn(int parameter, int value, int channel) {
     case 66:
       if (value == 1) {
         sequencerToggleMute(split);
+      }
+      break;
+    // Split Quartertone Mode
+    case 67:
+      if (inRange(value, quartertonesOff, quartertonesNote)) {
+        setQuartertoneMode(split, (QuartertoneMode)value);
       }
       break;
     // Global Split Active
@@ -1543,6 +1549,9 @@ void sendNrpnParameter(int parameter, int channel) {
     case 65:
       value = sequencerCurrentPatternNumber(split);
       break;
+    case 67:
+      value = Split[split].quartertones;
+      break;
     case 200:
       value = Global.splitActive;
       break;
@@ -1804,9 +1813,24 @@ void resetPossibleNoteCells(byte split, byte notenum) {
 }
 
 short getNoteNumColumn(byte split, byte notenum, byte row) {
-  short row_offset_note = determineRowOffsetNote(split, row);
-  short col = notenum - (row_offset_note + Split[split].transposeOctave) + 1           // calculate the column that this MIDI note can be played on
-            + Split[split].transposeLights - Split[split].transposePitch;;             // adapt for transposition settings
+  short col;
+
+  if (Split[split].quartertones == quartertonesOff) {
+    short row_offset_note = determineRowOffsetNote(split, row);
+    col = notenum - (row_offset_note + Split[split].transposeOctave) + 1                // calculate the column that this MIDI note can be played on
+        + Split[split].transposeLights - Split[split].transposePitch;                   // adapt for transposition settings
+  }
+  else {
+    // invert quartertoneStep(). In bend mode a note number names both a semitone cell and the quartertone
+    // cell to its left, so it resolves to the semitone one, which is the cell that sounds that note unbent.
+    short step = notenum - transposeSteps(split);
+    if (Split[split].quartertones == quartertonesBend) {
+      step *= 2;
+    }
+
+    col = step - determineRowOffsetSteps(split, row) + 2 * Split[split].transposeLights + 1;
+  }
+
   if (isLeftHandedSplit(split)) {
     col = NUMCOLS - col;
   }

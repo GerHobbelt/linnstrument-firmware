@@ -346,7 +346,7 @@ void storeSettingsToPreset(byte p) {
 // The first time after new code is loaded into the Linnstrument, this sets the initial defaults of all settings.
 // On subsequent startups, these values are overwritten by loading the settings stored in flash.
 void initializeDeviceSettings() {
-  Device.version = 17;
+  Device.version = 18;
   Device.serialMode = false;
   Device.sleepAnimationActive = false;
   Device.sleepActive = false;
@@ -648,6 +648,7 @@ void initializePresetSettings() {
         p.split[s].arpeggiator = false;
         p.split[s].ccFaders = false;
         p.split[s].strum = false;
+        p.split[s].quartertones = quartertonesOff;
 
         p.split[s].sequencer = false;
     }
@@ -759,6 +760,18 @@ void applyPitchCorrectHold() {
 void setBendRange(byte split, byte bendRange) {
   applyBendRange(Split[split], bendRange);
   midiSendMpePitchBendRange(split);
+}
+
+void setQuartertoneMode(byte split, QuartertoneMode mode) {
+  if (Split[split].quartertones == mode) return;
+
+  // every cell is about to mean a different pitch, so anything still sounding would be left hanging on
+  // a note number the new layout can no longer release, and any resting quartertone bend has to go back
+  // to neutral before the change takes effect
+  midiSendNoteOffForAllTouches(split);
+  preResetMidiExpression(split);
+
+  Split[split].quartertones = mode;
 }
 
 void applyBendRange(SplitSettings& target, byte bendRange) {
@@ -1165,7 +1178,7 @@ byte colorCycle(byte color, boolean includeOff) {
   if (color == COLOR_BLACK) {
     color += 1;
   }
-  if (color > 11) {
+  if (color > COLOR_PICKER_MAX) {                         // the extended colours are reachable over MIDI only
     if (includeOff) {
       color = 0;
     }
@@ -1278,6 +1291,13 @@ void handlePerSplitSettingNewTouch() {
           // otherwise we'll overwrite the existing custom range setting
           Split[Global.currentPerSplit].bendRangeOption = bendRange24;
           midiSendMpePitchBendRange(Global.currentPerSplit);
+          break;
+
+        // quartertone mode, off / bend / note reading downwards
+        case 2:
+        case 1:
+        case 0:
+          setQuartertoneMode(Global.currentPerSplit, (QuartertoneMode)(2 - sensorRow));
           break;
       }
       break;

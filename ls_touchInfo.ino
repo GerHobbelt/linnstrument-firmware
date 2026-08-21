@@ -609,6 +609,7 @@ void TouchInfo::clearMusicalData() {
   note = -1;
   channel = -1;
   octaveOffset = 0;
+  quartertone = false;
   fxdPrevPressure = 0;
   fxdPrevTimbre = FXD_CONST_255;
 }

@@ -98,6 +98,48 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define COLOR_ORANGE   9
 #define COLOR_LIME     10
 #define COLOR_PINK     11
+// Colours past this point are reachable over MIDI and from code, but not from the tap-to-cycle picker,
+// which stops at COLOR_PICKER_MAX so that choosing one of the original colours stays a short walk.
+#define COLOR_AMBER      12
+#define COLOR_RUST       13
+#define COLOR_CHARTREUSE 14
+#define COLOR_TEAL       15
+#define COLOR_AZURE      16
+#define COLOR_PURPLE     17
+#define COLOR_SALMON     18
+#define COLOR_CREAM      19
+#define COLOR_MINT       20
+#define COLOR_SKY        21
+#define COLOR_LAVENDER   22
+#define COLOR_PALE_ORANGE 23
+#define COLOR_PALE_LIME   24
+// muted shades, roughly half the light of the colour they are named after. See LED_COLOR_VARIANTS.
+#define COLOR_SHADOW_RED    25
+#define COLOR_SHADOW_YELLOW 26
+#define COLOR_SHADOW_GREEN  27
+#define COLOR_SHADOW_CYAN   28
+#define COLOR_SHADOW_BLUE   29
+
+#define COLOR_PICKER_MAX COLOR_PINK
+#define COLOR_MAX        COLOR_SHADOW_BLUE
+
+// The LED drivers carry one bit per primary, so the panel can only ever show seven lit colours. Everything
+// beyond those seven is mixed in time: a cell alternates between two of the seven across the refresh
+// intervals, and the eye integrates the result into a single hue. The cell stays lit throughout, so unlike
+// the brightness dimming this costs no luminance and produces no flicker -- only the mixed hue itself
+// wobbles, and at neighbouring hues that is imperceptible.
+//
+// Each refresh cycle is divided into LED_MIX_SLOTS slots, and a colour names the two hardware colours it
+// blends plus how many of those slots go to the second one. Six slots divide evenly whether a cell is lit
+// on every interval or on every other one, so a mix holds its ratio in low power and dimmed cells too.
+// Keep base and mixed to the seven hardware colours; a mix of a mix would need a second pass to resolve.
+#define LED_MIX_SLOTS 6
+
+struct LedColorMix {
+  byte base;                              // hardware colour shown on the slots not given to the mix
+  byte mixed;                             // hardware colour blended in, equal to base for a pure colour
+  byte mixedSlots;                        // how many of LED_MIX_SLOTS show mixed, 0 for a pure colour
+};
 
 // Special row offset values, for legacy reasons
 #define ROWOFFSET_NOOVERLAP        0x00
@@ -361,7 +403,8 @@ struct __attribute__ ((packed)) TouchInfo {
   unsigned short pressureZ:10;               // the Z value with pressure sensitivity
   unsigned short previousRawZ:12;            // the previous raw Z value
   boolean didMove:1;                         // indicates whether the touch has ever moved
-int :3;
+  boolean quartertone:1;                     // indicates whether the note of this touch sounds a quartertone below its MIDI note number
+int :2;
   boolean phantomSet:1;                      // indicates whether phantom touch coordinates are set
   byte velocity:7;                           // velocity from 0 to 127
   boolean shouldRefreshZ:1;                  // indicate whether it's necessary to refresh Z
@@ -579,6 +622,17 @@ enum BendRangeOption {
   bendRange24
 };
 
+enum QuartertoneMode {
+  quartertonesOff,                        // standard 12-EDO, one column is one semitone
+  quartertonesBend,                       // 24-EDO, quartertones sound as the neighbouring semitone with a -50 cent pitch bend
+  quartertonesNote                        // 24-EDO, each column advances the MIDI note number by one quartertone step
+};
+// semitoneOfQuartertoneStep() and isQuartertoneStep() operate on these, and are defined further down
+// alongside QUARTERTONE_BEND_UNITS. They deliberately live after the struct definitions in this file:
+// the Arduino build inserts its generated function prototypes just before the first function definition
+// in the main sketch, so a function defined up here would push that point above the structs and leave
+// prototypes referring to types that have not been declared yet.
+
 enum PitchCorrectHoldSpeed {
   pitchCorrectHoldOff = 0,
   pitchCorrectHoldMedium = 1,
@@ -664,6 +718,7 @@ struct SplitSettings {
   boolean mpe;                            // true when MPE is active for this split
   boolean sequencer;                      // true when the sequencer of this split is displayed
   SequencerView sequencerView;            // see SequencerView
+  QuartertoneMode quartertones;           // see QuartertoneMode
 };
 
 #define Split config.settings.split
@@ -973,6 +1028,23 @@ const int32_t FXD_CALX_HALF_UNIT = FXD_MAKE(85.3125);     // 4095 / 48
 const int32_t FXD_CALX_PHANTOM_RANGE = FXD_MAKE(128);     // 4095 / 32
 const int32_t FXD_CALX_FULL_UNIT = FXD_MAKE(170.625);     // 4095 / 24
 const int32_t CALX_QUARTER_UNIT = FXD_TO_INT(FXD_CALX_FULL_UNIT) / 4;
+
+// One cell of X travel is one semitone, so half a cell is exactly a quartertone in the pitch bend units
+// that preSendPitchBend() consumes, before scalePitch() normalises them for the split's bend range.
+const int QUARTERTONE_BEND_UNITS = FXD_TO_INT(FXD_CALX_HALF_UNIT);
+
+// the semitone a quartertone step belongs to. An even step is that semitone itself, an odd step is the
+// semitone immediately to its right, which is the one a quartertone cell is displayed and named after.
+// Step 2n and step 2n-1 both yield n, which is what makes one expression serve both the lights and the
+// note number. The shift is arithmetic, so it floors correctly for steps below MIDI note 0.
+inline short semitoneOfQuartertoneStep(short step) {
+  return (step + 1) >> 1;
+}
+
+// whether a quartertone step falls between two semitones
+inline boolean isQuartertoneStep(short step) {
+  return (step & 1) != 0;
+}
 
 const int32_t FXD_CALY_FULL_UNIT = FXD_FROM_INT(127);     // range of 7-bit CC
 

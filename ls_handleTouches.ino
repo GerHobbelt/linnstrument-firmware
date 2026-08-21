@@ -501,7 +501,34 @@ short cellTransposedNote(byte split) {
 }
 
 short transposedNote(byte split, byte col, byte row) {
-  return getNoteNumber(split, col, row) + Split[split].transposePitch + Split[split].transposeOctave;
+  return getNoteNumber(split, col, row) + transposeSteps(split);
+}
+
+// The transposition settings are expressed in semitones. In quartertone note mode the note number counts
+// quartertone steps instead, so the transposition has to be doubled to shift by the same musical interval.
+short transposeSteps(byte split) {
+  short transpose = Split[split].transposePitch + Split[split].transposeOctave;
+  if (Split[split].quartertones == quartertonesNote) {
+    transpose *= 2;
+  }
+  return transpose;
+}
+
+// The constant pitch bend a touch rests at. Zero everywhere except on a quartertone cell in bend mode,
+// which sounds a quartertone below the semitone it reports as its note number.
+short quartertoneBendOffset(TouchInfo* touch) {
+  return touch->quartertone ? -QUARTERTONE_BEND_UNITS : 0;
+}
+
+// In quartertone mode a column is half a semitone wide, so X travel has to be halved for a slide to
+// stay continuous in pitch across cells.
+int quartertoneScaledX(byte split, int pitch) {
+  return Split[split].quartertones == quartertonesOff ? pitch : pitch / 2;
+}
+
+// Combine X expression with the touch's resting pitch.
+int applyQuartertonePitch(byte split, TouchInfo* touch, int pitch) {
+  return quartertoneScaledX(split, pitch) + quartertoneBendOffset(touch);
 }
 
 // Check if the currently scanned cell is a focused cell
@@ -1023,7 +1050,7 @@ boolean handleXYZupdate() {
           }
         }
 
-        preSendPitchBend(sensorSplit, pitch, sensorCell->channel);
+        preSendPitchBend(sensorSplit, applyQuartertonePitch(sensorSplit, sensorCell, pitch), sensorCell->channel);
       }
 
       // if Y-axis movements are enabled and it's a candidate for
@@ -1205,7 +1232,9 @@ void prepareNewNote(signed char notenum) {
   sensorCell->note = notenum;
   sensorCell->channel = channel;
   sensorCell->octaveOffset = Split[sensorSplit].transposeOctave;
-  
+  sensorCell->quartertone = Split[sensorSplit].quartertones == quartertonesBend &&
+                            isQuartertoneCell(sensorSplit, sensorCol, sensorRow);
+
   // change the focused cell
   FocusCell& focused = focus(sensorSplit, channel);
   focused.col = sensorCol;
@@ -1213,7 +1242,11 @@ void prepareNewNote(signed char notenum) {
 
   // reset the pitch bend and pressure right before sending the note on
   if (!userFirmwareActive) {
-    if (Split[sensorSplit].sendX && isXExpressiveCell() && !isLowRowBendActive(sensorSplit)) {
+    // a quartertone in bend mode is a constant pitch bend that has to go out even when X expression is
+    // switched off, and it has to survive the dedupe in midiSendPitchBend when the channel happens to
+    // already hold that exact value from a previous touch
+    if ((Split[sensorSplit].sendX && isXExpressiveCell() && !isLowRowBendActive(sensorSplit)) ||
+        sensorCell->quartertone) {
       resetLastMidiPitchBend(sensorCell->channel);
     }
     if (Split[sensorSplit].sendZ && isZExpressiveCell()) {
@@ -1233,7 +1266,16 @@ void prepareNewNote(signed char notenum) {
       setLed(sensorCol, sensorRow, Split[sensorSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
     }
     else if (Split[sensorSplit].playedTouchMode == playedSame) {
-      highlightPossibleNoteCells(sensorSplit, sensorCell->note);
+      // A quartertone cell in bend mode reports the note number of the semitone to its right and then
+      // sounds a quartertone below it, so the cells sharing that number are a quartertone apart rather
+      // than the same pitch. Lighting them would point at pads that play something else, which is the
+      // opposite of what this mode is for, so a quartertone touch lights only the cell that was touched.
+      if (sensorCell->quartertone) {
+        setLed(sensorCol, sensorRow, Split[sensorSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
+      }
+      else {
+        highlightPossibleNoteCells(sensorSplit, sensorCell->note);
+      }
     }
     else {
       startTouchAnimation(sensorCol, sensorRow, calcTouchAnimationSpeed(Split[sensorSplit].playedTouchMode, sensorCell->velocity));
@@ -1247,9 +1289,12 @@ void prepareNewNote(signed char notenum) {
 void sendNewNote() {
   if (!isArpeggiatorEnabled(sensorSplit)) {
     // if we've switched from pitch X enabled to pitch X disabled and the last
-    // pitch bend value was not neutral, reset it first to prevent skewed pitches
-    if (!Split[sensorSplit].sendX && hasPreviousPitchBendValue(sensorCell->channel)) {
-      preSendPitchBend(sensorSplit, 0, sensorCell->channel);
+    // pitch bend value was not neutral, reset it first to prevent skewed pitches.
+    // A quartertone cell rests at its offset rather than at neutral, and needs that offset sent here
+    // since no X update will ever provide it while X expression is off.
+    if (!Split[sensorSplit].sendX &&
+        (hasPreviousPitchBendValue(sensorCell->channel) || sensorCell->quartertone)) {
+      preSendPitchBend(sensorSplit, quartertoneBendOffset(sensorCell), sensorCell->channel);
     }
 
     // reset pressure to 0 before sending the note, the actually pressure value will
@@ -1772,39 +1817,46 @@ void handleTouchRelease() {
       }
       // if no notes are active anymore, reset the highlighted cells
       else if (Split[sensorSplit].playedTouchMode == playedSame) {
-        // calculate the difference between the octave offset when the note was turned on and the octave offset
-        // that is currently in use on the split, since the octave can change on the fly, while playing,
-        // hence changing the position of notes on the surface
-        short octaveOffsetDifference = Split[sensorSplit].transposeOctave - sensorCell->octaveOffset;
-        short realSensorNote = sensorCell->note + octaveOffsetDifference;
-
-        // ensure that no other notes of the same value are still active
-        boolean allNotesOff = true;
-
-        // iterate over all the rows
-        for (byte row = 0; row < NUMROWS && allNotesOff; ++row) {
-
-          // continue while there are touched columns in the row
-          int32_t colsInRowTouched = colsInRowsTouched[row];
-          while (colsInRowTouched) {
-            byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
-            
-            // if another touch in the same split has the same note, the lights should remain lit
-            if (!(sensorCol == touchedCol && sensorRow == row) &&
-                sensorSplit == getSplitOf(touchedCol) &&
-                cell(touchedCol, row).touched == touchedCell &&
-                cell(touchedCol, row).note + Split[sensorSplit].transposeOctave - cell(touchedCol, row).octaveOffset == realSensorNote) {
-              allNotesOff = false;
-              break;
-            }
-
-            // exclude the cell we just processed by flipping its bit
-            colsInRowTouched &= ~(1 << touchedCol);
-          }
+        // a quartertone touch lit only itself, so it clears only itself. Going through the note number
+        // would clear the semitone cell it never lit and leave this one on, since the two share a number.
+        if (sensorCell->quartertone) {
+          setLed(sensorCol, sensorRow, COLOR_OFF, cellOff, LED_LAYER_PLAYED);
         }
+        else {
+          // calculate the difference between the octave offset when the note was turned on and the octave offset
+          // that is currently in use on the split, since the octave can change on the fly, while playing,
+          // hence changing the position of notes on the surface
+          short octaveOffsetDifference = Split[sensorSplit].transposeOctave - sensorCell->octaveOffset;
+          short realSensorNote = sensorCell->note + octaveOffsetDifference;
 
-        if (allNotesOff) {
-          resetPossibleNoteCells(sensorSplit, realSensorNote);
+          // ensure that no other notes of the same value are still active
+          boolean allNotesOff = true;
+
+          // iterate over all the rows
+          for (byte row = 0; row < NUMROWS && allNotesOff; ++row) {
+
+            // continue while there are touched columns in the row
+            int32_t colsInRowTouched = colsInRowsTouched[row];
+            while (colsInRowTouched) {
+              byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
+            
+              // if another touch in the same split has the same note, the lights should remain lit
+              if (!(sensorCol == touchedCol && sensorRow == row) &&
+                  sensorSplit == getSplitOf(touchedCol) &&
+                  cell(touchedCol, row).touched == touchedCell &&
+                  cell(touchedCol, row).note + Split[sensorSplit].transposeOctave - cell(touchedCol, row).octaveOffset == realSensorNote) {
+                allNotesOff = false;
+                break;
+              }
+
+              // exclude the cell we just processed by flipping its bit
+              colsInRowTouched &= ~(1 << touchedCol);
+            }
+          }
+
+          if (allNotesOff) {
+            resetPossibleNoteCells(sensorSplit, realSensorNote);
+          }
         }
       }
     }
@@ -1931,10 +1983,65 @@ inline void updateSensorCell() {
 }
 
 
+// determineRowOffsetSteps:
+// the base of a row expressed in 24-EDO quartertone steps rather than semitones
+short determineRowOffsetSteps(byte split, byte row) {
+  // No overlap mode measures its row offset, and the alignment of the right split against the left one,
+  // in columns rather than in semitones. Those terms are already cell counts and carry over unchanged
+  // while only the base pitch doubles -- doubling them would reintroduce exactly the overlap the mode
+  // exists to avoid. This mirrors the ROWOFFSET_NOOVERLAP branch of determineRowOffsetNote().
+  if (Global.rowOffset == ROWOFFSET_NOOVERLAP) {
+    byte lowCol, highCol;
+    getSplitBoundaries(split, lowCol, highCol);
+    short offset = highCol - lowCol;
+
+    short lowest = 2 * 30;                            // 30 = F#2, the same base determineRowOffsetNote() uses
+    if (Global.splitActive && split == RIGHT) {
+      getSplitBoundaries(LEFT, lowCol, highCol);
+      lowest -= (highCol - lowCol);
+    }
+
+    return lowest + (row * offset);
+  }
+
+  // everywhere else the row offset is a musical interval in semitones, so doubling the 12-EDO result
+  // keeps every row at the interval it already had
+  return 2 * determineRowOffsetNote(split, row);
+}
+
+// quartertoneStep:
+// computes the position of a cell in 24-EDO quartertone steps, where each column advances by half a
+// semitone. The light transposition is doubled so that it keeps shifting by the same musical interval.
+short quartertoneStep(byte split, byte col, byte row) {
+  short noteCol = col;
+  if (isLeftHandedSplit(split)) {
+    noteCol = (NUMCOLS - col);
+  }
+
+  return determineRowOffsetSteps(split, row) + (noteCol - 1) - 2 * Split[split].transposeLights;
+}
+
 // getNoteNumber:
 // computes MIDI note number from current row, column, row offset, octave button and transposition amount
-byte getNoteNumber(byte split, byte col, byte row) {
-  byte notenum = 0;
+// Returns a short rather than a byte: in quartertone note mode a wide row can reach step numbers past
+// 255, and truncating those would wrap an unreachable cell back onto a valid-looking low note instead of
+// letting the callers' 0..127 range checks reject it.
+short getNoteNumber(byte split, byte col, byte row) {
+  short notenum = 0;
+
+  switch (Split[split].quartertones) {
+    case quartertonesBend:
+      // the note a quartertone cell is named after is the semitone immediately to its right, which it
+      // then sounds a quartertone below, so that the display and the MIDI output tell the same story
+      return semitoneOfQuartertoneStep(quartertoneStep(split, col, row));
+
+    case quartertonesNote:
+      // the quartertone step is the MIDI note number, so a receiver tuned to 24-EDO plays it directly
+      return quartertoneStep(split, col, row);
+
+    default:
+      break;
+  }
 
   // return the computed note based on the selected rowOffset
   short noteCol = col;
@@ -1945,6 +2052,14 @@ byte getNoteNumber(byte split, byte col, byte row) {
   notenum = determineRowOffsetNote(split, row) + noteCol - 1;
 
   return notenum - Split[split].transposeLights;
+}
+
+// isQuartertoneCell:
+// indicates whether a cell sits between two semitones, which is what makes it display dimmed and,
+// in bend mode, sound a quartertone below the note number it reports
+boolean isQuartertoneCell(byte split, byte col, byte row) {
+  if (Split[split].quartertones == quartertonesOff) return false;
+  return isQuartertoneStep(quartertoneStep(split, col, row));
 }
 
 short determineRowOffsetNote(byte split, byte row) {
