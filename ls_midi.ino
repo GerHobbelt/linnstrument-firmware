@@ -493,7 +493,7 @@ void handleMidiInput(unsigned long nowMicros) {
               if (userFirmwareActive) {
                 layer = LED_LAYER_CUSTOM2;
               }
-              if (midiData2 <= COLOR_PINK && midiData2 != COLOR_OFF) {
+              if (midiData2 <= COLOR_PALETTE_LAST && midiData2 != COLOR_OFF) {
                 setLed(midiCellColCC, midiCellRowCC, midiData2, cellOn, layer);
               }
               else {
@@ -748,25 +748,25 @@ void receivedNrpn(int parameter, int value, int channel) {
       break;
     // Split Color Main
     case 30:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_PALETTE_LAST)) {
         Split[split].colorMain = value;
       }
       break;
     // Split Color Accent
     case 31:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_PALETTE_LAST)) {
         Split[split].colorAccent = value;
       }
       break;
     // Split Color Played
     case 32:
-      if (inRange(value, 0, 11)) {
+      if (inRange(value, 0, COLOR_PALETTE_LAST)) {
         Split[split].colorPlayed = value;
       }
       break;
     // Split Color LowRow
     case 33:
-      if (inRange(value, 1, 11)) {
+      if (inRange(value, 1, COLOR_PALETTE_LAST)) {
         Split[split].colorLowRow = value;
       }
       break;

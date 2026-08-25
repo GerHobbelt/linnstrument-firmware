@@ -98,6 +98,15 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define COLOR_ORANGE   9
 #define COLOR_LIME     10
 #define COLOR_PINK     11
+#define COLOR_AMBER    12
+#define COLOR_TEAL     13
+#define COLOR_SKY_BLUE 14
+#define COLOR_VIOLET   15
+#define COLOR_ROSE     16
+#define COLOR_MINT     17
+#define COLOR_PALETTE_LAST COLOR_MINT
+
+#include "tta_adc_fast_vet.h"
 
 // Special row offset values, for legacy reasons
 #define ROWOFFSET_NOOVERLAP        0x00
@@ -1088,6 +1097,7 @@ inline void selectSensorCell(byte col, byte row, byte switchCode);
 
 void setLed(byte col, byte row, byte color, CellDisplay disp);
 void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer);
+void setLedColorIndex(byte col, byte row, byte color, CellDisplay disp, byte layer);
 void initializeNoteLights(GlobalSettings& g);
 
 boolean ensureCellBeforeHoldWait(byte resetColor, CellDisplay resetDisplay);
@@ -1162,6 +1172,8 @@ void activateSleepMode() {
 }
 
 void applyLedInterval() {
+  tta_led_set_low_power(Device.operatingLowPower);
+
   // change the behavior for low power mode
   if (Device.operatingLowPower) {
     mainLoopDivider = LOWPOWER_MAINLOOP_DIVIDER;
@@ -1227,7 +1239,6 @@ void setup() {
   /*!!*/    NUMROWS = 8;
   /*!!*/  }
   /*!!*/
-  /*!!*/  initializeSensors();
   /*!!*/  initializeCalibration();
   /*!!*/  initializeLeds();
   /*!!*/
@@ -1255,7 +1266,6 @@ void setup() {
   /*!!*/  SPI.begin(SPI_SENSOR);
   /*!!*/  SPI.setDataMode(SPI_SENSOR, SPI_MODE0);
   /*!!*/  SPI.setClockDivider(SPI_SENSOR, 4);                 // set clock speed to 84/4 = 21 mHz. Max clock is 25mHz @ 4.5v
-  /*!!*/  selectSensorCell(0, 0, READ_Z);                     // set it analog switches to read column 0, row 0 and to read pressure
   /*!!*/
   /*!!*/  // initialize the SPI input port for reading the TI ADS7883 ADC
   /*!!*/  SPI.begin(SPI_ADC);
@@ -1265,6 +1275,10 @@ void setup() {
   /*!!*/  // Initialize the output enable line for the 2 LED display chips
   /*!!*/  pinMode(37, OUTPUT);
   /*!!*/  digitalWrite(37, HIGH);
+  /*!!*/
+  /*!!*/  tta_init();
+  /*!!*/  tta_start();
+  /*!!*/  initializeSensors();
   /*!!*/
   /*!!*/  if (switchPressAtStartup(0)) {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset

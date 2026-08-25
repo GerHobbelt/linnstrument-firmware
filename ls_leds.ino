@@ -48,11 +48,52 @@ const byte COL_INDEX_200[MAXCOLS] = {0, 1, 6, 11, 16, 21, 2, 7, 12, 17, 22, 3, 8
 const byte COL_INDEX_128[MAXCOLS] = {0, 1, 6, 11, 16, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 // array holding contents of display
-byte leds[2][LED_ARRAY_SIZE];
+uint16_t leds[2][LED_ARRAY_SIZE];
 byte visibleLeds = 0;
 byte bufferedLeds = 0;
 #define ledBuffered(layer, col, row)  leds[bufferedLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
 #define ledVisible(layer, col, row)  leds[visibleLeds][layer * LED_LAYER_SIZE + row * MAXCOLS + col]
+
+#define LED_CELL_DISPLAY_MASK 0x0007u
+#define LED_CELL_COLOR_SHIFT  3u
+#define LED_CELL_COLOR_MASK   0x03f8u
+
+static const byte paletteColorToRgb[COLOR_PALETTE_LAST + 1] = {
+  0, 100, 90, 20, 18, 4, 78, 0, 62, 105, 70, 82,
+  110, 22, 14, 54, 102, 42,
+};
+
+static uint16_t packLedCell(byte color, CellDisplay disp) {
+  return ((uint16_t)color << LED_CELL_COLOR_SHIFT) | (disp & LED_CELL_DISPLAY_MASK);
+}
+
+static uint16_t unpackStoredLedCell(byte data) {
+  byte color = data >> LED_CELL_COLOR_SHIFT;
+  return packLedCell(color <= COLOR_PALETTE_LAST ? paletteColorToRgb[color] : 0,
+                     (CellDisplay)(data & LED_CELL_DISPLAY_MASK));
+}
+
+static byte packPersistentLedCell(uint16_t data) {
+  byte color = (data & LED_CELL_COLOR_MASK) >> LED_CELL_COLOR_SHIFT;
+  byte display = data & LED_CELL_DISPLAY_MASK;
+  if (color == 0 && display != cellOff) {
+    return (COLOR_BLACK << LED_CELL_COLOR_SHIFT) | display;
+  }
+
+  byte nearest = COLOR_OFF;
+  unsigned int nearestDistance = UINT_MAX;
+  for (byte candidate = COLOR_OFF; candidate <= COLOR_PALETTE_LAST; ++candidate) {
+    int dr = (int)(color / 25) - (int)(paletteColorToRgb[candidate] / 25);
+    int dg = (int)((color / 5) % 5) - (int)((paletteColorToRgb[candidate] / 5) % 5);
+    int db = (int)(color % 5) - (int)(paletteColorToRgb[candidate] % 5);
+    unsigned int distance = (unsigned int)(dr * dr + dg * dg + db * db);
+    if (distance < nearestDistance) {
+      nearest = candidate;
+      nearestDistance = distance;
+    }
+  }
+  return (nearest << LED_CELL_COLOR_SHIFT) | display;
+}
 
 bool ledDisplayEnabled = true;
 
@@ -70,11 +111,12 @@ void initializeLeds() {
 }
 
 void initializeLedLayers() {
-  memset(leds[bufferedLeds], 0, LED_ARRAY_SIZE);
+  memset(leds[bufferedLeds], 0, sizeof(leds[bufferedLeds]));
 }
 
 void initializeLedsLayer(byte layer) {
-  memset(&leds[bufferedLeds][layer * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
+  memset(&leds[bufferedLeds][layer * LED_LAYER_SIZE], 0,
+         LED_LAYER_SIZE * sizeof(leds[bufferedLeds][0]));
 }
 
 int getActiveCustomLedPattern() {
@@ -85,15 +127,18 @@ void loadCustomLedLayer(int pattern)
 {
   if (pattern < 0 || pattern >= LED_PATTERNS) {
     if (customLedPatternActive) {
-      memset(&leds[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
-      memset(&leds[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
+      memset(&leds[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE * sizeof(leds[0][0]));
+      memset(&leds[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE * sizeof(leds[1][0]));
     }
     customLedPatternActive = false;
     return;
   }
 
-  memcpy(&leds[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], &Device.customLeds[pattern][0], LED_LAYER_SIZE);
-  memcpy(&leds[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], &Device.customLeds[pattern][0], LED_LAYER_SIZE);
+  for (uint16_t i = 0; i < LED_LAYER_SIZE; ++i) {
+    uint16_t data = unpackStoredLedCell(Device.customLeds[pattern][i]);
+    leds[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE + i] = data;
+    leds[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE + i] = data;
+  }
   customLedPatternActive = true;
   lightSettings = 2;
   completelyRefreshLeds();
@@ -103,14 +148,17 @@ void storeCustomLedLayer(int pattern)
 {
   if (pattern < 0 || pattern >= LED_PATTERNS) {
     if (customLedPatternActive) {
-      memset(&leds[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
-      memset(&leds[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE);
+      memset(&leds[0][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE * sizeof(leds[0][0]));
+      memset(&leds[1][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], 0, LED_LAYER_SIZE * sizeof(leds[1][0]));
     }
     customLedPatternActive = false;
     return;
   }
 
-  memcpy(&Device.customLeds[pattern][0], &leds[visibleLeds][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE], LED_LAYER_SIZE);
+  for (uint16_t i = 0; i < LED_LAYER_SIZE; ++i) {
+    Device.customLeds[pattern][i] =
+        packPersistentLedCell(leds[visibleLeds][LED_LAYER_CUSTOM1 * LED_LAYER_SIZE + i]);
+  }
   customLedPatternActive = true;
   lightSettings = 2;
 }
@@ -127,16 +175,16 @@ void clearStoredCustomLedLayer(int pattern)
 
 void startBufferedLeds() {
   bufferedLeds = 1;
-  memcpy(leds[bufferedLeds], leds[visibleLeds], LED_ARRAY_SIZE);
+  memcpy(leds[bufferedLeds], leds[visibleLeds], sizeof(leds[bufferedLeds]));
 }
 
 void finishBufferedLeds() {
-  memcpy(leds[visibleLeds], leds[bufferedLeds], LED_ARRAY_SIZE);
+  memcpy(leds[visibleLeds], leds[bufferedLeds], sizeof(leds[visibleLeds]));
   bufferedLeds = 0;
 }
 
-inline byte getCombinedLedData(byte col, byte row) {
-  byte data = 0;
+inline uint16_t getCombinedLedData(byte col, byte row) {
+  uint16_t data = 0;
   byte layer = MAX_LED_LAYERS;
   do {
     layer -= 1;
@@ -161,7 +209,7 @@ inline byte getCombinedLedData(byte col, byte row) {
       data = ledBuffered(layer, col, row);
     }    
   }
-  while (layer > 0 && (data & B00000111) == cellOff);
+  while (layer > 0 && (data & LED_CELL_DISPLAY_MASK) == cellOff);
 
   return data;
 }
@@ -171,16 +219,19 @@ void setLed(byte col, byte row, byte color, CellDisplay disp) {
 }
 
 void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer) {
-  if (col >= NUMCOLS || row >= NUMROWS || layer > MAX_LED_LAYERS) return;
-
   if (color == COLOR_OFF) {
     disp = cellOff;
   }
-  else if (disp == cellOff) {
-    color = COLOR_OFF;
+  else if (color <= COLOR_PALETTE_LAST) {
+    color = paletteColorToRgb[color];
   }
-  // packs color and display into this cell within array
-  byte data = ((color & B00011111) << 3) | (disp & B00000111);
+  setLedColorIndex(col, row, color, disp, layer);
+}
+
+void setLedColorIndex(byte col, byte row, byte color, CellDisplay disp, byte layer) {
+  if (col >= NUMCOLS || row >= NUMROWS || layer > MAX_LED_LAYERS) return;
+  if (disp == cellOff) color = 0;
+  uint16_t data = packLedCell(color, disp);
   if (ledBuffered(layer, col, row) != data) {
     ledBuffered(layer, col, row) = data;
     ledBuffered(LED_LAYER_COMBINED, col, row) = getCombinedLedData(col, row);
@@ -193,7 +244,7 @@ void setLed(byte col, byte row, byte color, CellDisplay disp, byte layer) {
 
 byte getLedColor(byte col, byte row, byte layer) {
   if (col >= NUMCOLS || row >= NUMROWS || layer > MAX_LED_LAYERS) return COLOR_OFF;
-  return (ledVisible(layer, col, row) >> 3) & B00011111;
+  return (ledVisible(layer, col, row) & LED_CELL_COLOR_MASK) >> LED_CELL_COLOR_SHIFT;
 }
 
 // light up a single LED with the default color
@@ -251,8 +302,7 @@ void completelyRefreshLeds() {
 }
 
 void clearDisplayImmediately() {
-  // disable the outputs of the LED driver chips
-  digitalWrite(37, HIGH);
+  tta_led_set_enabled(false);
 }
 
 void disableLedDisplay() {
@@ -261,18 +311,14 @@ void disableLedDisplay() {
 }
 
 void enableLedDisplay() {
-  // enable the outputs of the LED driver chips
-  digitalWrite(37, LOW);
   ledDisplayEnabled = true;
+  tta_led_set_enabled(true);
 }
 
 // refreshLedColumn:
 // Called when it's time to refresh the next column of LEDs. Internally increments the column number every time it's called.
 void refreshLedColumn(unsigned long now) {
   if (!ledDisplayEnabled) return;
-
-  // disabling the power output from the LED driver pins early prevents power leaking into unwanted cells.
-  digitalWrite(37, HIGH);                                         // disable the outputs of the LED driver chips
 
   // keep a steady pulsating going for those leds that need it
   static unsigned long lastPulse = 0;
@@ -297,25 +343,12 @@ void refreshLedColumn(unsigned long now) {
   }
 
   static byte ledCol = 0;
-  static byte displayInterval[MAXCOLS][MAXROWS];
+  byte actualCol = COL_INDEX[ledCol];
 
-  byte red = 0;                                           // red value to be sent
-  byte green = 0;                                         // green value to be sent
-  byte blue = 0;                                          // blue value to be sent
-  byte actualCol = 0;                                     // actual column being refreshed, permitting columns to be lit non-sequentially by using COL_INDEX[] array
-  byte ledColShifted = 0;                                 // LED column address, which is shifted 2 bits to left within byte
-
-  actualCol = COL_INDEX[ledCol];                           // using COL_INDEX[], permits non-sequential lighting of LED columns, which doesn't seem to improve appearance
-
-   // Initialize bytes to send to LEDs over SPI. Each bit represents a single LED on or off
   for (byte rowCount = 0; rowCount < NUMROWS; ++rowCount) {       // step through the 8 rows
-    // allow several levels of brightness by modulating LED's ON time
-    if (++displayInterval[actualCol][rowCount] >= 12) {
-      displayInterval[actualCol][rowCount] = 0;
-    }
-
-    byte color = (ledVisible(LED_LAYER_COMBINED, actualCol, rowCount) & B11111000) >> 3;    // set temp value 'color' to 4 color bits of this LED within array
-    byte cellDisplay = ledVisible(LED_LAYER_COMBINED, actualCol, rowCount) & B00000111;     // get cell display value
+    uint16_t ledData = ledVisible(LED_LAYER_COMBINED, actualCol, rowCount);
+    byte color = (ledData & LED_CELL_COLOR_MASK) >> LED_CELL_COLOR_SHIFT;
+    byte cellDisplay = ledData & LED_CELL_DISPLAY_MASK;
 
     switch (cellDisplay) {
       case cellFastPulse:
@@ -329,89 +362,18 @@ void refreshLedColumn(unsigned long now) {
         break;
     }
 
-    if (Device.operatingLowPower) {
-      if (displayInterval[actualCol][rowCount] % 2 != 0) {
-        cellDisplay = cellOff;
-      }
-    }
-
-    // if this LED is not off, process it
-    // set the color bytes to the correct color
+    byte r = 0, g = 0, b = 0;
     if (cellDisplay) {
-      // construct composite colors
-      if ((!Device.operatingLowPower && displayInterval[actualCol][rowCount] % 2 != 0) ||
-          (Device.operatingLowPower && displayInterval[actualCol][rowCount] % 4 != 0)) {
-        switch (color)
-        {
-          case COLOR_WHITE:
-            color = COLOR_CYAN;
-            break;
-          case COLOR_ORANGE:
-            color = COLOR_YELLOW;
-            break;
-          case COLOR_LIME:
-            color = COLOR_GREEN;
-            break;
-          case COLOR_PINK:
-            color = COLOR_YELLOW;
-            break;
-        }
-      }
-
-      switch (color)
-      {
-        case COLOR_OFF:
-        case COLOR_BLACK:
-          break;
-        case COLOR_RED:
-          red = red | (B00000001 << rowCount);
-          break;
-        case COLOR_YELLOW:
-          red = red | (B00000001 << rowCount);
-          green = green | (B00000001 << rowCount);
-          break;
-        case COLOR_GREEN:
-          green = green | (B00000001 << rowCount);
-          break;
-        case COLOR_CYAN:
-          green = green | (B00000001 << rowCount);
-          blue = blue | (B00000001 << rowCount);
-          break;
-        case COLOR_BLUE:
-          blue = blue | (B00000001 << rowCount);
-          break;
-        case COLOR_MAGENTA:
-          blue = blue | (B00000001 << rowCount);
-          red = red | (B00000001 << rowCount);
-          break;
-        case COLOR_WHITE:
-          blue = blue | (B00000001 << rowCount);
-          red = red | (B00000001 << rowCount);
-          green = green | (B00000001 << rowCount);
-          break;
-        case COLOR_ORANGE:
-          red = red | (B00000001 << rowCount);
-          break;
-        case COLOR_LIME:
-          red = red | (B00000001 << rowCount);
-          green = green | (B00000001 << rowCount);
-          break;
-        case COLOR_PINK:
-          blue = blue | (B00000001 << rowCount);
-          red = red | (B00000001 << rowCount);
-          break;
-      }
+      r = color / 25u;
+      g = (color / 5u) % 5u;
+      b = color % 5u;
     }
+
+    tta_led[(uint16_t)actualCol * MAXROWS + rowCount] =
+        (byte)(r * 25u + g * 5u + b);
   }
 
   if (++ledCol >= NUMCOLS) ledCol = 0;
-
-  ledColShifted = actualCol << 2;
-  if ((actualCol & 16) == 0) ledColShifted |= B10000000;          // if column address 4 is 0, set bit 7
-
-  SPI.transfer(SPI_LEDS, ~ledColShifted, SPI_CONTINUE);           // send column address
-  SPI.transfer(SPI_LEDS, blue, SPI_CONTINUE);                     // send blue byte
-  SPI.transfer(SPI_LEDS, green, SPI_CONTINUE);                    // send green byte
-  SPI.transfer(SPI_LEDS, red);                                    // send red byte
-  digitalWrite(37, LOW);                                          // enable the outputs of the LED driver chips
+  tta_led_commit(1u << actualCol);
+  tta_led_set_enabled(true);
 }

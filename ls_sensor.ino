@@ -84,6 +84,12 @@ void initializeSensors() {
   Device.sensorLoZ = DEFAULT_SENSOR_LO_Z;
   Device.sensorFeatherZ = DEFAULT_SENSOR_FEATHER_Z;
   Device.sensorRangeZ = DEFAULT_SENSOR_RANGE_Z;
+
+  selectSensorCell(0, 0, READ_Z);
+  for (byte i = 0; i < 3; ++i) {
+    spiAnalogRead();
+    delayUsec(24);
+  }
 }
 
 inline short readX(byte zPct) {                       // returns the raw X value at the addressed cell
@@ -203,17 +209,23 @@ inline unsigned short readZ() {                       // returns the raw Z value
   return rawZ;
 }
 
-// spiAnalogRead:
-// returns raw ADC output at current cell
-inline short spiAnalogRead() {
-  byte msb = SPI.transfer(SPI_ADC, 0, SPI_CONTINUE);         // read byte MSB
-  byte lsb = SPI.transfer(SPI_ADC, 0);                       // read byte LSB
+static byte g_ttaAxis = READ_Z;
+static uint16_t g_ttaPad = 0;
+static uint32_t g_ttaToken = 0;
 
-  // assemble the 2 transfered bytes into an int
-  short raw = short(msb) << 8;
-  raw |= lsb;
-  // shift the 14-bit value from bits 16-2 to bits 14-0
-  return (raw >> 2) & 0xFFF;
+static inline uint32_t ttaIssueSensorRequest() {
+  switch (g_ttaAxis) {
+    case READ_X: return tta_sensor_request_x(g_ttaPad);
+    case READ_Y: return tta_sensor_request_y(g_ttaPad);
+    default:     return tta_sensor_request_z(g_ttaPad);
+  }
+}
+
+// Request a conversion after selectSensorCell's mux-settling delay.
+inline short spiAnalogRead() {
+  g_ttaToken = ttaIssueSensorRequest();
+  if (g_ttaToken == 0 || !tta_sensor_wait_token(g_ttaToken)) return 4095;
+  return tta_sensor_latest_raw();
 }
 
 
@@ -251,32 +263,8 @@ inline short spiAnalogRead() {
 // row: row to be addressed by analog switches
 // switchCode: set analog switches to read X (0), Y (1) or Z (2)
 inline void selectSensorCell(byte col, byte row, byte switchCode) {
-  // first set lower 5 bits of MSB to specified column
-  byte msb = col;                                 // set MSB of SPI value to column
-  if ((col & 16) == 0) msb = col | B00100000;     // if column address 4 is 0, set bit 5 of MSB (inverted state of bit 4) to 1
-
-  // then set lower 3 bits of LSB to specified row
-  byte lsb = row;                                 // set LSB of SPI value to row
-
-  // now, set bits 5-7 of MSB and bits 3-6 of LSB (routing analog swiches)
-  switch (switchCode)                             // set SPI values differently depending on reading X, Y or Z
-  {
-  case READ_X:                                    // if reading X...
-    msb |= B10000000;                             // set colBotSw to ADC
-    lsb |= B01010000;                             // set rowRightSwA to RT_SW_B and rowRightSwB to +3.3 (for low-R Analog Devices switches)
-    break;
-  case READ_Y:                                    // if reading Y...
-    msb |= B01000000;                             // set colTopSw to +3.3v
-    lsb |= B00011000;                             // set rowRightSwA to RT_SW_B and rowRightSwB to ADC (for low-R Analog Devices switches)
-    break;
-  case READ_Z:                                    // if reading Z...
-    msb |= B10000000;                             // set colBotSw to ADC
-    lsb |= B00100000;                             // set rowRightSwA to GND and rowRightSwB doesn't matter (for low-R Analog Devices switches)
-    break;
-  default:
-    break;
-  }
-
-  SPI.transfer(SPI_SENSOR, lsb, SPI_CONTINUE);    // to daisy-chained 595 (LSB)
-  SPI.transfer(SPI_SENSOR, msb);                  // to first 595 at MOSI (MSB, for both sensor columns and LED columns)
+  g_ttaAxis = switchCode;
+  g_ttaPad = (uint16_t)col * MAXROWS + row;
+  g_ttaToken = ttaIssueSensorRequest();
+  if (!tta_sensor_wait_acquired_token(g_ttaToken)) g_ttaToken = 0;
 }

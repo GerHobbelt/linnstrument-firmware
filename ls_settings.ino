@@ -1165,7 +1165,7 @@ byte colorCycle(byte color, boolean includeOff) {
   if (color == COLOR_BLACK) {
     color += 1;
   }
-  if (color > 11) {
+  if (color > COLOR_PALETTE_LAST) {
     if (includeOff) {
       color = 0;
     }
@@ -3301,7 +3301,7 @@ void handleCustomLedsEditorNewTouch() {
     if (!cleared_area) {
       byte color = getLedColor(sensorCol, sensorRow, LED_LAYER_CUSTOM1);
       if (color != COLOR_OFF) {
-        setLed(sensorCol, sensorRow, color, cellSlowPulse, LED_LAYER_CUSTOM1);
+        setLedColorIndex(sensorCol, sensorRow, color, cellSlowPulse, LED_LAYER_CUSTOM1);
       }
     }
   }
