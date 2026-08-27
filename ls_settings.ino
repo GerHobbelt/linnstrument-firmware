@@ -2516,11 +2516,16 @@ void handleGlobalSettingNewTouch() {
           // handled at release
           break;
         case 3:
-          if (!Device.serialMode) {
-            Device.operatingLowPower = !Device.operatingLowPower;
-            applyLedInterval();
-            applyMidiInterval();
+          // Low power and serial mode are mutually exclusive.  Match the startup
+          // low-power path by leaving serial mode instead of ignoring this touch.
+          if (Device.serialMode) {
+            Device.serialMode = false;
+            applySerialMode();
           }
+          Device.operatingLowPower = !Device.operatingLowPower;
+          applyLedInterval();
+          applyMidiInterval();
+          updateDisplay();
           break;
       }
       break;
@@ -3136,8 +3141,14 @@ void handleGlobalSettingRelease() {
     // only show the messages if the tempo was changed more than 1s ago to prevent accidental touches
     if (calcTimeDelta(micros(), tempoChangeTime) >= 1000000) {
       if (sensorCol <= 16 && ensureCellBeforeHoldWait(COLOR_BLACK, cellOff)) {
-        clearDisplay();
-        big_scroll_text_flipped(Device.audienceMessages[sensorCol - 1], Split[LEFT].colorMain);        
+        if (sensorCol == 1) {
+          // the LINNSTRUMENT pad runs the LED colour demo instead of scrolling text
+          playColorShowDemo();
+        }
+        else {
+          clearDisplay();
+          big_scroll_text_flipped(Device.audienceMessages[sensorCol - 1], Split[LEFT].colorMain);
+        }
       }
       else if (sensorCol == 25) {
         Device.sleepActive = true;

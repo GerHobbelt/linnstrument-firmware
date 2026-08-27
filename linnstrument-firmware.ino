@@ -1048,6 +1048,7 @@ boolean userFirmwareZActive[MAXROWS];               // indicates whether Z data 
 
 boolean animationActive = false;                    // indicates whether animation is active, preventing any other display
 boolean stopAnimation = false;                      // indicates whether animation should be stopped
+boolean colorShowDemoActive = false;                // identifies the global-settings colour demo
 
 int32_t fxd4CurrentTempo = FXD4_FROM_INT(120);               // the current tempo
 unsigned long midiDecimateRate = DEFAULT_MIDI_DECIMATION;    // default MIDI decimation rate
@@ -1104,6 +1105,8 @@ boolean ensureCellBeforeHoldWait(byte resetColor, CellDisplay resetDisplay);
 
 void setDisplayMode(DisplayMode mode);
 void exitDisplayMode(DisplayMode mode);
+
+void playColorShowDemo();
 
 void applyBendRange(SplitSettings& target, byte bendRange);
 

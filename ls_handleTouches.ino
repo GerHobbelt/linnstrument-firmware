@@ -401,9 +401,18 @@ boolean handleNewTouch() {
 
   // allow any new touch to cancel scrolling
   if (animationActive) {
-    stopAnimation = true;
-    cellTouched(ignoredCell);
-    return false;
+    // The demo is entered from Global Settings, so let its low-power pad both
+    // stop the demo and apply its setting rather than swallowing the touch.
+    if (colorShowDemoActive && sensorCol == 15 && sensorRow == 3) {
+      colorShowDemoActive = false;
+      animationActive = false;
+      stopAnimation = true;
+    }
+    else {
+      stopAnimation = true;
+      cellTouched(ignoredCell);
+      return false;
+    }
   }
 
   // any touch will wake up LinnStrument again, and should be ignored
