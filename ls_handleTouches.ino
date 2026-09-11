@@ -460,8 +460,15 @@ boolean handleNewTouch() {
       case displayNormal:                                            // it's normal performance mode
       case displayVolume:                                            // it's a volume change
 
+        // Scalar Layout owns cross-cell transitions while it is active. The
+        // stock horizontal pitch-slide transfer remains untouched otherwise.
+        if (displayMode == displayNormal &&
+            Device.scalarLayoutEnabled &&
+            handleScalarLayoutNewTouchTransfer()) {
+          // handled by the Scalar Layout transfer state machine
+        }
         // check if the new touch could be an ongoing slide to the right
-        if (potentialSlideTransferCandidate(sensorCol-1)) {
+        else if (potentialSlideTransferCandidate(sensorCol-1)) {
           handleSlideTransferCandidate(sensorCol-1);
         }
         // check if the new touch could be an ongoing slide to the left
@@ -497,6 +504,10 @@ boolean handleNewTouch() {
 
 // Calculate the transposed note number for the current cell by taken the transposition settings into account
 short cellTransposedNote(byte split) {
+  if (Device.scalarLayoutEnabled && displayMode == displayNormal) {
+    return getScalarLayoutNoteNumber(split, sensorCol, sensorRow) +
+           Split[split].transposePitch + Split[split].transposeOctave;
+  }
   return transposedNote(split, sensorCol, sensorRow);
 }
 
@@ -1227,8 +1238,13 @@ void prepareNewNote(signed char notenum) {
   // register the reverse mapping
   noteTouchMapping[sensorSplit].noteOn(notenum, channel, sensorCol, sensorRow);
 
+  // Scalar Layout always uses its own red physical-touch and active-pitch
+  // overlay, independent of the stock per-split played-color preference.
+  if (Device.scalarLayoutEnabled && displayMode == displayNormal) {
+    refreshScalarLayoutPlayedLeds();
+  }
   // highlight the touch animation if this is activated
-  if (Split[sensorSplit].colorPlayed) {
+  else if (Split[sensorSplit].colorPlayed) {
     if (Split[sensorSplit].playedTouchMode == playedCell) {
       setLed(sensorCol, sensorRow, Split[sensorSplit].colorPlayed, cellOn, LED_LAYER_PLAYED);
     }
@@ -1823,6 +1839,10 @@ void handleTouchRelease() {
 
     // Reset all this cell's musical data
     sensorCell->clearMusicalData();
+
+    if (Device.scalarLayoutEnabled && displayMode == displayNormal) {
+      refreshScalarLayoutPlayedLeds();
+    }
   }
 
   postTouchRelease();

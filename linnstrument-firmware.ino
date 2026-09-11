@@ -45,8 +45,8 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 
 /******************************************** CONSTANTS ******************************************/
 
-const char* OSVersion = "234";
-const char* OSVersionBuild = ".074";
+const char* OSVersion = "234-x5";
+const char* OSVersionBuild = "234-x5";
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -98,6 +98,11 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define COLOR_ORANGE   9
 #define COLOR_LIME     10
 #define COLOR_PINK     11
+
+// Global Settings location for the optional 3x4 Scalar Layout. Column 19 is
+// unused by the stock LinnStrument 200 Global Settings surface.
+#define SCALAR_LAYOUT_SETTINGS_COL 19
+#define SCALAR_LAYOUT_SETTINGS_ROW 0
 
 // Special row offset values, for legacy reasons
 #define ROWOFFSET_NOOVERLAP        0x00
@@ -706,6 +711,7 @@ struct DeviceSettings {
   short lastLoadedPreset;                         // the last settings preset that was loaded
   short lastLoadedProject;                        // the last sequencer project that was loaded
   byte customLeds[LED_PATTERNS][LED_LAYER_SIZE];  // the custom LEDs that persist across power cycle
+  boolean scalarLayoutEnabled;                   // global 3x4 Scalar Layout switch
 };
 #define Device config.device
 

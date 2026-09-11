@@ -346,7 +346,7 @@ void storeSettingsToPreset(byte p) {
 // The first time after new code is loaded into the Linnstrument, this sets the initial defaults of all settings.
 // On subsequent startups, these values are overwritten by loading the settings stored in flash.
 void initializeDeviceSettings() {
-  Device.version = 17;
+  Device.version = 18;
   Device.serialMode = false;
   Device.sleepAnimationActive = false;
   Device.sleepActive = false;
@@ -359,6 +359,7 @@ void initializeDeviceSettings() {
   Device.midiThrough = false;
   Device.lastLoadedPreset = -1;
   Device.lastLoadedProject = -1;
+  Device.scalarLayoutEnabled = false;
   Global.splitActive = false;
 
   initializeAudienceMessages();
@@ -2467,6 +2468,18 @@ void handleGlobalSettingNewTouch() {
 
   // start tracking the touch duration to be able to enable hold functionality
   sensorCell->lastTouch = millis();
+
+  // Toggle the device-wide 3x4 Scalar Layout from its dedicated cell on the
+  // Global Settings surface. This is intentionally outside every stock
+  // control group on LinnStrument 200.
+  if (!userFirmwareActive &&
+      LINNMODEL == 200 &&
+      sensorCol == SCALAR_LAYOUT_SETTINGS_COL &&
+      sensorRow == SCALAR_LAYOUT_SETTINGS_ROW) {
+    Device.scalarLayoutEnabled = !Device.scalarLayoutEnabled;
+    updateDisplay();
+    return;
+  }
 
   // select the Velocity Sensitivity
   switch (sensorCol) {

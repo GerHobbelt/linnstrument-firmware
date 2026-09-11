@@ -891,11 +891,44 @@ struct ConfigurationV15 {
   PresetSettingsV11 preset[6];
   SequencerProject project;
 };
-/**************************************** Configuration V16 ****************************************
-This is used by firmware v2.3.0, v2.3.1, v2.3.2, v2.3.3
+/**************************************** Configuration V16/V17 ************************************
+These preserve the DeviceSettings layout used by firmware v2.3.0 through v2.3.4.
 **************************************************************************************************/
+struct DeviceSettingsV13 {
+  byte version;
+  boolean serialMode;
+  CalibrationX calRows[MAXCOLS+1][4];
+  CalibrationY calCols[9][MAXROWS];
+  uint32_t calCrc;
+  boolean calCrcCalculated;
+  boolean calibrated;
+  boolean calibrationHealed;
+  unsigned short minUSBMIDIInterval;
+  byte sensorSensitivityZ;
+  unsigned short sensorLoZ;
+  unsigned short sensorFeatherZ;
+  unsigned short sensorRangeZ;
+  boolean sleepAnimationActive;
+  boolean sleepActive;
+  byte sleepDelay;
+  byte sleepAnimationType;
+  char audienceMessages[16][31];
+  boolean operatingLowPower;
+  boolean otherHanded;
+  byte splitHandedness;
+  boolean midiThrough;
+  short lastLoadedPreset;
+  short lastLoadedProject;
+  byte customLeds[LED_PATTERNS][LED_LAYER_SIZE];
+};
 struct ConfigurationV16 {
-  DeviceSettings device;
+  DeviceSettingsV13 device;
+  PresetSettingsV11 settings;
+  PresetSettingsV11 preset[NUMPRESETS];
+  SequencerProject project;
+};
+struct ConfigurationV17 {
+  DeviceSettingsV13 device;
   PresetSettingsV11 settings;
   PresetSettingsV11 preset[NUMPRESETS];
   SequencerProject project;
@@ -1014,6 +1047,12 @@ boolean upgradeConfigurationSettings(int32_t confSize, byte* buff2) {
         break;
       // this is the v17 of the configuration configuration, apply it if the size is right
       case 17:
+        if (confSize == sizeof(ConfigurationV17)) {
+          copyConfigurationFunction = &copyConfigurationV17;
+        }
+        break;
+      // this is the current v18 configuration
+      case 18:
         if (confSize == sizeof(Configuration)) {
           memcpy(&config, buff2, confSize);
           result = true;
@@ -1875,6 +1914,7 @@ void copyDeviceSettingsV8(void* target, void* source) {
   t->midiThrough = s->midiThrough;
   t->lastLoadedPreset = s->lastLoadedPreset;
   t->lastLoadedProject = s->lastLoadedProject;
+  t->scalarLayoutEnabled = false;
 }
 
 /*************************************************************************************************/
@@ -2283,7 +2323,25 @@ void copyConfigurationV16(void* target, void* source) {
   Configuration* t = (Configuration*)target;
   ConfigurationV16* s = (ConfigurationV16*)source;
 
-  memcpy(&t->device, &s->device, sizeof(DeviceSettings));
+  memcpy(&t->device, &s->device, sizeof(DeviceSettingsV13));
+  t->device.scalarLayoutEnabled = false;
+
+  copyPresetSettingsV11(&t->settings, &s->settings);
+  for (byte p = 0; p < 6; ++p) {
+    copyPresetSettingsV11(&t->preset[p], &s->preset[p]);
+  }
+
+  memcpy(&t->project, &s->project, sizeof(SequencerProject));
+}
+
+/*************************************************************************************************/
+
+void copyConfigurationV17(void* target, void* source) {
+  Configuration* t = (Configuration*)target;
+  ConfigurationV17* s = (ConfigurationV17*)source;
+
+  memcpy(&t->device, &s->device, sizeof(DeviceSettingsV13));
+  t->device.scalarLayoutEnabled = false;
 
   copyPresetSettingsV11(&t->settings, &s->settings);
   for (byte p = 0; p < 6; ++p) {

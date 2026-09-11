@@ -1,6 +1,9 @@
 *.swp
 *.swo
 *~
+.DS_Store
 build/*
+.arduino-data/
+.tools/
 linnstrument-firmware.sublime-*
 stino.settings

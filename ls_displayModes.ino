@@ -395,6 +395,10 @@ void paintNormalDisplay() {
     paintNormalDisplaySplit(RIGHT, divider, NUMCOLS);
   }
 
+  if (Device.scalarLayoutEnabled && displayMode == displayNormal) {
+    refreshScalarLayoutPlayedLeds();
+  }
+
   paintOctaveTransposeLed();
 }
 
@@ -566,13 +570,25 @@ void paintNormalDisplayCell(byte split, byte col, byte row) {
   byte colour = COLOR_OFF;
   CellDisplay cellDisplay = cellOff;
 
-  short displayedNote = getNoteNumber(split, col, row) + Split[split].transposeOctave;
-  short actualnote = transposedNote(split, col, row);
+  short displayedNote;
+  short actualnote;
+  if (Device.scalarLayoutEnabled) {
+    displayedNote = getScalarLayoutNoteNumber(split, col, row) + Split[split].transposeOctave;
+    actualnote = displayedNote + Split[split].transposePitch;
+  }
+  else {
+    displayedNote = getNoteNumber(split, col, row) + Split[split].transposeOctave;
+    actualnote = transposedNote(split, col, row);
+  }
 
   // the note is out of MIDI note range, disable it
   if (actualnote < 0 || actualnote > 127) {
     colour = COLOR_OFF;
     cellDisplay = cellOff;
+  }
+  else if (Device.scalarLayoutEnabled) {
+    colour = getScalarLayoutDegreeColor(displayedNote);
+    cellDisplay = colour == COLOR_OFF ? cellOff : cellOn;
   }
   else if (!customLedPatternActive) {
     byte octaveNote = abs(displayedNote % 12);
@@ -1662,6 +1678,14 @@ inline void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row)
     // flash the tap tempo cell at the beginning of the beat
     if (flash_on) {
       lightLed(col, row);
+      // When Scalar Layout is off, its Global Settings switch is a direct
+      // mirror of the Tap Tempo flash: same beat, phase, and pulse length.
+      if (col == 14 && row == 3 &&
+          !Device.scalarLayoutEnabled &&
+          LINNMODEL == 200 &&
+          (displayMode == displayGlobal || displayMode == displayGlobalWithTempo)) {
+        setLed(SCALAR_LAYOUT_SETTINGS_COL, SCALAR_LAYOUT_SETTINGS_ROW, COLOR_BLUE, cellOn);
+      }
       tempoLedOn = now;
     }
 
@@ -1669,6 +1693,12 @@ inline void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row)
     if (tempoLedOn != 0 && calcTimeDelta(now, tempoLedOn) > LED_FLASH_DELAY) {
       tempoLedOn = 0;
       clearLed(col, row);
+      if (col == 14 && row == 3 &&
+          !Device.scalarLayoutEnabled &&
+          LINNMODEL == 200 &&
+          (displayMode == displayGlobal || displayMode == displayGlobalWithTempo)) {
+        clearLed(SCALAR_LAYOUT_SETTINGS_COL, SCALAR_LAYOUT_SETTINGS_ROW);
+      }
     }
   }
 }
@@ -1677,6 +1707,16 @@ inline void paintGlobalSettingsFlashTempo(unsigned long now, byte col, byte row)
 // Paints LEDs with state of all global settings
 void paintGlobalSettingsDisplay() {
   clearDisplay();
+
+  // Dedicated indicator for the device-wide 3x4 Scalar Layout.
+  if (LINNMODEL == 200) {
+    if (Device.scalarLayoutEnabled) {
+      setLed(SCALAR_LAYOUT_SETTINGS_COL,
+             SCALAR_LAYOUT_SETTINGS_ROW,
+             COLOR_WHITE,
+             cellOn);
+    }
+  }
 
   // This code assumes the velocitySensitivity and pressureSensitivity
   // values are equal to the LED rows.
