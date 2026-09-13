@@ -7,6 +7,57 @@
 
 const unsigned long DYNAMIC_STRUM_HOLD_MS = 1500;
 
+#define DYNAMIC_NOTE_INVALID (-1)
+struct DynamicSoundingNote { boolean sounding; signed char channel; byte split; };
+short dynamicLiveMap[MAXROWS];
+short dynamicStrumSnapshot[MAXROWS];
+boolean dynamicLiveMapValid = false;
+boolean dynamicStrumSnapshotValid = false;
+byte dynamicVoicingTouchCount = 0;
+byte dynamicStrumTouchCount = 0;
+DynamicSoundingNote dynamicSoundingNotes[128];
+
+void clearDynamicPitchMaps() {
+  for (byte row=0; row<MAXROWS; ++row) { dynamicLiveMap[row]=DYNAMIC_NOTE_INVALID; dynamicStrumSnapshot[row]=DYNAMIC_NOTE_INVALID; }
+  dynamicLiveMapValid=false; dynamicStrumSnapshotValid=false;
+}
+void clearDynamicSoundingState() {
+  for (byte n=0; n<128; ++n) { dynamicSoundingNotes[n].sounding=false; dynamicSoundingNotes[n].channel=-1; dynamicSoundingNotes[n].split=0; }
+}
+void releaseAllSoundingDynamicNotes() {
+  for (byte n=0; n<128; ++n) if (dynamicSoundingNotes[n].sounding) {
+    midiSendNoteOff(dynamicSoundingNotes[n].split,n,dynamicSoundingNotes[n].channel);
+    releaseChannel(dynamicSoundingNotes[n].split,dynamicSoundingNotes[n].channel);
+  }
+  clearDynamicSoundingState();
+}
+byte countDynamicTouches(byte split) {
+  byte count=0;
+  for (byte col=1; col<NUMCOLS; ++col) if (getSplitOf(col)==split)
+    for (byte row=0; row<NUMROWS; ++row) if (cell(col,row).touched==touchedCell) ++count;
+  return count;
+}
+void rebuildDynamicLiveMap();
+void refreshDynamicTouchState() {
+  byte strum=getDynamicStrumSplit(); byte voicing=getDynamicVoicingSplit();
+  byte oldStrum=dynamicStrumTouchCount;
+  dynamicVoicingTouchCount=(voicing==255)?0:countDynamicTouches(voicing);
+  dynamicStrumTouchCount=(strum==255)?0:countDynamicTouches(strum);
+  if (oldStrum==0 && dynamicStrumTouchCount>0) {
+    for (byte row=0; row<MAXROWS; ++row) dynamicStrumSnapshot[row]=dynamicLiveMap[row];
+    dynamicStrumSnapshotValid=dynamicLiveMapValid;
+  }
+  else if (oldStrum>0 && dynamicStrumTouchCount==0) {
+    dynamicStrumSnapshotValid=false;
+    for (byte row=0; row<MAXROWS; ++row) dynamicStrumSnapshot[row]=DYNAMIC_NOTE_INVALID;
+  }
+  if (dynamicVoicingTouchCount==0 && dynamicStrumTouchCount==0) {
+    releaseAllSoundingDynamicNotes();
+    dynamicStrumSnapshotValid=false;
+  }
+}
+void resetDynamicRuntime() { releaseAllSoundingDynamicNotes(); clearDynamicPitchMaps(); dynamicVoicingTouchCount=0; dynamicStrumTouchCount=0; }
+
 struct DynamicStrumPressState {
   boolean active;
   boolean longPressTriggered;
@@ -79,6 +130,13 @@ boolean isDynamicVoicingSplit(byte split) {
   return s != 255 && s == split;
 }
 
+void rebuildDynamicLiveMap() {
+  byte voicing=getDynamicVoicingSplit();
+  if (voicing==255) { clearDynamicPitchMaps(); return; }
+  buildDynamicStrumNotes(voicing,dynamicLiveMap);
+  dynamicLiveMapValid=(dynamicLiveMap[0]!=DYNAMIC_NOTE_INVALID);
+}
+
 // Build strictly ascending notes while preserving the sorted voicing pitch-class order.
 void buildDynamicStrumNotes(byte voicingSplit, short* output) {
   short held[MAXCOLS * MAXROWS];
@@ -113,49 +171,47 @@ void buildDynamicStrumNotes(byte voicingSplit, short* output) {
 void dynamicStrumCaptureVoicing(byte split) {
   sensorCell->note = cellTransposedNote(split);
   sensorCell->channel = -1;
+  rebuildDynamicLiveMap();
+  refreshDynamicTouchState();
 }
 
 void dynamicStrumTrigger(byte split, boolean retrigger) {
-  short notes[MAXROWS];
-  buildDynamicStrumNotes(getDynamicVoicingSplit(), notes);
-  if (sensorRow >= MAXROWS || notes[sensorRow] < 0) return;
-  if (retrigger && sensorCell->hasNote()) midiSendNoteOff(getDynamicVoicingSplit(), sensorCell->note, sensorCell->channel);
-  byte channel = takeChannel(getDynamicVoicingSplit(), sensorRow);
-  sensorCell->note = notes[sensorRow];
-  sensorCell->channel = channel;
-  sensorCell->velocity = sensorCell->velocity ? sensorCell->velocity : 127;
-  midiSendNoteOn(getDynamicVoicingSplit(), sensorCell->note, sensorCell->velocity, channel);
+  rebuildDynamicLiveMap();
+  refreshDynamicTouchState();
+  if (!dynamicStrumSnapshotValid || sensorRow >= MAXROWS) return;
+  short pitch = dynamicStrumSnapshot[sensorRow];
+  if (pitch < 0 || pitch > 127) return;
+  if (dynamicSoundingNotes[pitch].sounding) {
+    midiSendNoteOff(dynamicSoundingNotes[pitch].split, pitch, dynamicSoundingNotes[pitch].channel);
+    releaseChannel(dynamicSoundingNotes[pitch].split, dynamicSoundingNotes[pitch].channel);
+    dynamicSoundingNotes[pitch].sounding=false;
+  }
+  byte midiSplit=getDynamicVoicingSplit();
+  if (midiSplit==255) return;
+  byte channel=takeChannel(midiSplit,sensorRow);
+  byte velocity=sensorCell->velocity ? sensorCell->velocity : 127;
+  midiSendNoteOn(midiSplit,pitch,velocity,channel);
+  dynamicSoundingNotes[pitch].sounding=true;
+  dynamicSoundingNotes[pitch].channel=channel;
+  dynamicSoundingNotes[pitch].split=midiSplit;
+  sensorCell->note=pitch;
+  sensorCell->channel=channel;
+  sensorCell->velocity=velocity;
 }
 
 void dynamicStrumRelease(byte split) {
-  if (isDynamicVoicingSplit(split)) { sensorCell->note = -1; sensorCell->channel = -1; return; }
-  if (isDynamicStrumSplit(split) && sensorCell->hasNote()) {
-    midiSendNoteOff(getDynamicVoicingSplit(), sensorCell->note, sensorCell->channel);
-    releaseChannel(getDynamicVoicingSplit(), sensorCell->channel);
-    sensorCell->note = -1; sensorCell->channel = -1;
-  }
+  sensorCell->note = -1;
+  sensorCell->channel = -1;
+  rebuildDynamicLiveMap();
+  refreshDynamicTouchState();
 }
 
 void setDynamicStrumMode(byte split, byte mode) {
   if (mode > STRUM_DYNAMIC) mode = STRUM_OFF;
-  // Release any notes owned by the current Dynamic output before changing roles.
-  for (byte row = 0; row < MAXROWS; ++row) {
-    if (virtualTouchInfo[row].hasNote()) virtualTouchInfo[row].releaseNote();
-  }
-  for (byte col = 1; col < NUMCOLS; ++col) {
-    for (byte row = 0; row < NUMROWS; ++row) {
-      TouchInfo& t = cell(col, row);
-      if (t.hasNote() && (isDynamicStrumSplit(getSplitOf(col)) || isDynamicVoicingSplit(getSplitOf(col)))) {
-        if (isDynamicStrumSplit(getSplitOf(col))) {
-          midiSendNoteOff(getDynamicVoicingSplit(), t.note, t.channel);
-          releaseChannel(getDynamicVoicingSplit(), t.channel);
-        }
-        t.note = -1; t.channel = -1;
-      }
-      else if (isDynamicStrumSplit(getSplitOf(col)) || isDynamicVoicingSplit(getSplitOf(col))) {
-        t.note = -1; t.channel = -1;
-      }
-    }
+  // Mode changes force-release all Dynamic voices and clear runtime state.
+  resetDynamicRuntime();
+  for (byte col=1; col<NUMCOLS; ++col) for (byte row=0; row<NUMROWS; ++row) {
+    if (getSplitOf(col)==split || getSplitOf(col)==otherSplit(split)) { cell(col,row).note=-1; cell(col,row).channel=-1; }
   }
   Split[split].strum = mode;
   if (mode == STRUM_DYNAMIC) {

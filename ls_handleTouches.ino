@@ -1705,14 +1705,18 @@ void handleTouchRelease() {
   // remember whether this cell was ignored
   boolean wasIgnored = (sensorCell->touched == ignoredCell);
 
-  // Dynamic Strum owns its exact emitted note/voicing state.
-  dynamicStrumRelease(sensorSplit);
-
-  // mark this cell as no longer touched
+  // Mark the cell as released before updating Dynamic sustain counts.
   cellTouched(untouchedCell);
 
   if (wasIgnored ||
       displayMode == displaySleep) {
+    postTouchRelease();
+    return;
+  }
+
+  // Dynamic Strum uses shared sustain/retrigger state instead of ordinary key release.
+  if (isDynamicStrumSplit(sensorSplit) || isDynamicVoicingSplit(sensorSplit)) {
+    dynamicStrumRelease(sensorSplit);
     postTouchRelease();
     return;
   }
