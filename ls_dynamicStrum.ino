@@ -208,10 +208,15 @@ void dynamicStrumRelease(byte split) {
 
 void setDynamicStrumMode(byte split, byte mode) {
   if (mode > STRUM_DYNAMIC) mode = STRUM_OFF;
-  // Mode changes force-release all Dynamic voices and clear runtime state.
+  // Only Dynamic mode changes may clear Dynamic-owned touch state.
+  byte oldDynamicSplit = getDynamicStrumSplit();
   resetDynamicRuntime();
-  for (byte col=1; col<NUMCOLS; ++col) for (byte row=0; row<NUMROWS; ++row) {
-    if (getSplitOf(col)==split || getSplitOf(col)==otherSplit(split)) { cell(col,row).note=-1; cell(col,row).channel=-1; }
+  if (oldDynamicSplit != 255) {
+    for (byte col=1; col<NUMCOLS; ++col) for (byte row=0; row<NUMROWS; ++row) {
+      if (getSplitOf(col)==oldDynamicSplit || getSplitOf(col)==otherSplit(oldDynamicSplit)) {
+        cell(col,row).note=-1; cell(col,row).channel=-1;
+      }
+    }
   }
   Split[split].strum = mode;
   if (mode == STRUM_DYNAMIC) {
