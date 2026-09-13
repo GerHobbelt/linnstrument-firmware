@@ -826,7 +826,7 @@ boolean handleXYZupdate() {
       displayMode == displayVolume ||
       Split[sensorSplit].ccFaders ||
       Split[Global.currentPerSplit].sequencer ||
-      isStrummingSplit(sensorSplit)) {
+      isStrummingSplit(sensorSplit) || isDynamicVoicingSplit(sensorSplit)) {
     handleNotes = false;
   }
 
@@ -852,6 +852,12 @@ boolean handleXYZupdate() {
       lowRowStart();
     }
     // Split strum only triggers notes in the other split
+    else if (isDynamicVoicingSplit(sensorSplit)) {
+      dynamicStrumCaptureVoicing(sensorSplit);
+    }
+    else if (isDynamicStrumSplit(sensorSplit)) {
+      dynamicStrumTrigger(sensorSplit, false);
+    }
     else if (isStrummingSplit(sensorSplit)) {
       handleSplitStrum();
     }
@@ -1204,11 +1210,11 @@ void handleStrummedRowChange(boolean newFretting, byte velocity) {
 }
 
 boolean isStrummedSplit(byte split) {
-  return Global.splitActive && Split[otherSplit(split)].strum;
+  return Global.splitActive && (Split[otherSplit(split)].strum || isDynamicStrumSplit(otherSplit(split)));
 }
 
 boolean isStrummingSplit(byte split) {
-  return Global.splitActive && Split[split].strum;
+  return Global.splitActive && (Split[split].strum || isDynamicStrumSplit(split));
 }
 
 void prepareNewNote(signed char notenum) {
@@ -1698,6 +1704,9 @@ void handleTouchRelease() {
 
   // remember whether this cell was ignored
   boolean wasIgnored = (sensorCell->touched == ignoredCell);
+
+  // Dynamic Strum owns its exact emitted note/voicing state.
+  dynamicStrumRelease(sensorSplit);
 
   // mark this cell as no longer touched
   cellTouched(untouchedCell);

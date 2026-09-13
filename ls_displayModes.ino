@@ -437,6 +437,9 @@ void paintNormalDisplaySplit(byte split, byte leftEdge, byte rightEdge) {
         }
       }
     }
+    else if (isDynamicStrumSplit(split)) {
+      for (byte col = leftEdge; col < rightEdge; ++col) setLed(col, row, COLOR_WHITE, cellOn);
+    }
     else if (isStrummingSplit(split)) {
       for (byte col = leftEdge; col < rightEdge; ++col) {
         paintStrumDisplayCell(split, col, row);
@@ -800,8 +803,8 @@ void paintPerSplitDisplay(byte side) {
   }
 
   // set strum
-  if (Split[side].strum)  {
-    setLed(14, 5, Split[side].colorMain, cellOn);
+  if (Split[side].strum || isDynamicStrumSplit(side))  {
+    setLed(14, 5, isDynamicStrumSplit(side) ? COLOR_RED : Split[side].colorMain, cellOn);
   }
 
   // set sequencer

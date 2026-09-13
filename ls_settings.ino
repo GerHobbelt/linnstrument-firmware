@@ -1436,13 +1436,7 @@ void handlePerSplitSettingNewTouch() {
           // handled in release
           break;
         case 5:
-          Split[Global.currentPerSplit].strum = !Split[Global.currentPerSplit].strum;
-          if (Split[Global.currentPerSplit].strum) {
-            Split[RIGHT - Global.currentPerSplit].strum = false; // there can only be one strum split
-            Split[Global.currentPerSplit].arpeggiator = false;
-            Split[Global.currentPerSplit].ccFaders = false;
-            setSplitSequencerEnabled(Global.currentPerSplit, false);
-          }
+          // Classic/Dynamic Strum is resolved on release or at the 1.5s hold threshold.
           break;
         case 4:
           setSplitSequencerEnabled(Global.currentPerSplit, !Split[Global.currentPerSplit].sequencer);
@@ -1541,7 +1535,13 @@ void handlePerSplitSettingNewTouch() {
 }
 
 void handlePerSplitSettingHold() {
-  if (isCellPastEditHoldWait()) {
+  if (sensorCol == 14 && sensorRow == 5 && sensorCell->lastTouch != 0 &&
+      calcTimeDelta(millis(), sensorCell->lastTouch) >= DYNAMIC_STRUM_HOLD_MS) {
+    setDynamicStrumMode(Global.currentPerSplit, dynamicLongPressMode(Global.currentPerSplit));
+    sensorCell->lastTouch = 0;
+    return;
+  }
+  if (!(sensorCol == 14 && sensorRow == 5) && isCellPastEditHoldWait()) {
     sensorCell->lastTouch = 0;
 
     switch (sensorCol) {
@@ -1741,6 +1741,17 @@ void handlePerSplitSettingRelease() {
 
     case 14:
       switch (sensorRow) {
+        case 5:
+          if (sensorCell->lastTouch != 0) {
+            unsigned long held = calcTimeDelta(millis(), sensorCell->lastTouch);
+            if (held < DYNAMIC_STRUM_HOLD_MS) {
+              setDynamicStrumMode(Global.currentPerSplit, dynamicShortPressMode(Global.currentPerSplit));
+            }
+            else {
+              setDynamicStrumMode(Global.currentPerSplit, dynamicLongPressMode(Global.currentPerSplit));
+            }
+          }
+          break;
         case 6:
           if (ensureCellBeforeHoldWait(getCCFadersColor(Global.currentPerSplit),
                                        Split[Global.currentPerSplit].ccFaders ? cellOn : cellOff)) {

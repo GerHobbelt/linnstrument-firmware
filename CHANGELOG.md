@@ -12,3 +12,9 @@
 
 Earlier S01, S02, x3, and x4 builds were internal hardware-test iterations and
 are intentionally not included in this clean release branch.
+
+## 2.3.4-x6
+
+- Added per-split Dynamic Strum mode with symmetric output/voicing roles.
+- Added 1.5-second long press for Dynamic Strum and retained short-press Classic Strum.
+- Added live voicing-derived eight-row pitch mapping and Dynamic LED presentation.

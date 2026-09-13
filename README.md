@@ -14,7 +14,7 @@ feedback.
 ## Current release
 
 - Firmware: [`release/LinnStrument-2.3.4-Scalar-x5.bin`](release/LinnStrument-2.3.4-Scalar-x5.bin)
-- Device version display: `234-x5`
+- Device version display: `234-x6`
 - SHA-256: `d3966e6dca01188c74841c46058efc01d5ce2e53e0085f1f640ec0b3721eebe1`
 - Status: hardware-test build; compile-verified, but not a production release.
 
@@ -35,7 +35,7 @@ feedback.
 
 1. Download `LinnStrument-2.3.4-Scalar-x5.bin` from the `release` folder.
 2. Use the official LinnStrument Updater to flash the firmware.
-3. Confirm that the device reports version `234-x5`.
+3. Confirm that the device reports version `234-x6`.
 4. Review [`SCALAR_LAYOUT_TESTING.md`](SCALAR_LAYOUT_TESTING.md) before the
    first performance test.
 
@@ -73,3 +73,7 @@ Original LinnStrument firmware: Roger Linn Design.
 Scalar Layout fork and x5 release: **GZ_Beatz**.
 
 This project retains the upstream Apache License 2.0. See [`LICENSE.txt`](LICENSE.txt).
+
+## Dynamic Strum (x6)
+
+The Strum setting supports Classic and Dynamic modes. A short press toggles Classic Strum; holding the setting cell for 1.5 seconds toggles Dynamic Strum. Dynamic is per-split: the selected split is the white Strum output surface and the opposite split remains the normal-lit, silent voicing input. Held voicing notes are preserved in pitch order and generate a strictly ascending eight-row map. Release always uses the exact note/channel emitted by that touch.
