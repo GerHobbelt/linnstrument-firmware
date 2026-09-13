@@ -804,7 +804,7 @@ void paintPerSplitDisplay(byte side) {
 
   // set strum
   if (Split[side].strum || isDynamicStrumSplit(side))  {
-    setLed(14, 5, isDynamicStrumSplit(side) ? COLOR_RED : Split[side].colorMain, cellOn);
+    setLed(14, 5, Split[side].strum == STRUM_DYNAMIC ? COLOR_RED : Split[side].colorMain, cellOn);
   }
 
   // set sequencer

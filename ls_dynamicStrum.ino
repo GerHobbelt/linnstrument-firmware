@@ -7,6 +7,57 @@
 
 const unsigned long DYNAMIC_STRUM_HOLD_MS = 1500;
 
+struct DynamicStrumPressState {
+  boolean active;
+  boolean longPressTriggered;
+  byte split;
+  unsigned long startedAt;
+};
+
+DynamicStrumPressState dynamicStrumPress = { false, false, 255, 0 };
+
+void beginDynamicStrumPress(byte split) {
+  dynamicStrumPress.active = true;
+  dynamicStrumPress.longPressTriggered = false;
+  dynamicStrumPress.split = split;
+  dynamicStrumPress.startedAt = millis();
+}
+
+boolean updateDynamicStrumHold() {
+  if (!dynamicStrumPress.active || dynamicStrumPress.longPressTriggered) return false;
+  if (calcTimeDelta(millis(), dynamicStrumPress.startedAt) < DYNAMIC_STRUM_HOLD_MS) return false;
+  byte split = dynamicStrumPress.split;
+  setDynamicStrumMode(split, dynamicLongPressMode(split));
+  dynamicStrumPress.longPressTriggered = true;
+  updateDisplay();
+  return true;
+}
+
+void finishDynamicStrumPress() {
+  if (!dynamicStrumPress.active) return;
+  byte split = dynamicStrumPress.split;
+  if (!dynamicStrumPress.longPressTriggered) {
+    if (calcTimeDelta(millis(), dynamicStrumPress.startedAt) >= DYNAMIC_STRUM_HOLD_MS) {
+      setDynamicStrumMode(split, dynamicLongPressMode(split));
+    }
+    else {
+      setDynamicStrumMode(split, dynamicShortPressMode(split));
+    }
+  }
+  dynamicStrumPress.active = false;
+  dynamicStrumPress.longPressTriggered = false;
+  dynamicStrumPress.split = 255;
+  dynamicStrumPress.startedAt = 0;
+}
+
+void cancelDynamicStrumPress() {
+  dynamicStrumPress.active = false;
+  dynamicStrumPress.longPressTriggered = false;
+  dynamicStrumPress.split = 255;
+  dynamicStrumPress.startedAt = 0;
+}
+
+
 byte getDynamicStrumSplit() {
   if (!Global.splitActive) return 255;
   if (Split[LEFT].strum == STRUM_DYNAMIC) return LEFT;
@@ -68,7 +119,7 @@ void dynamicStrumTrigger(byte split, boolean retrigger) {
   short notes[MAXROWS];
   buildDynamicStrumNotes(getDynamicVoicingSplit(), notes);
   if (sensorRow >= MAXROWS || notes[sensorRow] < 0) return;
-  if (retrigger && sensorCell->hasNote()) midiSendNoteOff(split, sensorCell->note, sensorCell->channel);
+  if (retrigger && sensorCell->hasNote()) midiSendNoteOff(getDynamicVoicingSplit(), sensorCell->note, sensorCell->channel);
   byte channel = takeChannel(getDynamicVoicingSplit(), sensorRow);
   sensorCell->note = notes[sensorRow];
   sensorCell->channel = channel;

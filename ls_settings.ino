@@ -1213,8 +1213,12 @@ void applyTimbreCC74(byte split) {
 }
 
 void handlePerSplitSettingNewTouch() {
-  // start tracking the touch duration to be able to enable hold functionality
+  // Start tracking the touch duration. Strum is resolved on release or at 1500ms.
   sensorCell->lastTouch = millis();
+  if (sensorCol == 14 && sensorRow == 5) {
+    beginDynamicStrumPress(Global.currentPerSplit);
+    return;
+  }
 
   switch (sensorCol) {
     // MIDI mode settings
@@ -1535,13 +1539,11 @@ void handlePerSplitSettingNewTouch() {
 }
 
 void handlePerSplitSettingHold() {
-  if (sensorCol == 14 && sensorRow == 5 && sensorCell->lastTouch != 0 &&
-      calcTimeDelta(millis(), sensorCell->lastTouch) >= DYNAMIC_STRUM_HOLD_MS) {
-    setDynamicStrumMode(Global.currentPerSplit, dynamicLongPressMode(Global.currentPerSplit));
-    sensorCell->lastTouch = 0;
+  if (sensorCol == 14 && sensorRow == 5) {
+    updateDynamicStrumHold();
     return;
   }
-  if (!(sensorCol == 14 && sensorRow == 5) && isCellPastEditHoldWait()) {
+  if (isCellPastEditHoldWait()) {
     sensorCell->lastTouch = 0;
 
     switch (sensorCol) {
@@ -1742,15 +1744,7 @@ void handlePerSplitSettingRelease() {
     case 14:
       switch (sensorRow) {
         case 5:
-          if (sensorCell->lastTouch != 0) {
-            unsigned long held = calcTimeDelta(millis(), sensorCell->lastTouch);
-            if (held < DYNAMIC_STRUM_HOLD_MS) {
-              setDynamicStrumMode(Global.currentPerSplit, dynamicShortPressMode(Global.currentPerSplit));
-            }
-            else {
-              setDynamicStrumMode(Global.currentPerSplit, dynamicLongPressMode(Global.currentPerSplit));
-            }
-          }
+          finishDynamicStrumPress();
           break;
         case 6:
           if (ensureCellBeforeHoldWait(getCCFadersColor(Global.currentPerSplit),

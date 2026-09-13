@@ -48,6 +48,10 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 const char* OSVersion = "234-x6";
 const char* OSVersionBuild = "234-x6";
 
+#define STRUM_OFF 0
+#define STRUM_CLASSIC 1
+#define STRUM_DYNAMIC 2
+
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
 #define SPI_SENSOR  4                // Arduino pin for touch sensor control over SPI
@@ -665,7 +669,7 @@ struct SplitSettings {
   signed char transposeLights;            // transpose lights on display. Range is -12 to +12
   boolean ccFaders;                       // true to activated 8 CC faders for this split, false for regular music performance
   boolean arpeggiator;                    // true when the arpeggiator is on, false if notes should be played directly
-  boolean strum;                          // 0=off, 1=classic, 2=dynamic (x6)
+  byte strum;                             // 0=off, 1=classic, 2=dynamic (x6)
   boolean mpe;                            // true when MPE is active for this split
   boolean sequencer;                      // true when the sequencer of this split is displayed
   SequencerView sequencerView;            // see SequencerView
