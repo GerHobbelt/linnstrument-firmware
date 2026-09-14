@@ -1,3 +1,11 @@
+/*
+ * Copyright 2026 GZ_Beatz.
+ *
+ * Modifications based on LinnStrument firmware by Roger Linn Design.
+ * Licensed under the Apache License, Version 2.0.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 /************************ LinnStrument 3x4 Scalar Layout ************************
 This optional performance layer keeps all stock code paths intact while the
 device-level switch is off. Pure pitch and scale helpers live here so the touch

@@ -1,26 +1,20 @@
 # Changelog
 
-## x5
-
-- Added atomic played-note LED refreshes to eliminate transient panel-column
-  flashes during note-on, note-off, and Scalar Swipe events.
-- Changed the Scalar Layout default register to one octave below the normal
-  layout without modifying the user's saved Octave setting.
-- Device version display is `234-x5`.
-
-## Earlier development builds
-
-Earlier S01, S02, x3, and x4 builds were internal hardware-test iterations and
-are intentionally not included in this clean release branch.
-
 ## 2.3.4-x6
 
-- Added per-split Dynamic Strum mode with symmetric output/voicing roles.
-- Added 1.5-second long press for Dynamic Strum and retained short-press Classic Strum.
-- Added live voicing-derived eight-row pitch mapping and Dynamic LED presentation.
+Based on LinnStrument firmware 2.3.4.
 
-## Dynamic Strum sustain update
+- Added the optional 3x4 Scalar Layout with fixed horizontal +/-3-semitone and vertical +/-4-semitone geometry.
+- Added scale-aware Scalar Swipe, exact-MIDI-note played LEDs, and the x5 Scalar Layout lighting behavior.
+- Added per-split Dynamic Strum with symmetric left/right Voicing and Strum roles.
+- Added voicing-aware eight-row mapping that preserves inversions, note order, and open voicings.
+- Added Dynamic Sustain, per-gesture voicing Snapshot, Retrigger, and original Legato integration.
+- Fixed Split/mode-switch cleanup and Global Settings recovery behavior.
+- Dynamic Strum setting cycles OFF -> Classic Strum -> Dynamic Strum -> OFF by short press.
 
-- Added per-gesture voicing snapshots so Live Voicing changes do not retune an active sweep.
-- Added shared sustain lifetime based on both Voicing and Strum touch counts.
-- Added one-entry-per-MIDI-pitch sounding tracking with Note Off + Note On retrigger.
+## 2.3.4-x5
+
+- Initial hardware-tested Scalar Layout release based on LinnStrument OS 2.3.4.
+- Added atomic played-note LED refreshes, exact-MIDI-note red overlays, and one-octave virtual Scalar register offset.
+
+Earlier S01, S02, x3, and x4 builds were internal development iterations and are not part of the public release.

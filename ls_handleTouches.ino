@@ -1714,13 +1714,6 @@ void handleTouchRelease() {
     return;
   }
 
-  // Dynamic Strum uses shared sustain/retrigger state instead of ordinary key release.
-  if (isDynamicStrumSplit(sensorSplit) || isDynamicVoicingSplit(sensorSplit)) {
-    dynamicStrumRelease(sensorSplit);
-    postTouchRelease();
-    return;
-  }
-
   // release open strings if no touches are down anymore
   handleOpenStringsRelease();
 
@@ -1736,6 +1729,12 @@ void handleTouchRelease() {
   // Some of the displayModes handle Release events
   if (handleNonPlayingRelease()) {
     performContinuousTasks();
+  }
+  // Dynamic Strum uses shared sustain/retrigger state instead of ordinary key release.
+  else if (sensorCol > 0 && (isDynamicStrumSplit(sensorSplit) || isDynamicVoicingSplit(sensorSplit))) {
+    dynamicStrumRelease(sensorSplit);
+    postTouchRelease();
+    return;
   }
   // check if calibration is active and its cell release logic needs to be executed
   else if (handleCalibrationRelease()) {

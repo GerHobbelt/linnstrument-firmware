@@ -1,11 +1,17 @@
+/*
+ * Copyright 2026 GZ_Beatz.
+ *
+ * Modifications based on LinnStrument firmware by Roger Linn Design.
+ * Licensed under the Apache License, Version 2.0.
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
 // x6 Dynamic Strum: role resolution, held voicing, and dynamic row pitch generation.
 #ifndef STRUM_OFF
 #define STRUM_OFF 0
 #define STRUM_CLASSIC 1
 #define STRUM_DYNAMIC 2
 #endif
-
-const unsigned long DYNAMIC_STRUM_HOLD_MS = 1500;
 
 #define DYNAMIC_NOTE_INVALID (-1)
 struct DynamicSoundingNote { boolean sounding; signed char channel; byte split; };
@@ -15,6 +21,7 @@ boolean dynamicLiveMapValid = false;
 boolean dynamicStrumSnapshotValid = false;
 byte dynamicVoicingTouchCount = 0;
 byte dynamicStrumTouchCount = 0;
+boolean dynamicNotesRetainedByLegato = false;
 DynamicSoundingNote dynamicSoundingNotes[128];
 
 void clearDynamicPitchMaps() {
@@ -24,12 +31,17 @@ void clearDynamicPitchMaps() {
 void clearDynamicSoundingState() {
   for (byte n=0; n<128; ++n) { dynamicSoundingNotes[n].sounding=false; dynamicSoundingNotes[n].channel=-1; dynamicSoundingNotes[n].split=0; }
 }
+boolean dynamicRuntimeHasSoundingNotes() {
+  for (byte n=0; n<128; ++n) if (dynamicSoundingNotes[n].sounding) return true;
+  return false;
+}
 void releaseAllSoundingDynamicNotes() {
   for (byte n=0; n<128; ++n) if (dynamicSoundingNotes[n].sounding) {
     midiSendNoteOff(dynamicSoundingNotes[n].split,n,dynamicSoundingNotes[n].channel);
     releaseChannel(dynamicSoundingNotes[n].split,dynamicSoundingNotes[n].channel);
   }
   clearDynamicSoundingState();
+  dynamicNotesRetainedByLegato = false;
 }
 byte countDynamicTouches(byte split) {
   byte count=0;
@@ -52,60 +64,46 @@ void refreshDynamicTouchState() {
     for (byte row=0; row<MAXROWS; ++row) dynamicStrumSnapshot[row]=DYNAMIC_NOTE_INVALID;
   }
   if (dynamicVoicingTouchCount==0 && dynamicStrumTouchCount==0) {
-    releaseAllSoundingDynamicNotes();
+    byte dynamicSplit = getConfiguredDynamicStrumSplit();
+    if (dynamicRuntimeHasSoundingNotes() && dynamicSplit != 255 && isSwitchLegatoPressed(dynamicSplit)) {
+      dynamicNotesRetainedByLegato = true;
+    }
+    else if (!dynamicNotesRetainedByLegato) {
+      releaseAllSoundingDynamicNotes();
+    }
     dynamicStrumSnapshotValid=false;
   }
 }
-void resetDynamicRuntime() { releaseAllSoundingDynamicNotes(); clearDynamicPitchMaps(); dynamicVoicingTouchCount=0; dynamicStrumTouchCount=0; }
+void resetDynamicRuntime() { releaseAllSoundingDynamicNotes(); clearDynamicPitchMaps(); dynamicVoicingTouchCount=0; dynamicStrumTouchCount=0; dynamicNotesRetainedByLegato=false; }
 
-struct DynamicStrumPressState {
-  boolean active;
-  boolean longPressTriggered;
-  byte split;
-  unsigned long startedAt;
-};
-
-DynamicStrumPressState dynamicStrumPress = { false, false, 255, 0 };
-
-void beginDynamicStrumPress(byte split) {
-  dynamicStrumPress.active = true;
-  dynamicStrumPress.longPressTriggered = false;
-  dynamicStrumPress.split = split;
-  dynamicStrumPress.startedAt = millis();
-}
-
-boolean updateDynamicStrumHold() {
-  if (!dynamicStrumPress.active || dynamicStrumPress.longPressTriggered) return false;
-  if (calcTimeDelta(millis(), dynamicStrumPress.startedAt) < DYNAMIC_STRUM_HOLD_MS) return false;
-  byte split = dynamicStrumPress.split;
-  setDynamicStrumMode(split, dynamicLongPressMode(split));
-  dynamicStrumPress.longPressTriggered = true;
-  updateDisplay();
-  return true;
-}
-
-void finishDynamicStrumPress() {
-  if (!dynamicStrumPress.active) return;
-  byte split = dynamicStrumPress.split;
-  if (!dynamicStrumPress.longPressTriggered) {
-    if (calcTimeDelta(millis(), dynamicStrumPress.startedAt) >= DYNAMIC_STRUM_HOLD_MS) {
-      setDynamicStrumMode(split, dynamicLongPressMode(split));
-    }
-    else {
-      setDynamicStrumMode(split, dynamicShortPressMode(split));
+void clearDynamicTouchCells(byte dynamicSplit) {
+  if (dynamicSplit == 255) return;
+  byte voicingSplit = otherSplit(dynamicSplit);
+  for (byte col=1; col<NUMCOLS; ++col) {
+    byte cellSplit = getSplitOf(col);
+    if (cellSplit != dynamicSplit && cellSplit != voicingSplit) continue;
+    for (byte row=0; row<NUMROWS; ++row) {
+      cell(col,row).touched = untouchedCell;
+      cell(col,row).note = -1;
+      cell(col,row).channel = -1;
     }
   }
-  dynamicStrumPress.active = false;
-  dynamicStrumPress.longPressTriggered = false;
-  dynamicStrumPress.split = 255;
-  dynamicStrumPress.startedAt = 0;
 }
 
-void cancelDynamicStrumPress() {
-  dynamicStrumPress.active = false;
-  dynamicStrumPress.longPressTriggered = false;
-  dynamicStrumPress.split = 255;
-  dynamicStrumPress.startedAt = 0;
+byte getConfiguredDynamicStrumSplit() {
+  if (Split[LEFT].strum == STRUM_DYNAMIC) return LEFT;
+  if (Split[RIGHT].strum == STRUM_DYNAMIC) return RIGHT;
+  return 255;
+}
+
+void handleDynamicLegatoStateChanged(byte split, boolean enabled) {
+  if (enabled || split != getConfiguredDynamicStrumSplit()) return;
+  if (dynamicVoicingTouchCount == 0 && dynamicStrumTouchCount == 0 && dynamicNotesRetainedByLegato) {
+    releaseAllSoundingDynamicNotes();
+  }
+  else {
+    dynamicNotesRetainedByLegato = false;
+  }
 }
 
 
@@ -181,13 +179,16 @@ void dynamicStrumTrigger(byte split, boolean retrigger) {
   if (!dynamicStrumSnapshotValid || sensorRow >= MAXROWS) return;
   short pitch = dynamicStrumSnapshot[sensorRow];
   if (pitch < 0 || pitch > 127) return;
+  byte midiSplit=getDynamicVoicingSplit();
+  if (midiSplit==255) return;
+  if (dynamicNotesRetainedByLegato) {
+    releaseAllSoundingDynamicNotes();
+  }
   if (dynamicSoundingNotes[pitch].sounding) {
     midiSendNoteOff(dynamicSoundingNotes[pitch].split, pitch, dynamicSoundingNotes[pitch].channel);
     releaseChannel(dynamicSoundingNotes[pitch].split, dynamicSoundingNotes[pitch].channel);
     dynamicSoundingNotes[pitch].sounding=false;
   }
-  byte midiSplit=getDynamicVoicingSplit();
-  if (midiSplit==255) return;
   byte channel=takeChannel(midiSplit,sensorRow);
   byte velocity=sensorCell->velocity ? sensorCell->velocity : 127;
   midiSendNoteOn(midiSplit,pitch,velocity,channel);
@@ -209,14 +210,10 @@ void dynamicStrumRelease(byte split) {
 void setDynamicStrumMode(byte split, byte mode) {
   if (mode > STRUM_DYNAMIC) mode = STRUM_OFF;
   // Only Dynamic mode changes may clear Dynamic-owned touch state.
-  byte oldDynamicSplit = getDynamicStrumSplit();
+  byte oldDynamicSplit = getConfiguredDynamicStrumSplit();
   resetDynamicRuntime();
   if (oldDynamicSplit != 255) {
-    for (byte col=1; col<NUMCOLS; ++col) for (byte row=0; row<NUMROWS; ++row) {
-      if (getSplitOf(col)==oldDynamicSplit || getSplitOf(col)==otherSplit(oldDynamicSplit)) {
-        cell(col,row).note=-1; cell(col,row).channel=-1;
-      }
-    }
+    clearDynamicTouchCells(oldDynamicSplit);
   }
   Split[split].strum = mode;
   if (mode == STRUM_DYNAMIC) {
@@ -232,11 +229,7 @@ void setDynamicStrumMode(byte split, byte mode) {
 
 byte dynamicShortPressMode(byte split) {
   byte mode = Split[split].strum;
-  if (mode == STRUM_DYNAMIC) return STRUM_CLASSIC;
-  return mode == STRUM_CLASSIC ? STRUM_OFF : STRUM_CLASSIC;
-}
-
-byte dynamicLongPressMode(byte split) {
-  byte mode = Split[split].strum;
-  return mode == STRUM_DYNAMIC ? STRUM_OFF : STRUM_DYNAMIC;
+  if (mode == STRUM_OFF) return STRUM_CLASSIC;
+  if (mode == STRUM_CLASSIC) return STRUM_DYNAMIC;
+  return STRUM_OFF;
 }

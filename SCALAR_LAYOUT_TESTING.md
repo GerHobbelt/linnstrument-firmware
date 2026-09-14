@@ -1,31 +1,36 @@
-# 3×4 Scalar Layout x5 Hardware Test Guide
+# LinnStrument 2.3.4-x6 Hardware Test Checklist
 
-This is an experimental LinnStrument 200 build based on OS 2.3.4. It is not a
-production release.
+This checklist is for the unofficial LinnStrument 200 custom firmware release.
+The current candidate has been tested on LinnStrument 200. LinnStrument 128 has
+not been fully verified.
 
-## Confirm the installed build
+## Version and installation
 
-The device must display `234-x5` as its firmware version.
+1. Confirm the device reports `234-x6`.
+2. Install the `.bin` with the official LinnStrument Updater.
+3. Keep a copy of the official firmware before testing.
 
-## Core checks
+## 3x4 Scalar Layout
 
-1. Enable Scalar Layout in Global Settings using playable column 19, bottom row.
-2. Confirm that a horizontal neighbor is ±3 semitones and a vertical neighbor
-   is ±4 semitones.
-3. Confirm that enabling the layout lowers its effective register by one octave.
-   Disable the layout and confirm the normal register returns immediately.
-4. In C Major, swipe in each direction across one pad. Right/up must select the
-   next scale note upward; left/down must select the next scale note downward.
-5. Swipe quickly across two to four pads and verify that intermediate scale
-   notes are retriggered.
-6. Play two or more fingers in MPE/Channel Per Note mode and confirm they act
-   independently.
-7. Confirm that red LEDs match only pads with the exact sounding MIDI note,
-   not the same pitch class in other octaves.
-8. Repeatedly tap and release notes while watching the panel. No unrelated
-   column should briefly flash white or another scale color.
-9. Disable Scalar Layout and spot-check normal layout, split, low row,
-   arpeggiator, sequencer, and settings behavior.
+1. Enter Global Settings and touch column 19, bottom row.
+2. Confirm OFF follows the Tap Tempo pulse in blue and ON is steady white.
+3. Confirm horizontal movement is +/-3 semitones and vertical movement is +/-4 semitones.
+4. Confirm enabling the layout uses the one-octave-lower virtual register and disabling it restores the normal register.
+5. In C Major, swipe across one or more pad boundaries in every direction.
+6. Confirm out-of-scale pads remain playable but unlit.
+7. Confirm red overlays match only the exact sounding MIDI note, including octave.
+8. Confirm unrelated columns do not flash during repeated note and swipe gestures.
 
-Record any missed trigger, double trigger, unexpected MIDI event, LED residue,
-or gesture that feels too sensitive.
+## Dynamic Strum
+
+1. Enable Split mode.
+2. In either split, open Per-Split Settings -> Special -> Strum.
+3. Confirm short presses cycle OFF -> Classic -> Dynamic -> OFF.
+4. Confirm the Dynamic setting cell is red and the Dynamic performance split is white.
+5. Confirm the opposite split keeps normal note lighting and acts as silent Voicing Input.
+6. Test Right Dynamic and Left Dynamic separately.
+7. Test inversions, open voicings, Snapshot behavior, Sustain, Retrigger, and Legato.
+8. Disable Split or Dynamic and confirm all notes stop and normal LEDs return.
+
+Record any missed trigger, unexpected MIDI event, stuck note, LED residue, or
+gesture that feels unsafe.

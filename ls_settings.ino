@@ -994,6 +994,10 @@ void handleControlButtonRelease() {
           storeSettings();
         }
         else {
+          if (Global.splitActive && getConfiguredDynamicStrumSplit() != 255) {
+            clearDynamicTouchCells(getConfiguredDynamicStrumSplit());
+            resetDynamicRuntime();
+          }
           Global.splitActive = !Global.splitActive;
         }
         setLed(0, SPLIT_ROW, globalColor, Global.splitActive ? cellOn : cellOff);
@@ -1213,10 +1217,9 @@ void applyTimbreCC74(byte split) {
 }
 
 void handlePerSplitSettingNewTouch() {
-  // Start tracking the touch duration. Strum is resolved on release or at 1500ms.
+  // Strum mode is resolved once, on release, as a short-press cycle.
   sensorCell->lastTouch = millis();
   if (sensorCol == 14 && sensorRow == 5) {
-    beginDynamicStrumPress(Global.currentPerSplit);
     return;
   }
 
@@ -1440,7 +1443,7 @@ void handlePerSplitSettingNewTouch() {
           // handled in release
           break;
         case 5:
-          // Classic/Dynamic Strum is resolved on release or at the 1.5s hold threshold.
+          // Strum mode is resolved once on release as a three-state cycle.
           break;
         case 4:
           setSplitSequencerEnabled(Global.currentPerSplit, !Split[Global.currentPerSplit].sequencer);
@@ -1540,7 +1543,7 @@ void handlePerSplitSettingNewTouch() {
 
 void handlePerSplitSettingHold() {
   if (sensorCol == 14 && sensorRow == 5) {
-    updateDynamicStrumHold();
+    // No long-press action for Strum; wait for the release handler.
     return;
   }
   if (isCellPastEditHoldWait()) {
@@ -1744,7 +1747,11 @@ void handlePerSplitSettingRelease() {
     case 14:
       switch (sensorRow) {
         case 5:
-          finishDynamicStrumPress();
+          if (sensorCell->lastTouch != 0 &&
+              calcTimeDelta(millis(), sensorCell->lastTouch) <= EDIT_MODE_HOLD_DELAY) {
+            setDynamicStrumMode(Global.currentPerSplit,
+                                dynamicShortPressMode(Global.currentPerSplit));
+          }
           break;
         case 6:
           if (ensureCellBeforeHoldWait(getCCFadersColor(Global.currentPerSplit),
@@ -2477,11 +2484,22 @@ void handleGlobalSettingNewTouch() {
   // Toggle the device-wide 3x4 Scalar Layout from its dedicated cell on the
   // Global Settings surface. This is intentionally outside every stock
   // control group on LinnStrument 200.
-  if (!userFirmwareActive &&
-      LINNMODEL == 200 &&
+  if (LINNMODEL == 200 &&
       sensorCol == SCALAR_LAYOUT_SETTINGS_COL &&
       sensorRow == SCALAR_LAYOUT_SETTINGS_ROW) {
-    Device.scalarLayoutEnabled = !Device.scalarLayoutEnabled;
+    // If User Firmware Mode was entered accidentally, this dedicated custom
+    // control is also a safe recovery path. Exit that mode first, then apply
+    // the requested Scalar Layout state while returning to Global Settings.
+    // Stock controls and NRPN 245 semantics remain unchanged.
+    boolean nextScalarState = !Device.scalarLayoutEnabled;
+    if (userFirmwareActive) {
+      changeUserFirmwareMode(false);
+      Device.scalarLayoutEnabled = nextScalarState;
+      setDisplayMode(displayGlobal);
+    }
+    else {
+      Device.scalarLayoutEnabled = nextScalarState;
+    }
     updateDisplay();
     return;
   }

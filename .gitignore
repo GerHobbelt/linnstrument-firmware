@@ -7,3 +7,9 @@ build/*
 .tools/
 linnstrument-firmware.sublime-*
 stino.settings
+
+.vscode/
+archives/
+release/*
+!release/
+!release/linnstrument-firmware-2.3.4-x6.bin

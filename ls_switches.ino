@@ -232,6 +232,9 @@ void changeSwitchState(byte whichSwitch, byte assignment, byte split, boolean en
   if (assignment == ASSIGNED_STANDALONE_MIDI_CLOCK) {
     switchState[whichSwitch][otherSplit(split)] = enabled;
   }
+  if (assignment == ASSIGNED_LEGATO) {
+    handleDynamicLegatoStateChanged(split, enabled);
+  }
 }
 
 void switchTransposeOctave(byte split, int interval) {
