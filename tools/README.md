@@ -214,6 +214,11 @@ recording's clock:
 - `settings.txt`, `provision.txt` and `flash.bin`: the run's settings once all were set, how they were
   provisioned, and the flash image the run booted from.
 
+The replay executable (`build/fw/<label>/replay/desktop/linnstrument-desktop`) also writes, when given
+`--x-log FILE`, what the pitch code works with at each scan of a pad that has a note: calibrated X,
+Quantize's offset, the X result, the X movement rate and Quantize Hold's count (`desktop/replay.cpp`).
+`fw.py replay` doesn't ask for it.
+
 **Checks:**
 - Results are cached under a key of everything that goes into them (the firmware, these tools, the
   recordings, events, configurations and settings export), so only what changed is run again;
