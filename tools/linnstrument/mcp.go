@@ -161,7 +161,11 @@ type mcpTool struct {
 	run         func(app *virtualApp, args map[string]any) ([]map[string]any, error)
 }
 
+// schema always lists required, empty or not: Claude Code rejects the whole tool list over a null
 func schema(required []string, properties string) json.RawMessage {
+	if required == nil {
+		required = []string{}
+	}
 	req, _ := json.Marshal(required)
 	return json.RawMessage(`{"type":"object","properties":{` + properties + `},"required":` + string(req) + `}`)
 }
@@ -252,6 +256,14 @@ func mcpTools() []mcpTool {
 		{Name: "move", Description: "Move a held touch inside its cell, for pitch bend (x), timbre (y) or a pressure change (z). The touch keeps its pressure unless z is given.",
 			InputSchema: schema([]string{"col", "row", "x", "y"}, colProperty+","+rowProperty+","+xyProperty+","+zProperty),
 			run:         simple(func(args map[string]any) (string, error) { return cellCommand("move", args, "x", "y", "z") })},
+		{Name: "slide", Description: "Slide a held touch into the next cell of its row, as a finger does: both cells are down for a few scans, so the firmware takes it for a slide, not a new note. y is the finger's height in the new cell.",
+			InputSchema: schema([]string{"col", "row", "to_col"}, colProperty+","+rowProperty+`,"to_col":{"type":"integer","description":"the playing column next to col that the touch slides into"},"y":{"type":"number","description":"position inside the new cell, 0 bottom to 1 top (default 0.5)"}`),
+			run: simple(func(args map[string]any) (string, error) {
+				if _, ok := number(args, "to_col"); !ok {
+					return "", errors.New("to_col is required")
+				}
+				return cellCommand("slide", args, "to_col", "y")
+			})},
 		{Name: "release", Description: "Lift a held touch.",
 			InputSchema: schema([]string{"col", "row"}, colProperty+","+rowProperty),
 			run:         simple(func(args map[string]any) (string, error) { return cellCommand("release", args) })},
@@ -275,7 +287,7 @@ func mcpTools() []mcpTool {
 		{Name: "leds", Description: "The lights of every cell as one line per row, the top row first: \"ROW: c c c ...\" with a color number per column from the control column at 0. Colors: 0 off, 1 red, 2 yellow, 3 green, 4 cyan, 5 blue, 6 magenta, 7 black, 8 white, 9 orange, 10 lime, 11 pink.",
 			InputSchema: schema(nil, ""),
 			run:         simple(func(map[string]any) (string, error) { return "leds", nil })},
-		{Name: "status", Description: "The instrument's status line: model, firmware version, the virtual MIDI port, calibration, user firmware mode and serial mode.",
+		{Name: "status", Description: "The instrument's status line: model, firmware version, the virtual MIDI port, user firmware mode and serial mode.",
 			InputSchema: schema(nil, ""),
 			run:         simple(func(map[string]any) (string, error) { return "status", nil })},
 		{Name: "screenshot", Description: "A picture of the app's window: the lights, the touches and the control column.",
