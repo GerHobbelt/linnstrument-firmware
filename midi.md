@@ -21,27 +21,27 @@ Status     Data       Message                 Used for
 1100cccc   0ppppppp   Program Change          Set the active preset for a split
                                               The split is determined by its active MIDI mode channels
                                               c is the channel, p is the preset number
-11111110              Active Sensing          During manufacturing test, show green led at col 25 row 2
+11111110              Active Sensing          During manufacturing test, show green led in the last column, row 2
 ```
 
 MIDI Control Change input
 =========================
 
-If the CC faders are assigned to any other CC numbers than the default 1-8 CC numbers, those will be
-used for control change input of the faders. If the CC numbers conflict with internal LinnStrument
-features, than the CC faders will take precedence.
+If the CC faders are assigned to any other CC numbers than the default 1-8 CC numbers, those will
+be used as control change input for the faders. If these CC numbers conflict with internal
+LinnStrument features, the CC faders will take precedence.
 
 | CC Number     | Used for
 | --------------|--------------------------------------------------------------------------------------------------
 | 1-8 (default) | Change the position of the CC faders, the split is determined by its active MIDI mode channels
-| 9             | User Firmware X-axis slide for the row given by the channel (0: disable, 1: enable)
+| 9             | User Firmware X-axis slide for the row given by the channel (0: disable, 1: enable), default off
 | 10            | User Firmware X-axis data for the row given by the channel (0: disable, 1: enable), default off
 | 11            | User Firmware Y-axis data for the row given by the channel (0: disable, 1: enable), default off
 | 12            | User Firmware Z-axis data for the row given by the channel (0: disable, 1: enable), default off
-| 13            | User Firmware decimation interval in milliseconds, default about 8, 0 is off, above 12 in low power mode
+| 13            | User Firmware decimation interval in milliseconds, default about 8, 0 is off, at least 12 in low power mode
 | 20            | Column coordinate for cell color change with CC 22 (starts from 0)
 | 21            | Row coordinate for cell color change with CC 22 (starts from 0)
-| 22            | Color the cell set with CC 20 and 21, see the color values below; 0 or >=30 and up switching it off
+| 22            | Color the cell set with CC 20 and 21, see the color values below; 0, 7 or >=30 and up switching it off
 | 23            | Make current custom cell colors persistent as pattern (0-2) 
 | 24            | Clear persisted custom cell colors pattern (0-2)
 | 25            | Color the cell set with CC 20 and 21 and move on to the next cell to the right, then the next row up
@@ -53,14 +53,14 @@ features, than the CC faders will take precedence.
 NRPN input
 ==========
 
-NRPN messages are a series of MIDI CC messages that allow changing more parameters than are supported by
-the standard MIDI CC message list. LinnStrument always expects an exact series of 6 MIDI CC messages to be
-received for setting one NRPN to a different value. The first two select the NRPN parameter number, the
-next two set the NRPN parameter value (both MSB and LSB are used), and the last two reset the active NRPN
-parameter number. Failure to reset the NPRN parameter number can result in other MIDI input messages to
-behave unpredictably.
+NRPN messages are a series of MIDI CC messages that let you change more parameters than the
+standard MIDI CC message list supports. Send each NRPN as a series of 6 MIDI CC messages. The
+first two select the NRPN parameter number and the next two set the NRPN parameter value (both
+MSB and LSB are used), and LinnStrument acts on the fourth. The last two reset the active NRPN
+parameter number. Without them, a later CC 6 or CC 38 is taken as data entry for the parameter
+that's still selected.
 
-This is an overview of the message chain:
+Here's an overview of the message chain:
 
 ```
 1011nnnn   01100011 ( 99)  0vvvvvvv         NRPN parameter number MSB CC
@@ -72,9 +72,9 @@ This is an overview of the message chain:
 ```
 
 The following table lists all the NRPN input values that LinnStrument understands. The settings
-editor in `examples/` builds its form from this table (`go run ./tools/linnstrument nrpns`), so
-keep the shape of the rows: the group as the first words of the description, and the named values
-as `n: label` pairs in parentheses.
+editor in `examples/browser/` builds its form from this table (`go run ./tools/linnstrument
+nrpns`), so keep the shape of the rows. The group comes first in the description, as its first
+words, and the named values are written as `n: label` pairs in parentheses.
 
 | NRPN | Value | Description
 |------|-------|-----------------------------------------------------------------------------------------------
@@ -286,11 +286,11 @@ as `n: label` pairs in parentheses.
 | 269  | 0-127 | Global Note Number For Guitar Tuning Row 7
 | 270  | 0-127 | Global Note Number For Guitar Tuning Row 8
 | 271  | 1     | Device Serial Mode (1: On, same as tapping OS Update; the updater or OS Update switch it off)
-| 272  | -     | Device Model (200 or 128), read-only, ask for it with NRPN 299
-| 273  | -     | Device Firmware Version (234 for firmware 234.074), read-only
-| 274  | -     | Device Firmware Build (74 for firmware 234.074), read-only
+| 272  | -     | Device Model (read-only, 200 or 128)
+| 273  | -     | Device Firmware Version (read-only, 240 for firmware 2.4.0)
+| 274  | -     | Device Firmware Build (read-only, 75 for the build the instrument shows as .075)
 | 275  | -     | Device Calibrated (0: No, 1: Yes), read-only
-| 299  | any   | Send the current value of a particular NRPN configuration parameter, when possible
+| 299  | any   | Send the current value of a particular NRPN configuration parameter, when possible, on the channel of the query
 
 Color Values
 ============
