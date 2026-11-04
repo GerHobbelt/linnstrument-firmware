@@ -2577,6 +2577,7 @@ void changeUserFirmwareMode(boolean active) {
 
   userFirmwareActive = active;
 
+  stopMidiTextScroll();
   initializeLedsLayer(LED_LAYER_CUSTOM2);
   clearFullDisplay();
 
