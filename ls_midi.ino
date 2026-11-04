@@ -1755,10 +1755,10 @@ void sendNrpnParameter(int parameter, int channel) {
       value = LINNMODEL;
       break;
     case 273:
-      value = versionNumber(OSVersion);
+      value = versionNumber(OSinfo.OSVersion);
       break;
     case 274:
-      value = versionNumber(OSVersionBuild);
+      value = versionNumber(OSinfo.OSVersionBuild);
       break;
     case 275:
       value = Device.calibrated;

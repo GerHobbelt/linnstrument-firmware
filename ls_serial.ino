@@ -391,7 +391,7 @@ fail:
 
 // Leaves serial mode without restoring settings, same as tapping OS Update in Global Settings
 void serialSwitchToMidi() {
-  Serial.write(ackCode);
+  Serial.write(HandshakeCodes.ackCode);
   delayUsec(200000);
 
   switchSerialMode(false);
