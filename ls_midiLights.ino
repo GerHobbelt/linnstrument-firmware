@@ -63,7 +63,7 @@ byte midiLightsLayer() {
 }
 
 void setMidiLed(byte col, byte row, byte color, byte layer) {
-  if (color <= COLOR_PINK && color != COLOR_OFF) {
+  if (color <= COLOR_PALETTE_LAST && color != COLOR_OFF) {
     setLed(col, row, color, cellOn, layer);
   }
   else {
