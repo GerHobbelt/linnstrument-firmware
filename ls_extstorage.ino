@@ -1017,6 +1017,11 @@ boolean upgradeConfigurationSettings(int32_t confSize, const byte* buff2) {
       // this is the v17 of the configuration configuration, apply it if the size is right
       case 17:
         if (confSize == sizeof(Configuration)) {
+          // warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of type 'struct Configuration' with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
+          // 1018 |           memcpy(&config, buff2, confSize);
+          //      |           ~~~~~~^~~~~~~~~~~~~~~~~~~~~~~~~~
+          // linnstrument-firmware.ino:875: note: 'struct Configuration' declared here:
+          //  875 | struct Configuration { ...
           memcpy(&config, buff2, confSize);
           result = true;
         }
