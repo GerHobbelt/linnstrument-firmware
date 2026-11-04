@@ -32,11 +32,14 @@ void touch(byte col, byte row, unsigned short rawZ) {
 }
 
 // Lets the MIDI output queue drain completely, advancing the fake clock past every interval.
+// A queue that is still not empty after thousands of passes is a firmware that stopped sending,
+// which fails the test instead of hanging it.
 void drainMidi() {
-  for (int i = 0; i < 8 || !midiOutQueue.empty(); ++i) {
+  for (int i = 0; i < 8 || (!midiOutQueue.empty() && i < 5000); ++i) {
     host::advanceMicros(20000);
     handlePendingMidi(micros());
   }
+  CHECK(midiOutQueue.empty());
 }
 
 // Feeds incoming MIDI bytes through the sketch's MIDI parser, as if they arrived over USB.
@@ -119,6 +122,7 @@ void reset(byte model) {
   memset(&config, 0, sizeof(config));
   LINNMODEL = model;
   NUMCOLS = model == 200 ? 26 : 17;
+  sensorLimitsLifted = false;
   NUMROWS = 8;
   initializeSensors();
   initializeCalibration();

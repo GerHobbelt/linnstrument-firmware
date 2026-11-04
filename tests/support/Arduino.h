@@ -18,6 +18,9 @@ limitations under the License.
 #ifndef LINN_TESTS_ARDUINO_H
 #define LINN_TESTS_ARDUINO_H
 
+// the sketch built for a desktop, where a screen can lift the limits of the instrument's sensor
+#define LINN_DESKTOP 1
+
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
@@ -27,9 +30,12 @@ limitations under the License.
 
 // the C++ library headers the fakes use come first, because the macros below break them
 #include <algorithm>
+#include <chrono>
 #include <deque>
 #include <initializer_list>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 typedef uint8_t byte;
