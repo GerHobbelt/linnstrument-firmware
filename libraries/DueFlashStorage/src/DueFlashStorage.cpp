@@ -58,14 +58,14 @@ uint32_t DueFlashStorage::getOffset(const byte* address) {
   return address - getFirstFreeBlock();
 }
 
-extern "C" unsigned char _etext;
-extern "C" unsigned char _srelocate;
-extern "C" unsigned char _erelocate;
+extern "C" uint32_t _etext;
+extern "C" uint32_t _srelocate;
+extern "C" uint32_t _erelocate;
 
 // See https://arduino.stackexchange.com/questions/83911/how-do-i-get-the-size-of-my-program-at-runtime/83916#83916 for
 // an explanation of this function
 const byte* DueFlashStorage::getFirstFreeBlock() {
-  const byte* rom_end = &_etext + (&_erelocate - &_srelocate);
+  const byte* rom_end = (const byte *)&_etext + ((const byte *)&_erelocate - (const byte *)&_srelocate);
   constexpr const uint32_t page_size_minus_1 = IFLASH1_PAGE_SIZE - 1;
   rom_end = (const byte*)(((intptr_t)rom_end + page_size_minus_1) & ~page_size_minus_1);  // Align to next free flash block (even if the memory ends right on a boundary)
   return rom_end;
