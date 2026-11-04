@@ -968,6 +968,7 @@ void handleControlButtonRelease() {
         reset();
       }
       // fallthrough is on purpose
+      [[fallthrough]];
 
     case PER_SPLIT_ROW:
     case OCTAVE_ROW:                                         // octave button released

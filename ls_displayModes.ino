@@ -1519,15 +1519,19 @@ void paintOctave(byte color, byte midcol, byte row, short octave) {
     case -60:
       setLed(midcol-5, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      [[fallthrough]];
     case -48:
       setLed(midcol-4, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      [[fallthrough]];
     case -36:
       setLed(midcol-3, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      [[fallthrough]];
     case -24:
       setLed(midcol-2, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      [[fallthrough]];
     case -12:
       setLed(midcol-1, row, color, cellOn);
       break;
@@ -1535,15 +1539,19 @@ void paintOctave(byte color, byte midcol, byte row, short octave) {
     case 60:
       setLed(midcol+5, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      [[fallthrough]];
     case 48:
       setLed(midcol+4, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      [[fallthrough]];
     case 36:
       setLed(midcol+3, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      [[fallthrough]];
     case 24:
       setLed(midcol+2, row, color, cellOn);
       // lack of break here is purposeful, we want to fall through...
+      [[fallthrough]];
     case 12:
       setLed(midcol+1, row, color, cellOn);
       break;
