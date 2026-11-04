@@ -2213,7 +2213,7 @@ unsigned font_width_string(const char* str, struct Font* font) {
   unsigned width = 0;
   char c;
   while ((c=*str++) != 0) {
-    char* p = strchr(font->chars,c);
+    const char* p = strchr(font->chars,c);
     if (p) {
       width += (font->data[p - font->chars]->width + 1);
     }
@@ -2230,7 +2230,7 @@ void font_draw_string(int col, int row, const char* str, byte color, struct Font
 
   while ((reversed && i >= 0) || (!reversed && i < (int)strlen(str))) {
     char c = str[i];
-    char* p = strchr(font->chars, c);
+    const char* p = strchr(font->chars, c);
     if (p) {
       int i = p - font->chars;                        // offset into font_chars gives character index
       font_draw_char(col, row, font->data[i]->data, color, font->data[i]->width, font->height, erase, reversed);
@@ -2322,8 +2322,11 @@ void adaptfont_draw_string(int col, int row, const char* str, byte color, boolea
 }
 
 // Draw a single character at col,row
-void font_draw_char(int col, int row, const char* fontdata, byte color, byte width, byte height, boolean erase, boolean reversed)
-{
+void font_draw_char(int col, int row, const char* fontdata, byte color, byte width, byte height, boolean erase, boolean reversed) {
+  font_draw_char(col, row, fontdata, color, width, height, erase, reversed, LED_LAYER_MAIN);
+}
+
+void font_draw_char(int col, int row, const char* fontdata, byte color, byte width, byte height, boolean erase, boolean reversed, byte layer) {
   for (byte r = 0; r < height; ++r) {
     for (byte c = 0; c < width; ++c) {
       char thechar = *fontdata++;
@@ -2344,7 +2347,7 @@ void font_draw_char(int col, int row, const char* fontdata, byte color, byte wid
         continue;
       }
       if (erase || thechar != ' ') {
-        setLed(destcol, destrow, (thechar != ' ' ? color : 0), cellOn);
+        setLed(destcol, destrow, (thechar != ' ' ? color : 0), cellOn, layer);
       }
     }
   }
