@@ -499,7 +499,7 @@ void handleMidiInput(unsigned long nowMicros) {
           case 13:
             if (userFirmwareActive) {
               unsigned long rate = midiData2 * 1000;
-              if (!Device.operatingLowPower || rate > LOWPOWER_MIDI_DECIMATION) {
+              if (!Device.operatingLowPower || rate >= LOWPOWER_MIDI_DECIMATION) {
                 midiDecimateRate = rate;
               }
             }
@@ -515,23 +515,38 @@ void handleMidiInput(unsigned long nowMicros) {
             }
             break;
           case 22:
-            if (displayMode == displayNormal || displayMode == displayCustomLedsEditor) {
-              byte layer = LED_LAYER_CUSTOM1;
-              // we light the LEDs of user firmware mode in a dedicated custom layer
-              // this will be cleared when switching back to regular firmware mode
-              if (userFirmwareActive) {
-                layer = LED_LAYER_CUSTOM2;
-              }
-              if (midiData2 <= ((COLOR_PINK * 2) + 1) && midiData2 != COLOR_OFF) {
-                setLed(midiCellColCC, midiCellRowCC,
-                       midiData2 % (COLOR_PINK + 1),
-                       midiData2 > COLOR_PINK ? cellFocusPulse : cellOn, 
-                       layer);
-              }
-              else {
-                setLed(midiCellColCC, midiCellRowCC, COLOR_OFF, cellOff, layer);
-              }
+            if (midiLightsAllowed()) {
+              setMidiLed(midiCellColCC, midiCellRowCC, midiData2, midiLightsLayer());
               checkRefreshLedColumn(micros());
+            }
+            break;
+          case 25:
+            midiPaintAndAdvance(midiData2);
+            if (midiLightsAllowed()) {
+              checkRefreshLedColumn(micros());
+            }
+            break;
+          case 26:
+            midiTextSetFont(midiData2);
+            break;
+          case 27:
+            midiTextAppend(midiData2);
+            break;
+          case 28:
+            if (midiLightsAllowed()) {
+              midiTextDraw(midiData2);
+              checkRefreshLedColumn(micros());
+            }
+            else {
+              midiTextAppend(0);
+            }
+            break;
+          case 29:
+            if (midiLightsAllowed()) {
+              midiTextScroll(midiData2);
+            }
+            else {
+              midiTextAppend(0);
             }
             break;
           case 23:
@@ -1387,6 +1402,13 @@ void receivedNrpn(int parameter, int value, int channel) {
         Global.guitarTuning[7] = value;
       }
       break;
+    // Device Serial Mode, same as tapping OS Update in Global Settings
+    case 271:
+      if (value == 1) {
+        switchSerialMode(true);
+        storeSettings();
+      }
+      break;
     // Query for the value of a particular parameter
     case 299:
       sendNrpnParameter(value, channel);
@@ -1733,10 +1755,23 @@ void sendNrpnParameter(int parameter, int channel) {
     case 270:
       value = Global.guitarTuning[7];
       break;
+    // read-only: the model, the firmware version and its build
+    case 272:
+      value = LINNMODEL;
+      break;
+    case 273:
+      value = versionNumber(OSVersion);
+      break;
+    case 274:
+      value = versionNumber(OSVersionBuild);
+      break;
+    case 275:
+      value = Device.calibrated;
+      break;
   }
 
   if (value != INT_MIN) {
-    midiSendNRPN(parameter, value, channel);
+    midiSendNRPN(parameter, value, channel + 1);
   }
 }
 
@@ -2471,7 +2506,14 @@ void initializeLastMidiTracking() {
   }
 }
 
+unsigned int midiMessagesDropped = 0;
+
 inline void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
+  // a message that does not fit is dropped whole, the queue would otherwise lap itself
+  if (!midiOutQueue.hasRoom(4)) {
+    midiMessagesDropped++;
+    return;
+  }
   // we always queue four bytes and will process them as MIDI messages in the handlePendingMidi
   midiOutQueue.push(channel & 0x0F);
   midiOutQueue.push((byte)type);
@@ -2489,7 +2531,7 @@ void handlePendingMidi(unsigned long now) {
 
   // if there's a sysex message ready to be sent out, do that first
   if (!sysexOutQueue.empty()) {
-    while (Serial.availableForWrite()) {
+    while (!sysexOutQueue.empty() && Serial.availableForWrite()) {
       Serial.write(sysexOutQueue.pop());
     }
     return;

@@ -139,7 +139,7 @@ static const struct OSinfo {
   const char* OSVersion;
   const char* OSVersionBuild;
 } OSinfo = {
-  .OSVersion = "234.",
+  .OSVersion = "240.",
   .OSVersionBuild = ".076",
 };
 
@@ -272,6 +272,14 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure
 
 #define MAX_TOUCHES_IN_COLUMN  MAXROWS
+
+// a touch screen has none of the sensor's cross talk or phantom touches, so a desktop build lets
+// it lift the limits that guard against those, while an instrument always keeps them
+#ifdef LINN_DESKTOP
+boolean sensorLimitsLifted = false;
+#else
+const boolean sensorLimitsLifted = false;
+#endif
 
 // Sequencer constants
 #define MAX_PROJECTS              16
