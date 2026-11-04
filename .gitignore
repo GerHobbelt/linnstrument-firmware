@@ -8,12 +8,13 @@ build/*
 linnstrument-firmware.sublime-*
 stino.settings
 
-.vscode/
 archives/
 release/*
 !release/
 
 .build-staging/
-/linn
-/linn.exe
+/linnstrument
+/linnstrument-macos
+/linnstrument-linux-*
+/linnstrument-windows.exe
 linnstrument-backup-*.json
