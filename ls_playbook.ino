@@ -197,16 +197,16 @@ void playPlayBook(int totalFrames, const char* const * playbook) {
 
 byte colorCharToNumber(char color) {
   switch (color) {
-    case 'B': return 5;
-    case 'C': return 4;
-    case 'G': return 3;
-    case 'L': return 10;
-    case 'M': return 6;
-    case 'O': return 9;
-    case 'P': return 11;
-    case 'R': return 1;
-    case 'W': return 8;
-    case 'Y': return 2;
+    case 'B': return COLOR_BLUE;
+    case 'C': return COLOR_CYAN;
+    case 'G': return COLOR_GREEN;
+    case 'L': return COLOR_LIME;
+    case 'M': return COLOR_MAGENTA;
+    case 'O': return COLOR_ORANGE;
+    case 'P': return COLOR_PINK;
+    case 'R': return COLOR_RED;
+    case 'W': return COLOR_WHITE;
+    case 'Y': return COLOR_YELLOW;
   }
   return 0;
 }

@@ -19,6 +19,7 @@ These are the MIDI functions for the LinnStrument
 #include "ls_compiler_tweaks.h"
 #include "ls_bytebuffer.h"
 #include "ls_midi.h"
+#include "ls_calcTimeDelta.h"
 
 #define MAX_SYSEX_LENGTH 256
 
@@ -106,12 +107,12 @@ void applyMidiIo() {
     if (isMidiUsingDIN()) {
       digitalWrite(36, LOW);   // Set LOW for DIN jacks
       Serial.begin(31250);     // set serial port at MIDI DIN speed 31250
-      Serial.flush();          // clear the serial port
+      Serial.drop();          // clear the serial port
     }
     else {
       digitalWrite(36, HIGH);  // Set HIGH for USB
-      Serial.begin(115200);    // set serial port at fastest speed 115200
-      Serial.flush();          // clear the serial port
+      Serial.begin(DEBUG_SERIAL_BAUDRATE);    // set serial port at fastest speed 115200
+      Serial.drop();          // clear the serial port
     }
   }
 
@@ -493,7 +494,7 @@ void handleMidiInput(unsigned long nowMicros) {
           case 13:
             if (userFirmwareActive) {
               unsigned long rate = midiData2 * 1000;
-              if (!Device.operatingLowPower || rate > LOWPOWER_MIDI_DECIMATION) {
+              if (!Device.operatingLowPower || rate >= LOWPOWER_MIDI_DECIMATION) {
                 midiDecimateRate = rate;
               }
             }
@@ -509,24 +510,38 @@ void handleMidiInput(unsigned long nowMicros) {
             }
             break;
           case 22:
-            if (displayMode == displayNormal || displayMode == displayCustomLedsEditor) {
-              byte layer = LED_LAYER_CUSTOM1;
-              // we light the LEDs of user firmware mode in a dedicated custom layer
-              // this will be cleared when switching back to regular firmware mode
-              if (userFirmwareActive) {
-                layer = LED_LAYER_CUSTOM2;
-              }
-              byte color = midiData2 % (COLOR_LAST + 1);
-              if (midiData2 <= (COLOR_LAST * 2 + 1) && color != COLOR_OFF && color != COLOR_BLACK) {
-                setLed(midiCellColCC, midiCellRowCC,
-                       color,
-                       midiData2 > COLOR_LAST ? cellFocusPulse : cellOn, 
-                       layer);
-              }
-              else {
-                setLed(midiCellColCC, midiCellRowCC, COLOR_OFF, cellOff, layer);
-              }
+            if (midiLightsAllowed()) {
+              setMidiLed(midiCellColCC, midiCellRowCC, midiData2, midiLightsLayer());
               checkRefreshLedColumn(micros());
+            }
+            break;
+          case 25:
+            midiPaintAndAdvance(midiData2);
+            if (midiLightsAllowed()) {
+              checkRefreshLedColumn(micros());
+            }
+            break;
+          case 26:
+            midiTextSetFont(midiData2);
+            break;
+          case 27:
+            midiTextAppend(midiData2);
+            break;
+          case 28:
+            if (midiLightsAllowed()) {
+              midiTextDraw(midiData2);
+              checkRefreshLedColumn(micros());
+            }
+            else {
+              midiTextAppend(0);
+            }
+            break;
+          case 29:
+            if (midiLightsAllowed()) {
+              midiTextScroll(midiData2);
+            }
+            else {
+              midiTextAppend(0);
             }
             break;
           case 23:
@@ -1384,6 +1399,13 @@ void receivedNrpn(int parameter, int value, int channel) {
         Global.guitarTuning[7] = value;
       }
       break;
+    // Device Serial Mode, same as tapping OS Update in Global Settings
+    case 271:
+      if (value == 1) {
+        switchSerialMode(true);
+        storeSettings();
+      }
+      break;
     // Query for the value of a particular parameter
     case 299:
       sendNrpnParameter(value, channel);
@@ -1733,10 +1755,23 @@ void sendNrpnParameter(int parameter, int channel) {
     case 270:
       value = Global.guitarTuning[7];
       break;
+    // read-only: the model, the firmware version and its build
+    case 272:
+      value = LINNMODEL;
+      break;
+    case 273:
+      value = versionNumber(OSVersion);
+      break;
+    case 274:
+      value = versionNumber(OSVersionBuild);
+      break;
+    case 275:
+      value = Device.calibrated;
+      break;
   }
 
   if (value != INT_MIN) {
-    midiSendNRPN(parameter, value, channel);
+    midiSendNRPN(parameter, value, channel + 1);
   }
 }
 
@@ -2354,7 +2389,14 @@ void initializeLastMidiTracking() {
   }
 }
 
+unsigned int midiMessagesDropped = 0;
+
 inline void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
+  // a message that does not fit is dropped whole, the queue would otherwise lap itself
+  if (!midiOutQueue.hasRoom(4)) {
+    midiMessagesDropped++;
+    return;
+  }
   // we always queue four bytes and will process them as MIDI messages in the handlePendingMidi
   midiOutQueue.push(channel & 0x0F);
   midiOutQueue.push((byte)type);
@@ -2372,7 +2414,7 @@ void handlePendingMidi(unsigned long now) {
 
   // if there's a sysex message ready to be sent out, do that first
   if (!sysexOutQueue.empty()) {
-    while (Serial.availableForWrite()) {
+    while (!sysexOutQueue.empty() && Serial.availableForWrite()) {
       Serial.write(sysexOutQueue.pop());
     }
     return;

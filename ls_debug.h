@@ -43,6 +43,8 @@ currently debugging. After debugging something, either remove them or move them 
 #endif
 
 
+#define DEBUG_SERIAL_BAUDRATE           250000  /* was: 115200 */
+
 
 #define DEBUGPRINT_FUNCNAME()        debugprint_funcname(__func__)
 #define DEBUGPRINT_FUNCNAME_L5()     debugprint_funcname_L5(__func__)

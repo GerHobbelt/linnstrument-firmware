@@ -17,6 +17,7 @@ This displays evolved animations for each touch based on the global settings.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 int32_t colsInRowsAnimated[MAXROWS];
 unsigned long touchAnimationLastMoment[MAXCOLS][MAXROWS];

@@ -1,5 +1,6 @@
 
 #include "ls_FlashStorage.h"
+#include "ls_calcTimeDelta.h"
 
 // ----------------------------------------------------------------
 

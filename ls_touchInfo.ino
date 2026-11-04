@@ -18,6 +18,7 @@ each individual cell.
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 /********************** the curve was generated with the following C program **********************
 #include <stdio.h>

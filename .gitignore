@@ -9,3 +9,8 @@ stino.settings
 .DS_Store
 
 /Arduino.Core.1.6.12/
+/linnstrument
+/linnstrument-macos
+/linnstrument-linux-*
+/linnstrument-windows.exe
+linnstrument-backup-*.json

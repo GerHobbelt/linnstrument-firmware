@@ -82,10 +82,11 @@ class SPIClass {
 
 	// Transfer functions
 	byte transfer(byte _pin, uint8_t _data, SPITransferMode _mode = SPI_LAST);
+	uint16_t transfer16(byte _pin, uint16_t _data, SPITransferMode _mode = SPI_LAST);
 	void transfer(byte _pin, void *_buf, size_t _count, SPITransferMode _mode = SPI_LAST);
-        uint16_t transfer16(byte _pin, uint16_t _data, SPITransferMode _mode = SPI_LAST);
 	// Transfer functions on default pin BOARD_SPI_DEFAULT_SS
 	byte transfer(uint8_t _data, SPITransferMode _mode = SPI_LAST) { return transfer(BOARD_SPI_DEFAULT_SS, _data, _mode); }
+	uint16_t transfer16(uint16_t _data, SPITransferMode _mode = SPI_LAST) { return transfer16(BOARD_SPI_DEFAULT_SS, _data, _mode); }
 	void transfer(void *_buf, size_t _count, SPITransferMode _mode = SPI_LAST) { transfer(BOARD_SPI_DEFAULT_SS, _buf, _count, _mode); }
 
 	// Transaction Functions
@@ -109,7 +110,7 @@ class SPIClass {
 	void setBitOrder(uint8_t _pin, BitOrder);
 	void setDataMode(uint8_t _pin, uint8_t);
 	void setClockDivider(uint8_t _pin, uint8_t);
-        void setDataWidth(uint8_t _pin, uint8_t _dataWidth);
+    void setDataWidth(uint8_t _pin, uint8_t _dataWidth);
 
 	// These methods sets the same parameters but on default pin BOARD_SPI_DEFAULT_SS
 	void setBitOrder(BitOrder _order) { setBitOrder(BOARD_SPI_DEFAULT_SS, _order); };
@@ -121,11 +122,11 @@ class SPIClass {
 
 	Spi *spi;
 	uint32_t id;
+	void (*initCb)(void);
 	BitOrder bitOrder[SPI_CHANNELS_NUM];
 	uint32_t divider[SPI_CHANNELS_NUM];
 	uint32_t mode[SPI_CHANNELS_NUM];
-        uint32_t dataWidth[SPI_CHANNELS_NUM];
-	void (*initCb)(void);
+    uint8_t dataWidth[SPI_CHANNELS_NUM];
 	bool initialized;
 	uint8_t interruptMode;    // 0=none, 1-15=mask, 16=global
 	uint8_t interruptSave;    // temp storage, to restore state

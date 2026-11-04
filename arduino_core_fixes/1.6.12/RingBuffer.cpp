@@ -17,18 +17,26 @@
 */
 
 #include "RingBuffer.h"
-#include <string.h>
+#include <string.h>			// memset, ...
 
-RingBuffer::RingBuffer( void )
+#if 0
+
+RingBuffer::RingBuffer()
 {
-    memset( (void *)_aucBuffer, 0, SERIAL_BUFFER_SIZE ) ;
-    _iHead=0 ;
-    _iTail=0 ;
+#if 0
+    memset( (void *)_aucBuffer, 0, size() );
+#endif
+    _iHead = 0;
+    _iTail = 0;
 }
 
-void RingBuffer::store_char( uint8_t c )
+#endif
+
+#if 0
+
+inline bool RingBuffer::store_char( uint8_t c )
 {
-  int i = (uint32_t)(_iHead + 1) % SERIAL_BUFFER_SIZE ;
+  int i = (uint32_t)(_iHead + 1) % size();
 
   // if we should be storing the received character into the location
   // just before the tail (meaning that the head would advance to the
@@ -36,8 +44,12 @@ void RingBuffer::store_char( uint8_t c )
   // and so we don't write the character or advance the head.
   if ( i != _iTail )
   {
-    _aucBuffer[_iHead] = c ;
-    _iHead = i ;
+    buffer()[_iHead] = c;
+    _iHead = i;
+    return true;
   }
+
+  return false;
 }
 
+#endif

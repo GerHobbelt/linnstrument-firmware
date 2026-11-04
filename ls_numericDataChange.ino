@@ -17,6 +17,7 @@ These functions allow for changing numeric values by sliding over the LinnStrume
 **************************************************************************************************/
 
 #include "ls_compiler_tweaks.h"
+#include "ls_calcTimeDelta.h"
 
 short numericActiveColDown = 0;               // Number of columns currently held down, during numeric data changes
 signed char numericDataChangeCol = -1;        // If -1, button has been pressed, but a starting column hasn't been set
