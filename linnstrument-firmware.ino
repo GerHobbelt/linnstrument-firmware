@@ -46,8 +46,8 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 
 /******************************************** CONSTANTS ******************************************/
 
-const char* OSVersion = "234-x7";
-const char* OSVersionBuild = "234-x7";
+const char* OSVersion = "240-x7";
+const char* OSVersionBuild = "240-x7";
 
 #define STRUM_OFF 0
 #define STRUM_CLASSIC 1

@@ -14,3 +14,6 @@ release/*
 !release/
 
 .build-staging/
+/linn
+/linn.exe
+linnstrument-backup-*.json
