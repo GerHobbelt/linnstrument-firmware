@@ -1,0 +1,662 @@
+<!doctype html>
+<!--
+Copyright 2026 Roger Linn Design (https://www.rogerlinndesign.com)
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A live view of LinnStrument's User Firmware Mode: every touch with pressure and position, lights to paint, text to draw or scroll.">
+<meta name="theme-color" content="#1a1a1a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23121212'/%3E%3Crect x='3' y='3' width='26' height='3' rx='1' fill='%23c2641f'/%3E%3Crect x='3' y='26' width='26' height='3' rx='1' fill='%23c2641f'/%3E%3Cg fill='%23c4c4c0'%3E%3Crect x='5' y='9' width='5' height='5' rx='1'/%3E%3Crect x='12' y='9' width='5' height='5' rx='1'/%3E%3Crect x='19' y='9' width='5' height='5' rx='1'/%3E%3Crect x='5' y='16' width='5' height='5' rx='1'/%3E%3Crect x='12' y='16' width='5' height='5' rx='1' fill='%2358e07a'/%3E%3Crect x='19' y='16' width='5' height='5' rx='1'/%3E%3C/g%3E%3C/svg%3E">
+<title>LinnStrument User Firmware Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mulish:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="linnstrument.css">
+<style>
+  main { display: flex; flex: 1; min-height: 0; }
+  aside { width: 330px; flex: none; overflow-y: auto; background: var(--panel); border-right: 1px solid var(--line); }
+  section { padding: 22px 24px; border-bottom: 1px solid var(--line); }
+  section:last-child { border-bottom: 0; }
+
+  table.axes { border-collapse: collapse; width: 100%; }
+  table.axes th { font-weight: 600; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; padding: 4px 4px 8px; }
+  table.axes td { text-align: center; padding: 3px 4px; }
+  table.axes tr:first-child td { padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  table.axes tr:nth-child(2) td { padding-top: 8px; }
+  table.axes td:first-child { color: var(--muted); font-size: 13px; text-align: left; width: 4.5em; }
+  table.axes label { display: inline-flex; padding: 5px; cursor: pointer; }
+  table.axes input { width: 16px; height: 16px; margin: 0; cursor: pointer; }
+
+  .hidden { display: none !important; }
+  #scrollHint { margin: -8px 0 0; }
+  /* while the mode is off the panel stays in place, its sections dimmed and out of reach */
+  .side-note { padding: 16px 24px 0; color: var(--dim); }
+  section.off { opacity: .4; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field input[type=text], .field select { width: 100%; max-width: none; }
+  .field .count { color: var(--dim); font-weight: 400; letter-spacing: 0; text-transform: none; margin-left: 6px; }
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 12px; }
+  .action { display: flex; align-items: flex-end; gap: 10px; margin-top: 14px; }
+  .action .field { width: 4.6em; }
+  .action button { margin-left: auto; }
+  .slider { display: flex; align-items: center; gap: 12px; }
+  .slider input[type=range] { flex: 1; }
+  .slider output { min-width: 4em; text-align: right; color: var(--fg); font-variant-numeric: tabular-nums; }
+
+  .palette { display: grid; grid-template-columns: repeat(6, 1fr); gap: 8px; }
+  .swatch { aspect-ratio: 1; border-radius: 14%; border: 2px solid transparent; cursor: pointer; background: var(--pad); position: relative; padding: 0; overflow: hidden; }
+  .swatch::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+                   background: radial-gradient(circle at 50% 50%, #fff 0%, var(--c) 22%, color-mix(in srgb, var(--c) 55%, var(--pad)) 60%, transparent 85%); }
+  .swatch:hover { border-color: var(--dim); }
+  .swatch[aria-checked="true"] { border-color: var(--fg); }
+
+  .stage { flex: 1; display: flex; flex-direction: column; min-width: 0; padding: 28px 32px 20px; gap: 16px; overflow: auto;
+           background: radial-gradient(ellipse 70% 60% at 50% 35%, rgba(194, 100, 31, .22), transparent 70%), var(--bg); }
+  .instrument { background: var(--steel); border-radius: 10px; padding: 20px 16px 20px 12px; position: relative; width: max-content; min-width: 100%;
+                box-shadow: inset 0 0 0 1px #262626, 0 24px 60px rgba(0, 0, 0, .7); }
+  .instrument::before, .instrument::after { content: ""; position: absolute; left: 0; right: 0; height: 18px;
+                background: linear-gradient(180deg, #d08048, var(--cherry) 55%, var(--cherry-2)); }
+  .instrument::before { top: 0; border-radius: 10px 10px 0 0; }
+  .instrument::after { bottom: 0; border-radius: 0 0 10px 10px; background: linear-gradient(0deg, #d08048, var(--cherry) 55%, var(--cherry-2)); }
+  .surface { display: flex; gap: 12px; margin: 22px 0; align-items: stretch; touch-action: none; user-select: none; -webkit-user-select: none; }
+  /* the control switches: a printed label above a small button, in the gutter left of the plate */
+  .controls { display: grid; grid-template-rows: repeat(8, 1fr); gap: var(--gap); width: 9.5%; min-width: 80px; flex: none; }
+  .cell.control { aspect-ratio: auto; background: transparent; box-shadow: none; border-radius: 0; overflow: visible; cursor: pointer;
+                  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 5%; }
+  .cell.control .label { font-size: 8.5px; line-height: 1.15; letter-spacing: .08em; color: #e6e6e6; font-weight: 700; text-transform: uppercase;
+                         text-align: center; white-space: pre-line; }
+  .cell.control .button { position: relative; width: 36%; height: 42%; min-height: 10px; border-radius: 3px; background: var(--pad); overflow: hidden;
+                          box-shadow: inset 0 0 0 1px rgba(0, 0, 0, .15), inset 0 -1px 0 rgba(255, 255, 255, .3); }
+  .cell.control.pressed { box-shadow: none; }
+  .cell.control.pressed .button { box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .6); }
+  .cell.control:focus-visible { outline: none; }
+  .cell.control:focus-visible .button { outline: 3px solid var(--accent); }
+  /* the playing pads: one light grey plate with the pads barely raised out of it */
+  /* pads keep a size a pointer can hit; past that the instrument alone scrolls sideways */
+  .instrument-scroll { overflow-x: auto; flex: none; }
+  .grid { display: grid; gap: var(--gap); padding: var(--gap); flex: 1; background: var(--plate); border-radius: 4px; --pad-min: 20px; }
+  .cell { aspect-ratio: 1; border-radius: 8%; border: 1px solid transparent; padding: 0; background: var(--pad); position: relative; cursor: crosshair; overflow: hidden;
+          box-shadow: inset 0 -1px 0 rgba(255, 255, 255, .3); }
+  .cell:hover { border-color: transparent; }
+  .cell:focus-visible { outline: 3px solid var(--accent); outline-offset: 0; z-index: 1; }
+  .cell .led { position: absolute; inset: 0; border-radius: inherit; opacity: 0; transition: opacity .08s;
+               background: radial-gradient(circle at 50% 50%, #fff 0%, var(--c) 22%, color-mix(in srgb, var(--c) 55%, var(--pad)) 60%, transparent 85%); }
+  .cell.lit .led { opacity: 1; }
+  .cell .xy { position: absolute; width: calc(22% + var(--z, 0%) * 0.5); height: calc(22% + var(--z, 0%) * 0.5); border-radius: 50%;
+              background: radial-gradient(circle, rgba(0, 0, 0, .75) 0%, rgba(0, 0, 0, .55) 60%, rgba(0, 0, 0, 0) 100%);
+              left: var(--x, 50%); top: var(--y, 50%); transform: translate(-50%, -50%); opacity: 0; transition: width .06s, height .06s; }
+  .cell.pressed { box-shadow: inset 0 0 0 2px rgba(0, 0, 0, .6); }
+  .cell.pressed .xy { opacity: 1; }
+
+  .activity { display: flex; flex-direction: column; min-height: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; }
+  .activity .bar { display: flex; align-items: center; gap: 12px; padding: 8px 14px; border-bottom: 1px solid var(--line); }
+  .activity .bar .spacer { flex: 0 0 4px; }
+  /* the latest touch, as a readout set into the bar, the way the designer shows its last message */
+  .lastSent { display: inline-flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding: 5px 12px; border-radius: 4px;
+              background: var(--bg); box-shadow: inset 0 0 0 1px var(--line); }
+  .lastSent .caps { color: var(--dim); white-space: nowrap; }
+  .readout { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  .activity pre { margin: 0; padding: 10px 14px; height: 150px; overflow: auto; font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cell .led, .cell .xy, button, .swatch { transition: none; }
+  }
+  @media (forced-colors: active) {
+    .cell, .swatch, .cell.control .button { border-color: ButtonText; }
+    .cell.control .button { border: 1px solid ButtonText; }
+    .cell.lit .led, .swatch::after, .status .dot { forced-color-adjust: none; }
+  }
+  @media (max-width: 960px) {
+    /* one column: the page scrolls as a whole, the instrument first */
+    main { flex-direction: column; flex: 1 0 auto; min-height: auto; }
+    aside { width: auto; border-right: 0; border-top: 1px solid var(--line); order: 2; overflow: visible; }
+    .stage { padding: 20px 16px; overflow: visible; }
+    .controls { min-width: 64px; }
+  }
+  /* a width a phone or tablet has, where a finger plays the pads */
+  @media (max-width: 760px) {
+    .grid { --pad-min: 26px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="brand"><a href="index.html"><b>LinnStrument</b></a></h1>
+  <nav class="pages" aria-label="Pages">
+    <a href="surface_designer.html">Designer</a>
+    <a href="settings_editor.html">Settings</a>
+    <a href="user_firmware_console.html" aria-current="page">User firmware</a>
+  </nav>
+</header>
+
+<main>
+  <aside id="side">
+    <div class="meta side-note" id="sideNote">Switch the mode on at the top right to use these</div>
+    <section class="mode-only hidden">
+      <h2>Touch data per row</h2>
+      <table class="axes">
+        <thead><tr><th></th><th>X</th><th>Y</th><th>Z</th><th>Slide</th></tr></thead>
+        <tbody id="axes"></tbody>
+      </table>
+      <div class="hint">Each row sends what is ticked, the first line ticks every row</div>
+    </section>
+
+    <section class="mode-only hidden">
+      <h2>Decimation</h2>
+      <div class="slider">
+        <input type="range" id="decimation" min="0" max="127" value="8" aria-label="Decimation interval in milliseconds">
+        <output id="decimationValue">8 ms</output>
+      </div>
+      <div class="hint">Shortest interval between two values of a touch, 0 sends every change</div>
+    </section>
+
+    <section class="mode-only hidden">
+      <h2>Lights</h2>
+      <div class="palette" id="palette" role="radiogroup" aria-label="Paint color"></div>
+      <div class="row" style="margin-top:12px">
+        <button class="small" id="clearAll">Switch all off</button>
+      </div>
+      <div class="hint">Click a pad to light it, click again to switch it off, drag to paint a run</div>
+    </section>
+
+    <section class="mode-only hidden" id="textSection">
+      <h2>Text</h2>
+      <p class="hint hidden" id="textNeeds">Text over MIDI arrived with firmware 2.4.0; this instrument's firmware is older.</p>
+      <label class="field"><span class="caps">Text <span id="textCount" class="count">2 of 32</span></span>
+        <input type="text" id="text" maxlength="32" value="Hi" placeholder="Up to 32 characters"></label>
+      <div class="fields">
+        <label class="field"><span class="caps">Font</span><select id="font"></select></label>
+        <label class="field"><span class="caps">Color</span><select id="textColor"></select></label>
+      </div>
+      <div class="action">
+        <label class="field"><span class="caps">Column</span><input type="number" id="textCol" min="1" max="25" value="1"></label>
+        <label class="field"><span class="caps">Row</span><input type="number" id="textRow" min="0" max="7" value="0"></label>
+        <button id="draw">Draw</button>
+      </div>
+      <div class="hint">Draw puts the text's bottom left on that pad</div>
+      <div class="action">
+        <label class="field"><span class="caps">Row</span><input type="number" id="scrollRow" min="0" max="7" value="0"></label>
+        <button id="scroll">Scroll</button>
+      </div>
+      <div class="hint">Scroll runs the text along that row</div>
+    </section>
+  </aside>
+
+  <div class="stage">
+    <div class="instrument-scroll">
+    <div class="instrument">
+      <div class="surface" id="surface" role="group" aria-label="Pads: arrow keys move, Enter or Space lights or clears one">
+        <div class="controls" id="controls"></div>
+        <div class="grid" id="grid"></div>
+      </div>
+    </div>
+    </div>
+    <p class="hint hidden" id="scrollHint">On a touch screen, swipe the frame around the pads to scroll sideways</p>
+    <div class="activity">
+      <div class="bar">
+        <span class="caps">Activity</span>
+        <span class="meta" id="activityNote" style="margin:0" aria-live="polite">Waiting for the instrument</span>
+        <span class="lastSent hidden" id="lastSent"><span class="caps">Last touch</span><span class="readout" id="readout" aria-live="off"></span></span>
+        <span class="spacer"></span>
+        <button class="small" id="clearLog">Clear</button>
+      </div>
+      <pre id="log" role="log" aria-live="off" aria-label="Log"></pre>
+    </div>
+  </div>
+</main>
+<footer>
+  LinnStrument is made by <a href="https://www.rogerlinndesign.com/linnstrument">Roger Linn</a> and <a href="https://uwyn.com">Geert Bevin</a><span class="sep"></span><a href="https://github.com/rogerlinndesign/linnstrument-firmware">Source on GitHub</a>
+</footer>
+
+<script src="user_firmware_protocol.js"></script>
+<script src="connection.js"></script>
+<script>
+(function () {
+  "use strict";
+  const ufm = window.LinnUserFirmware;
+  const $ = function (id) { return document.getElementById(id); };
+
+  const LED_CSS = { 1: "#ff4a3d", 2: "#ffd23a", 3: "#58e07a", 4: "#5fe3f0", 5: "#4f8cff", 6: "#ff5cf0",
+                    7: "#000000", 8: "#f4f7ff", 9: "#ff9a2e", 10: "#b8f04a", 11: "#ff7ac2" };
+  const COLUMN_LABELS = ["Global\nSettings", "Split", "Switch 2", "Switch 1", "Octave/\nTranspose", "Volume", "Preset", "Per-Split\nSettings"];
+  const COLOR_NAMES = {};
+  Object.keys(ufm.COLORS).forEach(function (name) { COLOR_NAMES[ufm.COLORS[name]] = name; });
+
+  let output = null;   // the instrument, from the connection
+  let columns = 26;
+  let pickedModel = 200;     // the model shown until an instrument reports its own
+  let model = null;
+  let paintColor = ufm.COLORS.green;
+  let surface = ufm.createSurfaceState(columns);
+  const cells = {};
+  const painted = {};
+
+  $("clearLog").addEventListener("click", function () { $("log").textContent = ""; });
+
+  function logLine(text) {
+    const log = $("log");
+    log.textContent = (text + "\n" + log.textContent).split("\n").slice(0, 300).join("\n");
+  }
+
+  function send(messages) {
+    if (!output) { logLine("choose the MIDI out in the connection at the top right"); return false; }
+    return conn.send(messages);
+  }
+
+  // the state the instrument reported, on the two halves of the switch in the header; the
+  // side panel only has something to offer while the mode is on
+  let modeOn = false;
+  function showMode(on) {
+    modeOn = on === true;
+    if (!$("enter")) return;
+    $("enter").setAttribute("aria-pressed", on === true ? "true" : "false");
+    $("leave").setAttribute("aria-pressed", on === false ? "true" : "false");
+    $("sideNote").classList.toggle("hidden", on === true);
+    document.querySelectorAll(".mode-only").forEach(function (section) {
+      section.classList.remove("hidden");
+      section.classList.toggle("off", on !== true);
+      section.inert = on !== true;
+    });
+    showTextSupport();
+    $("activityNote").textContent = on === null ? "Waiting for the instrument" : on ? "Mode on" : "The instrument plays as usual; switch the mode on at the top right to take it over";
+    $("lastSent").classList.toggle("hidden", on !== true);
+    if (on !== true) $("readout").textContent = "";
+  }
+
+
+  // rows: one checkbox per axis per row, and a line that sets every row at once
+  function buildAxes() {
+    const body = $("axes");
+    body.innerHTML = "";
+    const axes = ["x", "y", "z", "slide"];
+    const boxes = {};
+    const all = document.createElement("tr");
+    all.innerHTML = "<td>all</td>";
+    axes.forEach(function (axis) {
+      const td = document.createElement("td");
+      const wrap = document.createElement("label");
+      const box = document.createElement("input");
+      box.type = "checkbox";
+      box.setAttribute("aria-label", axis + " on every row");
+      box.addEventListener("change", function () {
+        for (let row = 0; row < 8; row++) {
+          boxes[row + axis].checked = box.checked;
+          send(ufm.enableAxis(row, axis, box.checked));
+        }
+        logLine((box.checked ? "enabled " : "disabled ") + axis + " on every row");
+      });
+      wrap.appendChild(box);
+      td.appendChild(wrap);
+      all.appendChild(td);
+    });
+    body.appendChild(all);
+    for (let row = 7; row >= 0; row--) {
+      const tr = document.createElement("tr");
+      tr.innerHTML = "<td>row " + (row + 1) + "</td>";
+      axes.forEach(function (axis) {
+        const td = document.createElement("td");
+        const wrap = document.createElement("label");
+        const box = document.createElement("input");
+        box.type = "checkbox";
+        box.setAttribute("aria-label", axis + " on row " + (row + 1));
+        box.addEventListener("change", function () {
+          send(ufm.enableAxis(row, axis, box.checked));
+          logLine((box.checked ? "enabled " : "disabled ") + axis + " on row " + (row + 1));
+        });
+        boxes[row + axis] = box;
+        wrap.appendChild(box);
+        td.appendChild(wrap);
+        tr.appendChild(td);
+      });
+      body.appendChild(tr);
+    }
+  }
+
+  function buildPalette() {
+    const palette = $("palette");
+    palette.innerHTML = "";
+    Object.keys(ufm.COLORS).forEach(function (name) {
+      const color = ufm.COLORS[name];
+      if (color === 0 || color === ufm.COLORS.black) return;
+      const swatch = document.createElement("button");
+      swatch.type = "button";
+      swatch.className = "swatch";
+      swatch.title = name;
+      swatch.setAttribute("role", "radio");
+      swatch.setAttribute("aria-label", name);
+      swatch.setAttribute("aria-checked", color === paintColor ? "true" : "false");
+      swatch.tabIndex = color === paintColor ? 0 : -1;
+      swatch.style.setProperty("--c", LED_CSS[color]);
+      swatch.dataset.color = color;
+      swatch.addEventListener("click", function () { choosePaint(swatch, color); });
+      palette.appendChild(swatch);
+    });
+    palette.addEventListener("keydown", function (e) {
+      const all = Array.prototype.slice.call(palette.querySelectorAll(".swatch"));
+      const at = all.indexOf(document.activeElement);
+      if (at < 0) return;
+      const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+      if (!step) return;
+      e.preventDefault();
+      const next = all[(at + step + all.length) % all.length];
+      choosePaint(next, parseInt(next.dataset.color, 10));
+      next.focus();
+    });
+  }
+
+  function choosePaint(swatch, color) {
+    paintColor = color;
+    $("palette").querySelectorAll(".swatch").forEach(function (s) {
+      const on = s === swatch;
+      s.setAttribute("aria-checked", on ? "true" : "false");
+      s.tabIndex = on ? 0 : -1;
+    });
+  }
+
+  function fillSelect(select, values, chosen, skip, labels) {
+    select.innerHTML = "";
+    Object.keys(values).forEach(function (name) {
+      if (skip && skip(values[name])) return;
+      select.appendChild(new Option(labels && labels[name] ? labels[name] : name, values[name], false, name === chosen));
+    });
+  }
+
+  function buildGrid() {
+    const grid = $("grid");
+    const controls = $("controls");
+    grid.innerHTML = "";
+    controls.innerHTML = "";
+    Object.keys(cells).forEach(function (k) { delete cells[k]; });
+    Object.keys(painted).forEach(function (k) { delete painted[k]; });
+    surface = ufm.createSurfaceState(columns);
+    const gap = columns > 20 ? "3px" : "4px";
+    grid.style.setProperty("--gap", gap);
+    controls.style.setProperty("--gap", gap);
+    grid.style.gridTemplateColumns = "repeat(" + (columns - 1) + ", minmax(var(--pad-min, 0px), 1fr))";
+    for (let row = 7; row >= 0; row--) {
+      for (let col = 0; col < columns; col++) {
+        const el = document.createElement("button");
+        el.type = "button";
+        el.className = col === 0 ? "cell control" : "cell";
+        el.dataset.col = col;
+        el.dataset.row = row;
+        el.tabIndex = col === 0 && row === 7 ? 0 : -1;
+        if (col === 0) {
+          const label = document.createElement("span");
+          label.className = "label";
+          label.textContent = COLUMN_LABELS[row];
+          label.setAttribute("aria-hidden", "true");
+          el.appendChild(label);
+          const button = document.createElement("div");
+          button.className = "button";
+          button.innerHTML = '<div class="led"></div><div class="xy"></div>';
+          el.appendChild(button);
+        } else {
+          el.innerHTML = '<div class="led"></div><div class="xy"></div>';
+        }
+        cells[col + ":" + row] = el;
+        describeCell(col, row);
+        (col === 0 ? controls : grid).appendChild(el);
+      }
+    }
+  }
+
+  // what a screen reader hears for a pad: its place, its light and whether a finger is on it
+  function describeCell(col, row) {
+    const el = cells[col + ":" + row];
+    if (!el) return;
+    const cell = surface.cell(col, row);
+    const parts = [col === 0 ? COLUMN_LABELS[row].replace("\n", " ") + " switch, row " + row : "column " + col + ", row " + row,
+                   painted[col + ":" + row] ? COLOR_NAMES[painted[col + ":" + row]] : "off"];
+    if (cell && cell.pressed) parts.push("pressed, velocity " + cell.velocity);
+    el.setAttribute("aria-label", parts.join(", "));
+  }
+
+  // one pad is in the tab order; the arrow keys move between them, Enter or Space paints
+  $("surface").addEventListener("keydown", function (e) {
+    const el = document.activeElement;
+    if (!el || !el.classList.contains("cell")) return;
+    let col = parseInt(el.dataset.col, 10), row = parseInt(el.dataset.row, 10);
+    if (e.key === "ArrowLeft") col--;
+    else if (e.key === "ArrowRight") col++;
+    else if (e.key === "ArrowUp") row++;
+    else if (e.key === "ArrowDown") row--;
+    else if (e.key === "Home") col = 0;
+    else if (e.key === "End") col = columns - 1;
+    else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      painting = { clear: !!painted[col + ":" + row], last: col + ":" + row };
+      paintCell({ col: col, row: row });
+      painting = null;
+      return;
+    }
+    else return;
+    e.preventDefault();
+    const next = cells[Math.max(0, Math.min(columns - 1, col)) + ":" + Math.max(0, Math.min(7, row))];
+    if (next && next !== el) { el.tabIndex = -1; next.tabIndex = 0; next.focus(); }
+  });
+
+  function showLight(col, row, color) {
+    const key = col + ":" + row;
+    const el = cells[key];
+    if (!el) return;
+    if (color) {
+      painted[key] = color;
+      el.style.setProperty("--c", LED_CSS[color]);
+      el.classList.add("lit");
+    } else {
+      delete painted[key];
+      el.classList.remove("lit");
+    }
+    describeCell(col, row);
+  }
+
+  // painting: a click lights or clears one pad, a drag carries the same action over every pad
+  // it crosses
+  let painting = null;
+  function cellFromEvent(e) {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const cell = el && el.closest ? el.closest(".cell") : null;
+    return cell ? { col: parseInt(cell.dataset.col, 10), row: parseInt(cell.dataset.row, 10) } : null;
+  }
+  function paintCell(c) {
+    const key = c.col + ":" + c.row;
+    const color = painting.clear ? 0 : paintColor;
+    if ((painted[key] || 0) === color) return;
+    if (send(ufm.setLed(c.col, c.row, color))) showLight(c.col, c.row, color);
+  }
+  $("surface").addEventListener("pointerdown", function (e) {
+    const c = cellFromEvent(e);
+    if (!c) return;
+    e.preventDefault();
+    painting = { clear: !!painted[c.col + ":" + c.row], last: c.col + ":" + c.row };
+    paintCell(c);
+    $("surface").setPointerCapture(e.pointerId);
+  });
+  $("surface").addEventListener("pointermove", function (e) {
+    if (!painting) return;
+    const c = cellFromEvent(e);
+    if (!c || c.col + ":" + c.row === painting.last) return;
+    painting.last = c.col + ":" + c.row;
+    paintCell(c);
+  });
+  function endPainting() { painting = null; }
+  $("surface").addEventListener("pointerup", endPainting);
+  $("surface").addEventListener("pointercancel", endPainting);
+
+  $("clearAll").addEventListener("click", function () {
+    const zeros = [];
+    for (let i = 0; i < columns * 8; i++) zeros.push(0);
+    // an older firmware has no painted runs, so every cell is cleared on its own
+    let off = ufm.paintRun(0, 0, zeros);
+    if (conn.info().firmwareOld) { off = []; for (let i = 0; i < zeros.length; i++) off = off.concat(ufm.setLed(i % columns, Math.floor(i / columns), 0)); }
+    if (send(off)) {
+      Object.keys(painted).forEach(function (key) {
+        const parts = key.split(":");
+        showLight(parseInt(parts[0], 10), parseInt(parts[1], 10), 0);
+      });
+      logLine("all lights switched off");
+    }
+  });
+
+  function showTouch(c) {
+    const el = cells[c.col + ":" + c.row];
+    if (!el) return;
+    el.classList.toggle("pressed", c.pressed);
+    el.style.setProperty("--z", Math.round(c.pressure / 127 * 100) + "%");
+    if (c.x !== null) {
+      const cellWidth = 170.625;
+      const inCell = (c.x / cellWidth) - (c.col - 1);
+      el.style.setProperty("--x", Math.round(Math.max(0, Math.min(1, inCell)) * 100) + "%");
+    }
+    if (c.y !== null) el.style.setProperty("--y", Math.round((1 - c.y / 127) * 100) + "%");
+    describeCell(c.col, c.row);
+    $("readout").textContent = "column " + c.col + ", row " + c.row + (c.pressed ? ", pressed, velocity " + c.velocity : ", released") +
+      (c.pressure ? ", pressure " + c.pressure : "") + (c.x !== null ? ", x " + c.x : "") + (c.y !== null ? ", y " + c.y : "");
+  }
+
+  function onEvent(event) {
+    switch (event.type) {
+      case "mode":
+        showMode(event.active);
+        logLine("instrument reports mode " + (event.active ? "on" : "off"));
+        return;
+      case "model":
+        model = event.model;
+        pickedModel = model;
+        LinnConnection.storeModel(model);
+        $("modelPick").value = String(model);
+        modelPickField.classList.add("hidden");
+        setColumns(event.columns);
+        logLine("instrument reports model " + model);
+        return;
+      case "version": case "build": case "calibrated":
+        return;
+      case "slide":
+        logLine("slide leaving column " + event.fromCol + " on row " + event.row);
+        return;
+    }
+    const changed = surface.apply(event);
+    if (changed) showTouch(changed);
+    if (event.type === "press" || event.type === "release") {
+      logLine(event.type + " column " + event.col + " row " + event.row + " velocity " + event.velocity);
+    }
+  }
+
+  function textArguments() {
+    return [parseInt($("font").value, 10), parseInt($("textColor").value, 10), $("text").value];
+  }
+
+  $("decimation").addEventListener("input", function () {
+    const ms = parseInt($("decimation").value, 10);
+    $("decimationValue").textContent = ms + " ms";
+    send(ufm.setDecimation(ms));
+  });
+  $("draw").addEventListener("click", function () {
+    try {
+      send(ufm.drawText.apply(null, [parseInt($("textCol").value, 10), parseInt($("textRow").value, 10)].concat(textArguments())));
+      logLine("drew \"" + $("text").value + "\"");
+    } catch (err) { logLine(String(err.message || err)); }
+  });
+  $("text").addEventListener("input", function () { $("textCount").textContent = $("text").value.length + " of 32"; });
+  $("scroll").addEventListener("click", function () {
+    try {
+      send(ufm.scrollText.apply(null, [parseInt($("scrollRow").value, 10)].concat(textArguments())));
+      logLine("scrolled \"" + $("text").value + "\"");
+    } catch (err) { logLine(String(err.message || err)); }
+  });
+
+  const FONT_LABELS = { tiny: "tiny, digits only", small: "small, capitals and digits", big: "big", condensed: "condensed, capitals and digits" };
+  fillSelect($("font"), ufm.FONTS, "big", null, FONT_LABELS);
+  fillSelect($("textColor"), ufm.COLORS, "green", function (c) { return c === 0 || c === ufm.COLORS.black; });
+  buildAxes();
+  buildPalette();
+  buildGrid();
+
+  // an older firmware ignores CC 26 to 29, so the text controls rest with a line saying why
+  function showTextSupport() {
+    const old = !!(conn && conn.info().firmwareOld);
+    $("textNeeds").classList.toggle("hidden", !old);
+    const section = $("textSection");
+    if (old) { section.classList.add("off"); section.inert = true; }
+  }
+  function setColumns(count) {
+    if (count !== columns) { columns = count; buildGrid(); }
+    $("textCol").max = columns - 1;
+    surface = ufm.createSurfaceState(columns);
+  }
+  // the model to show while no instrument reports its own (an older firmware never does)
+  const modelPickField = document.createElement("div");
+  modelPickField.innerHTML = '<label><span class="caps">Model</span><select id="modelPick" aria-label="Model to show while the instrument does not report one"><option value="200">LinnStrument 200</option><option value="128">LinnStrument 128</option></select></label>' +
+    '<div class="hint">Firmware before 2.4.0 cannot report it, so pick yours; the page remembers it</div>';
+  modelPickField.className = "ports";
+  const modeHint = document.createElement("div");
+  modeHint.className = "hint";
+  modeHint.textContent = "Instrument silent after the page closed with the mode on? Hold OS Update in Global Settings (column 16, third row) for a second. A short tap switches it to update mode instead; tap again to come back";
+  let conn = null;
+  conn = LinnConnection.create({
+    extras: [modelPickField, modeHint],
+    onEvent: onEvent,
+    onFirmware: function () {
+      showTextSupport();
+      if (LinnConnection.storedModel() === null) conn.open(true, false);
+    },
+    onPorts: function (ports) {
+      output = ports.output;
+      model = null;
+      modelPickField.classList.remove("hidden");
+      showMode(null);
+      setColumns(ufm.columnsFor(pickedModel));
+      // a touch the old port reported is not on the new one
+      surface = ufm.createSurfaceState(columns);
+      Object.keys(cells).forEach(function (k) { cells[k].classList.remove("pressed"); });
+    },
+  });
+  $("modelPick").addEventListener("change", function () {
+    pickedModel = parseInt($("modelPick").value, 10);
+    LinnConnection.storeModel(pickedModel);
+    setColumns(ufm.columnsFor(pickedModel));
+  });
+  if (LinnConnection.storedModel() === 128 && !model) {
+    pickedModel = 128;
+    $("modelPick").value = "128";
+    setColumns(ufm.columnsFor(pickedModel));
+  }
+  const modeSwitch = document.createElement("div");
+  modeSwitch.className = "toolbar-switch";
+  modeSwitch.innerHTML = '<span class="caps">Mode</span>' +
+    '<div class="segmented" role="group" aria-label="User firmware mode"><button id="leave" aria-pressed="false">Off</button><button id="enter" aria-pressed="false">On</button></div>';
+  conn.addControl(modeSwitch);
+  $("enter").addEventListener("click", function () { send(ufm.enterUserFirmwareMode()); });
+  $("leave").addEventListener("click", function () { send(ufm.leaveUserFirmwareMode()); });
+  // leaving the page, by a tab or by closing it, hands the instrument back, as the designer does
+  window.addEventListener("pagehide", function () { if (modeOn) send(ufm.leaveUserFirmwareMode()); });
+  showMode(null);
+
+  // a hint for touch screens, where a swipe on the pads plays them, shown only while the
+  // instrument is wider than its area
+  const scroller = document.querySelector(".instrument-scroll");
+  const scrollWatch = new ResizeObserver(function () {
+    $("scrollHint").classList.toggle("hidden", scroller.scrollWidth <= scroller.clientWidth + 1);
+  });
+  scrollWatch.observe(scroller);
+  scrollWatch.observe(scroller.querySelector(".instrument"));
+})();
+</script>
+</body>
+</html>
