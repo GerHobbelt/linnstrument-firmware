@@ -465,14 +465,14 @@ void modeLoopManufacturingTest() {
                 0x20088000                PROVIDE (_estack, __StackTop)
 */
 
-extern char _ebss;
-extern char _ezero;
-extern char _end;
-extern char _sstack;
-extern char _estack;
+extern "C" const uint32_t _ebss;
+extern "C" uint32_t _ezero;
+extern "C" const uint32_t _end;
+extern "C" uint32_t _sstack;
+extern "C" uint32_t _estack;
 
-char* ramstart = (char*)0x20070000;
-char* ramend = (char*)0x20088000;
+uint32_t* ramstart = (uint32_t*)0x20070000;
+uint32_t* ramend = (uint32_t*)0x20088000;
 
 void debugFreeRam() {
   static unsigned long lastFrame = 0;
@@ -492,17 +492,17 @@ void debugFreeRam() {
 
     register char* stack_ptr asm ("sp");
     Serial.print("RAM static:");
-    Serial.print(&_end - ramstart);
+    Serial.print((const byte *)&_end - (const byte *)ramstart);
     Serial.print(" stack:");
-    Serial.print(ramend - stack_ptr);
+    Serial.print((const byte *)ramend - (const byte *)stack_ptr);
     Serial.print(" stacksize:");
-    Serial.print(ramend - &_sstack);
+    Serial.print((const byte *)ramend - (const byte *)&_sstack);
     Serial.print(" stacksize:");
-    Serial.print(ramend - &_estack);
+    Serial.print((const byte *)ramend - (const byte *)&_estack);
     Serial.print(" stacksize:");
-    Serial.print(&_sstack - &_estack);
+    Serial.print((const byte *)&_sstack - (const byte *)&_estack);
     Serial.print(" free:");
-    Serial.print(stack_ptr - &_end);
+    Serial.print((const byte *)stack_ptr - (const byte *)&_end);
     Serial.print("\n");
 
     static bool stack_init_for_usage_scan_done = false;
@@ -543,11 +543,11 @@ void debugFreeRam() {
       }
 
       Serial.print("Stack Scan: unused area pattern @ first = ");
-      Serial.print(stack_ptr - (char *)first);
+      Serial.print((const byte *)stack_ptr - (const byte *)first);
       Serial.print(", last = ");
-      Serial.print(stack_ptr - (char *)last);
+      Serial.print((const byte *)stack_ptr - (const byte *)last);
       Serial.print(" ==> max stack usage until now = ");
-      Serial.print(&_estack - (char *)last);
+      Serial.print((const byte *)&_estack - (const byte *)last);
       Serial.println(" bytes.");
     }
 

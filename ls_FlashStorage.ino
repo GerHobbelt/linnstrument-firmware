@@ -4,9 +4,11 @@
 
 // ----------------------------------------------------------------
 
+#if 0
 #include "./libraries/DueFlashStorage/src/DueFlashStorage.cpp"
 #include "./libraries/DueFlashStorage/src/efc.cpp"
 #include "./libraries/DueFlashStorage/src/flash_efc.cpp"
+#endif
 
 
 #if FLASH_DEBUG

@@ -4,9 +4,13 @@
 
 #include "ls_debug.h"
 
+#if 0
 #include "./libraries/DueFlashStorage/src/efc.h"
 #include "./libraries/DueFlashStorage/src/flash_efc.h"
 #include "./libraries/DueFlashStorage/src/DueFlashStorage.h"
+#else
+class DueFlashStorage {};
+#endif
 
 #include "ls_alignToWord.h"
 
