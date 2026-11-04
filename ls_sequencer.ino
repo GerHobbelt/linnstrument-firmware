@@ -2034,7 +2034,10 @@ void StepEventState::sendNoteOn(StepEvent& event, byte splitNum) {
   byte newChannel = channel;
   if (isMicroLinnOn()) {
     newNote = getMicroLinnMidiNote(split, note);
-    if (newNote == -1) return;            // -1 = the microLinn code for a dead pad
+    if (newNote == -1) {                  // -1 = the microLinn code for a dead pad
+      note = -1;                          // nothing to turn off
+      return;
+    }
     newChannel = rechannelMicroLinnGroup(split, channel, note >> 7);
   }
 
@@ -2052,6 +2055,11 @@ void StepEventState::sendNoteOn(StepEvent& event, byte splitNum) {
   }
 
   midiSendNoteOn(split, newNote, event.getVelocity(), newChannel);  
+  if (isMicroLinnOn()) {
+    // transposing can recalculate the tuning tables before the note-off, so replace the edostep with the midi note
+    // that was sent, keeping the edostep's group for the channel
+    note = (note & ~127) | newNote;
+  }
 
   StepSequencerState& state = seqState[split];
   if (Split[split].sequencerView == sequencerNotes) {
@@ -2065,7 +2073,7 @@ void StepEventState::sendNoteOff() {
   short newNote = note;
   byte newChannel = channel;
   if (isMicroLinnOn()) {
-    newNote = getMicroLinnMidiNote(split, note);
+    newNote = note >= 0 ? note & 127 : -1;                // sendNoteOn() stored the midi note it sent
     newChannel = rechannelMicroLinnGroup(split, channel, note >> 7);
   }
   

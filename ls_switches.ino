@@ -261,6 +261,7 @@ void switchTransposePitch(byte split, int interval) {
   Split[split].transposePitch = pitch;
   displayModeStart = millis();
   blinkMiddleRootNote = true;
+  calcMicroLinnTuning();
   updateDisplay();
 }
 

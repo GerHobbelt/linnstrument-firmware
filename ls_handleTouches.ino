@@ -125,6 +125,7 @@ void transferFromSameRowCell(byte col) {
   sensorCell->initialY = fromCell->initialY;
   sensorCell->note = fromCell->note;
   sensorCell->microLinnGroup = fromCell->microLinnGroup;
+  moveMicroLinnSoundingNote(*fromCell, *sensorCell);
   sensorCell->channel = fromCell->channel;
   sensorCell->octaveOffset = fromCell->octaveOffset;
   sensorCell->fxdPrevPressure = fromCell->fxdPrevPressure;
@@ -177,6 +178,7 @@ void transferToSameRowCell(byte col) {
   toCell->initialY = sensorCell->initialY;
   toCell->note = sensorCell->note;
   toCell->microLinnGroup = sensorCell->microLinnGroup;
+  moveMicroLinnSoundingNote(*sensorCell, *toCell);
   toCell->channel = sensorCell->channel;
   toCell->octaveOffset = sensorCell->octaveOffset;
   toCell->fxdPrevPressure = sensorCell->fxdPrevPressure;
@@ -1088,7 +1090,7 @@ boolean handleXYZupdate() {
         short tuningBend = 0;
         signed char channel = sensorCell->channel;
         if (isMicroLinnOn()) {
-          tuningBend = getMicroLinnTuningBend(sensorSplit, sensorCell->note, sensorCell->microLinnGroup);
+          tuningBend = getMicroLinnCellTuningBend(sensorSplit, *sensorCell);
           channel = rechannelMicroLinnGroup(sensorSplit, sensorCell->channel, sensorCell->microLinnGroup);
         }
         preSendPitchBend(sensorSplit, pitch, channel, tuningBend);
@@ -1105,7 +1107,7 @@ boolean handleXYZupdate() {
           note = getMicroLinnDrumPadMidiNote();
         } 
         else if (isMicroLinnOn()) {
-          note = getMicroLinnMidiNote(sensorSplit, note, sensorCell->microLinnGroup);
+          note = getMicroLinnCellMidiNote(sensorSplit, *sensorCell);
           channel = rechannelMicroLinnGroup(sensorSplit, channel, sensorCell->microLinnGroup);
         }
         preSendTimbre(sensorSplit, valueY, note, channel);
@@ -1137,7 +1139,7 @@ boolean handleXYZupdate() {
           note = getMicroLinnDrumPadMidiNote();
         } 
         else if (isMicroLinnOn()) {
-          note = getMicroLinnMidiNote(sensorSplit, note, sensorCell->microLinnGroup);
+          note = getMicroLinnCellMidiNote(sensorSplit, *sensorCell);
           channel = rechannelMicroLinnGroup(sensorSplit, channel, sensorCell->microLinnGroup);
         }
         preSendLoudness(sensorSplit, valueZ, valueZHi, note, channel);
@@ -1297,6 +1299,7 @@ inline boolean isStrummingSplit(byte split) {
 void prepareNewNote(signed char notenum) {
   byte channel = takeChannel(sensorSplit, sensorRow);
   sensorCell->note = notenum;
+  clearMicroLinnSoundingNote(*sensorCell);            // not sounding yet, see getMicroLinnCellMidiNote()
   sensorCell->channel = channel;
   sensorCell->octaveOffset = Split[sensorSplit].transposeOctave;
   
@@ -1361,6 +1364,7 @@ void sendNewNote() {
       channel = rechannelMicroLinnGroup(sensorSplit, channel, sensorCell->microLinnGroup);
       if (channel == -1) return;
       tuningBend = getMicroLinnTuningBend(sensorSplit, sensorCell->note, sensorCell->microLinnGroup);
+      setMicroLinnSoundingNote(*sensorCell, note, tuningBend);   // keep using these even if transposing changes the tables
     }
 
     sendMicroLinnGroupingAndLocatingCCs(channel, sensorSplit);
@@ -1402,9 +1406,9 @@ void sendReleasedNote() {
     }
     // when in a large edo, adjacent pads have different edosteps, but often output the same midi note
     // thus if in mono mode with X-data fixes, trilling on 2 pads sends a noteOff that mutes both notes
-    // to avoid this, we convert sensorNote and touchedNote from edosteps to actual midi notes via getMicroLinnMidiNote()
+    // to avoid this, we convert sensorNote and touchedNote from edosteps to the midi notes they sound, via getMicroLinnCellMidiNote()
     byte sensorNote = sensorCell->note;
-    if (isMicroLinnOn()) sensorNote = getMicroLinnMidiNote(sensorSplit, sensorNote, sensorCell->microLinnGroup);
+    if (isMicroLinnOn()) sensorNote = getMicroLinnCellMidiNote(sensorSplit, *sensorCell);
 
     // iterate over all the rows
     for (byte row = 0; row < NUMROWS; ++row) {
@@ -1420,8 +1424,8 @@ void sendReleasedNote() {
       while (colsInRowTouched) {
         byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
         byte touchedNote = cell(touchedCol, row).note;
-        if (isMicroLinnOn()) 
-	  touchedNote = getMicroLinnMidiNote(sensorSplit, touchedNote, cell(touchedCol, row).microLinnGroup);
+        if (isMicroLinnOn())
+          touchedNote = getMicroLinnCellMidiNote(sensorSplit, cell(touchedCol, row));
         
         if (cell(touchedCol, row).touched == touchedCell &&
             touchedNote == sensorNote &&                                         // compare actual midi notes, not edosteps
@@ -1451,7 +1455,7 @@ void sendReleasedNote() {
       if (note == -1) return;
     } 
     else if (isMicroLinnOn()) {
-      note = getMicroLinnMidiNote(sensorSplit, note, sensorCell->microLinnGroup);
+      note = getMicroLinnCellMidiNote(sensorSplit, *sensorCell);
       channel = rechannelMicroLinnGroup(sensorSplit, channel, sensorCell->microLinnGroup);
       if (note == -1 || channel == -1) return;
     }
@@ -1919,7 +1923,7 @@ void handleTouchRelease() {
         note = getMicroLinnDrumPadMidiNote();
       } 
       else if (isMicroLinnOn()) {
-        note = getMicroLinnMidiNote(sensorSplit, sensorCell->note, sensorCell->microLinnGroup);
+        note = getMicroLinnCellMidiNote(sensorSplit, *sensorCell);
         channel = rechannelMicroLinnGroup(sensorSplit, sensorCell->channel, sensorCell->microLinnGroup);
       }
       preSendLoudness(sensorSplit, 0, 0, note, channel);
@@ -1995,7 +1999,7 @@ void handleTouchRelease() {
       short tuningBend = 0;
       if (isMicroLinnOn()) {
         channel = rechannelMicroLinnGroup(sensorSplit, sensorCell->channel, sensorCell->microLinnGroup);
-        tuningBend = getMicroLinnTuningBend(sensorSplit, sensorCell->note, sensorCell->microLinnGroup);
+        tuningBend = getMicroLinnCellTuningBend(sensorSplit, *sensorCell);
       }
       preSendPitchBend(sensorSplit, 0, channel, tuningBend);
     }
@@ -2009,7 +2013,7 @@ void handleTouchRelease() {
         short tuningBend = 0;
         if (isMicroLinnOn()) {
           channel = rechannelMicroLinnGroup(sensorSplit, sensorCell->channel, sensorCell->microLinnGroup);
-          tuningBend = getMicroLinnTuningBend(sensorSplit, sensorCell->note, sensorCell->microLinnGroup);
+          tuningBend = getMicroLinnCellTuningBend(sensorSplit, *sensorCell);
         }
         preSendPitchBend(sensorSplit, sensorCell->lastValueX, channel, tuningBend);  
       }
