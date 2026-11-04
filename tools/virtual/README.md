@@ -1,20 +1,38 @@
 Virtual LinnStrument
 ====================
 
+![The Virtual LinnStrument as a LinnStrument 200, with three notes held](screenshot.png)
+
 The Virtual LinnStrument is the LinnStrument firmware running on your computer, behind a window
 that shows its lights and turns the mouse into a finger, with a virtual MIDI port named "Virtual
 LinnStrument". It's the real firmware, not an imitation. The same `.ino` files are merged into
 one C++ file the way the Arduino build and the desktop tests do it, compiled against the
-stand-ins in `tests/support/`, and run on a thread with the computer's clock. Everything the
-instrument does over MIDI, the notes, expression, NRPNs, User Firmware Mode, lights and text,
-behaves exactly as on the hardware. This makes it the quick way to develop against the
-instrument without having one on your desk.
+stand-ins in `tests/support/`, and run on a thread with the computer's clock. What the firmware
+decides is therefore what an instrument decides: the notes, channels and expression a touch
+turns into, the NRPNs, the settings screens, User Firmware Mode, the lights and the text. What's
+simulated is everything around it: the touches come from the mouse, a script or an assistant
+instead of a sensor, and the lights are drawn instead of lit. This makes it the quick way to
+develop against the instrument without having one on your desk.
+
+What it's for
+-------------
+
+It's for trying a firmware change, a page or a MIDI script before it reaches an instrument, and
+for an AI assistant to check its own work. It settles what the lights show, which screens and
+settings a touch reaches, and what MIDI goes out for a given touch or comes back for a given
+message. It doesn't settle how a change feels to play: pressure response, velocity, sliding,
+timing and sound still need a real LinnStrument and a person at it. It isn't meant as an
+instrument to perform with either, since a mouse plays one touch at a time.
+
+The ready-made app that GitHub Actions attaches to every run is for Apple silicon Macs. It's
+only been built and tried on macOS. Windows has no virtual MIDI ports, so the app has nothing to
+send to there, and Linux hasn't been tried.
 
 Building
 --------
 
 You need CMake 3.22 or later, a C++17 compiler (Xcode's on macOS) and Go for the sketch merge.
-The first time, you also need git and an internet connection to fetch JUCE 9.0.4:
+The first time, you also need git and an internet connection to fetch JUCE 9.0.5:
 
 ```
 cmake -S tools/virtual -B build/virtual -DCMAKE_BUILD_TYPE=Release
@@ -29,13 +47,22 @@ and you can start it with:
 open "build/virtual/VirtualLinnStrument_artefacts/Release/Virtual LinnStrument.app"
 ```
 
-Its type is Mulish, the typeface of rogerlinndesign.com. The name and line printed on the panel
-are set in Sarpanch Black and Sarpanch Bold narrowed, the open typeface nearest the instrument's
-Eurostile Bold Extended and Bold Condensed. All of these are bundled from `Resources/Fonts` under
-the SIL Open Font License, and the icon is the LinnStrument Updater's. If you already have a JUCE
+Its type is Mulish, the typeface of rogerlinndesign.com, bundled from `Resources/Fonts` under the
+SIL Open Font License. The name, rule and line the panel prints at the instrument's right end are
+images, `Resources/Nameplate/Nameplate128.png` and `Nameplate200.png` (and `Name128.png` and
+`Name200.png`, the name alone), which `make_nameplate.py LOGO_128.pdf LOGO_200.pdf` draws from
+Roger Linn Design's outlines of each model's logo; the PDFs only draw the images and are not in the
+repository. The icon is the LinnStrument Updater's. If you already have a JUCE
 checkout, pass `-DJUCE_PATH=/path/to/JUCE` to the first command to use it. Every build re-merges
 the sketch when a firmware file changed, so a firmware edit is just one `cmake --build` away from
 running in the window.
+
+The firmware keeps all of its state in globals, so each copy of it that runs at the same time is
+compiled into a namespace of its own (`Firmware.cmake`, `Source/Firmware/FirmwareInstance.inc`)
+and reached through `firmware::Instance` in `Source/Firmware/FirmwareBridge.h`. An `Engine` takes
+a free copy when it's made. The app needs one, and `-DLINN_FIRMWARE_COPIES=8` compiles eight, for
+plugin hosts that open several instances; each copy adds about 700 KB. The firmware's own sources
+stay as they are.
 
 Using it
 --------
@@ -83,11 +110,13 @@ Using it
                             (0 or none: the pressure slider)
   move COL ROW X Y [Z]      move a touch inside its cell, keeping its pressure unless Z is given
   release COL ROW           lift a touch
+  slide COL ROW TOCOL [Y]   a held touch slides into the next cell of its row
   tap COL ROW [MS]          press and release after MS milliseconds (default 120, at least 20)
   foot left|right down|up   a foot switch
   leds                      the lights as "ROW: c c c ..." per row from the top, a color number
                             per column, 0 off, 7 black (dark)
   status                    the instrument's status line
+  view                      what part of the instrument the window shows
   send BYTE [BYTE ...]      MIDI into the firmware, bytes in hex, like B0 14 05
   received [SECONDS]        the MIDI the firmware sent since the last received, one message per
                             line in hex, after waiting up to SECONDS for a first one (default 0)
@@ -99,6 +128,9 @@ Using it
   help                      this text
   quit                      leave
   ```
+
+  An app built on this code can add commands of its own through `CommandTarget::runCommand()`, and
+  `help` then lists them too.
 
   Commands run one after the other, so a `sleep` or a long `tap` holds everything written after
   it, `quit` included. The way out of a long one is `--after` or killing the process. A command
@@ -151,11 +183,50 @@ Using it
   lights, text and a scroll appear in the window. Windows has no virtual ports. A loopMIDI pair
   is the workaround, but it isn't wired up yet.
 
+Tests
+-----
+
+`Tests/VirtualTests.cpp` tests the app's own code with JUCE's unit test framework: how fingers are
+tracked and slide into the next cell, the engine's pace, the surface and the firmware bridge. The
+slide tests drive the real firmware and read the MIDI it sends, in real time, at the instrument's
+own scan rate, which takes most of the twelve seconds they run in. They keep their settings in a
+folder of their own, never the app's. They build with the app:
+
+```
+cmake --build build/virtual --config Release --target VirtualTests
+build/virtual/VirtualTests_artefacts/Release/VirtualTests [NAME]
+```
+
+`tools/virtual/mutate_tests.py [NAME]` proves that they can fail: it breaks each guarded line of
+the app's code in turn, rebuilds, checks that the test it belongs to fails, and restores the
+file. GitHub Actions runs the tests and drives the built app by script on every push.
+
 What it cannot do
 -----------------
 
-It can't do multi-touch with a mouse, beyond holding touches with shift-click, right-click or
-Space. It can't do calibration either, which needs real sensor readings, so the firmware runs on
-its default calibration. Finally, it can't do serial mode either: tapping OS Update switches the
-firmware to it, and with no serial port behind the window the instrument goes quiet until OS
-Update is tapped again.
+* **Touches are idealised.** A touch gives the firmware one clean reading for its cell. It lands at
+  a level that the Velocity slider sets, which is what the firmware measures the velocity from,
+  then rises towards the pressure of the Pressure slider (or a script's Z), slowly for a soft
+  press and within milliseconds for a hard one, and when you let go its pressure falls away over
+  about 50 ms before the note ends. Those timings were measured on a LinnStrument 128, but a
+  finger's readings vary and drift, so the velocity, pressure and position numbers still differ
+  from an instrument's for the same gesture. Every cell responds alike, since the per-cell bias
+  that evens out an instrument's sensor is turned off.
+* **No sensor quirks.** Untouched cells read nothing, so there's no noise, no cross talk between
+  touches in a column and no phantom touches for the firmware to reject.
+* **No multi-touch with a mouse,** beyond holding touches with shift-click, right-click or
+  Space. A script or an assistant can hold several touches at once.
+* **Its own calibration.** Calibrating needs real sensor readings, but a touch here lands exactly
+  where the firmware's default calibration expects it, so every unit is marked calibrated with that
+  data and its CALIBRATE cell is green. Being calibrated, the firmware also rejects a new touch whose
+  position lies far outside its cell, which a touch here never does.
+* **Different timing.** Each scan takes as long as the instrument's, 27 µs a cell and 0.58 ms more
+  for each held touch as measured on a LinnStrument 200, on the computer's clock. The computer runs
+  the firmware itself much faster in between, so latency and anything that depends on the
+  firmware's own speed have to be judged on hardware.
+* **One MIDI port.** All MIDI goes through the virtual port, whether the settings choose USB or
+  DIN.
+* **No serial mode.** Tapping OS Update switches the firmware to it, and with no serial port
+  behind the window the instrument goes quiet until OS Update is tapped again. That's also why
+  the Updater and the tool's `backup`, `restore` and `flash` can't reach it. Its settings live in
+  the flash file described above.
