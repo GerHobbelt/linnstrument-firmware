@@ -170,8 +170,10 @@ app=build/virtual/VirtualLinnStrument_artefacts/Release
 `--screenshot` writes the window to a PNG after `--after` seconds and quits,
 so a session that cannot see the screen still can. `--script FILE` (or `-` for
 stdin) reads text commands instead, the way to drive it from a terminal:
-`press COL ROW [X Y [Z]]`, `move`, `release`, `tap`, `foot`, `leds` (the
-lights as `ROW: c c c ...` lines from the top row down, 0 off, 7 black),
+`press COL ROW [X Y [Z]]`, `move`, `release`, `slide COL ROW TOCOL [Y]` (a
+held touch into the next cell of its row, as a finger slides), `tap`, `foot`,
+`leds` (the lights as `ROW: c c c ...` lines from the top row down, 0 off, 7
+black), `view` (what part of the instrument the window shows),
 `status`, `send BYTES` (MIDI into the firmware, in hex), `received [SECONDS]`
 (the MIDI it sent since the last call), `screenshot FILE [SCALE]`, `model`,
 `sleep SECONDS`, `quit`. Each answers with its output and `ok`. Touches made
@@ -194,9 +196,11 @@ one instance runs at a time (a second launch exits and the first ignores its
 arguments). `tools/virtual/build-release.sh 2.3.4` builds the app from that
 release's firmware instead, the way to see what customers' units do with a
 page or a MIDI script before asking the person to try. The first build fetches
-JUCE 9.0.4 and takes a few minutes, and later builds re-merge the sketch only
+JUCE 9.0.5 and takes a few minutes, and later builds re-merge the sketch only
 when a firmware file changed. `tools/virtual/README.md` has the details and
-the limits (no multi-touch with the mouse, no calibration, no serial mode).
+the limits: its touches are idealised and its timing isn't the instrument's,
+so it settles lights, screens and MIDI but never feel, velocity or latency,
+and it has no serial mode; its calibration is the default one, marked done.
 
 ## Flashing and talking to a connected instrument
 
@@ -246,7 +250,9 @@ Facts about the serial link, measured on a LinnStrument 128:
 * Opening or closing the port toggles DTR, and the USB bridge then resets the
   instrument about one time in three, 0.4 to 1.5 seconds later. The port
   disappears for under a second and comes back. The tool waits out that
-  window after opening and retries the handshake. Do everything in one open
+  window after opening and reopens up to six times when the port went away,
+  which happened to about one open in four, sometimes twice in a row.
+  `LINN_SERIAL_TRACE=1` logs each attempt. Do everything in one open
   session; do not open and close the port per command.
 * The protocol is the Updater's: send `5, 4, 3, 2, 1 ...\n`, expect
   `LinnStruments are go!\n`, then one-letter commands (`s` settings, `l` LED,
@@ -512,7 +518,9 @@ for the left split, 134 for the right).
 * `MAX_TOUCHES_IN_COLUMN` is 3 and is load-bearing. Measured on hardware: with
   4 or more fingers held in one column, cross talk pulls X readings far enough
   that real touches in neighbouring columns are rejected as phantoms. Do not
-  raise or remove it as a "fix".
+  raise or remove it as a "fix". Desktop builds can lift it, with the other guards against the
+  sensor, through `sensorLimitsLifted` for the touch app's screen, and in the
+  Due build that's the constant false.
 * `Z_BIAS` and the other sensitivity tables in `ls_sensor.ino` are rows first,
   columns second, unlike every other array. The comment there says why.
 * The `/*!!*/` markers in `setup()` flag hardware-specific sequencing. Do not
