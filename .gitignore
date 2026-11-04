@@ -5,3 +5,6 @@ build/*
 linnstrument-firmware.sublime-*
 stino.settings
 .claude/
+/linn
+/linn.exe
+linnstrument-backup-*.json
