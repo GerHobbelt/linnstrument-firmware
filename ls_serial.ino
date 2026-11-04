@@ -57,6 +57,7 @@ enum linnCommands {
   SendSettings = 's',
   ShowInfo = '?',
   TweakSettings = 't',
+  SwitchToMidi = 'm'
 };
 
 byte codePos = 0;
@@ -155,6 +156,12 @@ void handleSerialIO() {
       case RestoreProject:
         {
           serialRestoreProject();
+        break;
+      }
+
+      case SwitchToMidi:
+      {
+        serialSwitchToMidi();
           break;
         }
 
@@ -378,6 +385,17 @@ fail:
     lightLed(0, GLOBAL_SETTINGS_ROW);
   }
 
+  updateDisplay();
+  waitingForCommands = false;
+}
+
+// Leaves serial mode without restoring settings, same as tapping OS Update in Global Settings
+void serialSwitchToMidi() {
+  Serial.write(ackCode);
+  delayUsec(200000);
+
+  switchSerialMode(false);
+  storeSettings();
   updateDisplay();
   waitingForCommands = false;
 }
