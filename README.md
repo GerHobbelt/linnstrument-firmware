@@ -10,7 +10,7 @@ For experienced linnstrumentalists, microLinn makes exploring microtonality very
 #  INSTALLATION  
 
 
-1) Go to https://www.rogerlinndesign.com/support/support-linnstrument-update-software and follow the "How to Check Your Software Version" instructions. If it's not 2.3.3, follow the "How to Update Your LinnStrument Software‍" instructions to update to 2.3.3. Linux users: use a friend's mac or Windows machine to update. Version 2.3.4 is still in beta and is not yet supported.
+1) Go to https://www.rogerlinndesign.com/support/support-linnstrument-update-software and follow the "How to Check Your Software Version" instructions. If it's not 2.3.3 or 2.3.4, follow the "How to Update Your LinnStrument Software‍" instructions to update to 2.3.4. Linux users: use a friend's mac or Windows machine to update.
 2) Download linnstrument-firmware-microLinn-234.072.001.ino.bin.zip from the LinnWIki (the LinnStrument Community wiki) and unzip it. Important: if on a mac, put the .bin file on your **desktop**. 
 3) Follow the "How to Update Your LinnStrument Software‍" instructions, with one difference: after you download and unzip the updater and before running it, put it in the same folder as the .bin file from step 2. Mac users: when you run the updater, if it asks for permission to read files from the desktop, say yes.
 If you accidentally long-press the Update OS button, you'll enter user firmware mode and the display will go blank. To return to normal, just unplug your LinnStrument.
@@ -78,7 +78,7 @@ Additions to other menus:
 * Octave/Transpose display: when microtonal, additional option for transposing by major 2nds
 * Global display:
 * * row offset buttons turn pink if overridden by a per-split row offset, red if not coprime with a column offset
-* * long-press Tap Tempo and swipe for new options TRNS+, TRNS-, 8VE±, 8VE∓, PRE, MEM, EDO+ and EDO-
+* * long-press Tap Tempo and swipe for new options TRNS-, TRNS+, 8VE±, 8VE∓, PRE, MEM, EDO+ and EDO-
 * * double-tap Low Power for dim-but-fast mode (bright blue)
 * * double-tap Update OS to uninstall microLinn (red), use with caution!
 * * yellow button(s) for the microLinn menu
@@ -335,7 +335,7 @@ You can back up various settings and/or share them with others via midi files. T
   * *(4) For security, unplugging the LinnStrument turns Allow Importing off, so you must turn it on each time you import.*
   * *(5) When importing, first exit all web browsers in case a webmidi page sends rouge NRPN or polypressure messages.*
   * *(6) When importing, slowing down your DAW's playback speed sometimes helps. Likewise, when exporting, speeding up your DAW's recording speed can help.*
-  * *(7) The AllUserSettings export is meant for migrating from an old LinnStrument to a new one. It can import from a Linn128 to a Linn200 and vice versa. But it will only import if the OS version on the old LinnStrument matches the OS version on the new one. (Or more precisely, if the data structure versions match. The current version is 72.1.)*
+  * *(7) The AllUserSettings export is meant for migrating from an old LinnStrument to a new one. It can import from a Linn128 to a Linn200 and vice versa. But it will only import if the OS version on the old LinnStrument matches the OS version on the new one. (Or more precisely, if the data structure versions match. The current version is 72.2, which can also import from 72.1.)*
   * *(8) If you get "IMPORT FAILURE" followed by 2 numbers, the 2nd number says which midi message in the import file caused the failure. For example, 7 means the 7th midi message.*
   * *(9) MicroLinn imports data via polyphonic pressure messages. If you have connected something else to your LinnStrument that also sends polypressure messages, there is a small possibility of confusion. If after importing there is no sucess or failure scrolling message, to avoid confusion either set Allow Importing to OFF, or just unplug the LinnStrument.*
 

@@ -411,8 +411,8 @@ inline void storeSettingsToPreset(byte p) {
 void initializeDeviceSettings() {
   DEBUGPRINT_FUNCNAME_L0();
 
-  // when a new mainstream version is released, update 16 to 17 to reflect Geert's Feb 2026 changes
-  Device.version = 17 + MICROLINN_VERSION_OFFSET;          // 16 is the latest non-MicroLinn version (created in 2023)
+  // when a new mainstream version is released, update 17 to 18 to reflect Geert's Feb 2026 changes
+  Device.version = 17 + MICROLINN_VERSION_OFFSET;          // 17 is the latest non-MicroLinn version (created in 2026)
   Device.serialMode = false;
   Device.sleepAnimationActive = false;
   Device.sleepActive = false;
@@ -1727,7 +1727,7 @@ void handlePerSplitSettingHold() {
             resetNumericDataChange();
             setDisplayMode(displayLowRowBendConfig);
             updateDisplay();
-            break;
+            break;          
           case 5:
             lowRowCCXConfigState = 1;
             resetNumericDataChange();

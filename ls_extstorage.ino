@@ -829,84 +829,10 @@ struct ConfigurationV14 {
   PresetSettingsV10 preset[4];
   SequencerProject project;
 };
-/**************************************** Configuration V15 ****************************************
-This is used by firmware v2.2.0, v2.2.1, v2.2.2
-**************************************************************************************************/
-struct SplitSettingsV7 {
-  byte midiMode;                          // 0 = one channel, 1 = note per channel, 2 = row per channel
-  byte midiChanMain;                      // main midi channel, 1 to 16
-  boolean midiChanMainEnabled;            // true when the midi main channel is enabled to send common data, false in not
-  byte midiChanPerRow;                    // per-row midi channel, 1 to 16
-  boolean midiChanPerRowReversed;         // indicates whether channel per row channels count upwards or downwards across the rows
-  boolean midiChanSet[16];                // Indicates whether each channel is used.  If midiMode!=channelPerNote, only one channel can be set.
-  BendRangeOption bendRangeOption;        // see BendRangeOption
-  byte customBendRange;                   // 1 - 96
-  boolean sendX;                          // true to send continuous X, false if not
-  boolean sendY;                          // true to send continuous Y, false if not
-  boolean sendZ;                          // true to send continuous Z, false if not
-  boolean pitchCorrectQuantize;           // true to quantize pitch of initial touch, false if not
-  byte pitchCorrectHold;                  // See PitchCorrectHoldSpeed values
-  boolean pitchResetOnRelease;            // true to enable pitch bend being set back to 0 when releasing a touch
-  TimbreExpression expressionForY;        // the expression that should be used for timbre
-  unsigned short customCCForY;            // 0-129 (with 128 and 129 being placeholders for PolyPressure and ChannelPressure)
-  unsigned short minForY;                 // 0-127
-  unsigned short maxForY;                 // 0-127
-  boolean relativeY;                      // true when Y should be sent relative to the initial touch, false when it's absolute
-  unsigned short initialRelativeY;        // 0-127
-  LoudnessExpression expressionForZ;      // the expression that should be used for loudness
-  unsigned short customCCForZ;            // 0-127
-  unsigned short minForZ;                 // 0-127
-  unsigned short maxForZ;                 // 0-127
-  boolean ccForZ14Bit;                    // true when 14-bit messages should be sent when Z CC is between 0-31, false when only 7-bit messages should be sent
-  unsigned short ccForFader[8];           // each fader can control a CC number ranging from 0-128 (with 128 being placeholder for ChannelPressure)
-  byte colorMain;                         // color for non-accented cells
-  byte colorAccent;                       // color for accented cells
-  byte colorPlayed;                       // color for played notes
-  byte colorLowRow;                       // color for low row if on
-  byte colorSequencerEmpty;               // color for sequencer low row step with no events
-  byte colorSequencerEvent;               // color for sequencer low row step with events
-  byte colorSequencerDisabled;            // color for sequencer low row step that's not being played
-  byte playedTouchMode;                   // see PlayedTouchMode values
-  byte lowRowMode;                        // see LowRowMode values
-  byte lowRowCCXBehavior;                 // see LowRowCCBehavior values
-  unsigned short ccForLowRow;             // 0-128 (with 128 being placeholder for ChannelPressure)
-  byte lowRowCCXYZBehavior;               // see LowRowCCBehavior values
-  unsigned short ccForLowRowX;            // 0-128 (with 128 being placeholder for ChannelPressure)
-  unsigned short ccForLowRowY;            // 0-128 (with 128 being placeholder for ChannelPressure)
-  unsigned short ccForLowRowZ;            // 0-128 (with 128 being placeholder for ChannelPressure)
-  signed char transposeOctave;            // -60, -48, -36, -24, -12, 0, +12, +24, +36, +48, +60
-  signed char transposePitch;             // transpose output midi notes. Range is -12 to +12
-  signed char transposeLights;            // transpose lights on display. Range is -12 to +12
-  boolean ccFaders;                       // true to activated 8 CC faders for this split, false for regular music performance
-  boolean arpeggiator;                    // true when the arpeggiator is on, false if notes should be played directly
-  boolean strum;                          // true when this split strums the touches of the other split
-  boolean mpe;                            // true when MPE is active for this split
-  boolean sequencer;                      // true when the sequencer of this split is displayed
-  SequencerView sequencerView;            // see SequencerView
-};
-struct PresetSettingsV11 {
-  GlobalSettings global;
-  SplitSettingsV7 split[NUMSPLITS];
-};
-struct ConfigurationV15 {
-  DeviceSettingsV12 device;
-  PresetSettingsV11 settings;
-  PresetSettingsV11 preset[6];
-  SequencerProject project;
-};
-/**************************************** Configuration V16 ****************************************
-This is used by firmware v2.3.0, v2.3.1, v2.3.2, v2.3.3
-**************************************************************************************************/
-struct ConfigurationV16 {
-  DeviceSettings device;
-  PresetSettingsV11 settings;
-  PresetSettingsV11 preset[NUMPRESETS];
-  SequencerProject project;
-};
 
 /**************************************** Configuration V16 ****************************************
-This is used by latest pre-MicroLinn firmware, V16. It's called VLatest to avoid conflict with the future official V16
-When the official V17 comes out, change all the Vlatest structs to the V17 version
+This is used by firmware v2.3.0, v2.3.1, v2.3.2, v2.3.3. It's called VLatest because it's the latest official layout
+that microLinn is based on, microLinn still uses it after V17, and restoreNonMicroLinnConfiguration() goes back to it
 **************************************************************************************************/
 struct DeviceSettingsVLatest {
   byte version;                                   // the version of the configuration format
@@ -1032,6 +958,88 @@ struct ConfigurationVLatest {
   SequencerProject project;
 };
 
+/**************************************** Configuration V15 ****************************************
+This is used by firmware v2.2.0, v2.2.1, v2.2.2
+Its presets have the same layout as V16's, so it's declared after the V16 structs and uses them
+**************************************************************************************************/
+struct ConfigurationV15 {
+  DeviceSettingsV12 device;
+  PresetSettingsVLatest settings;
+  PresetSettingsVLatest preset[6];
+  SequencerProject project;
+};
+
+/**************************************** Configuration V17 ****************************************
+This is used by firmware v2.3.4
+Its splits have lowRowBendBehavior after lowRowMode, but microLinn keeps the V16 layout instead, with
+lowRowBendBehavior in the high byte of the V16 ccForLowRow, so V17 settings are converted field by field
+**************************************************************************************************/
+struct SplitSettingsV17 {
+  byte midiMode;                          // 0 = one channel, 1 = note per channel, 2 = row per channel
+  byte midiChanMain;                      // main midi channel, 1 to 16
+  boolean midiChanMainEnabled;            // true when the midi main channel is enabled to send common data, false in not
+  byte midiChanPerRow;                    // per-row midi channel, 1 to 16
+  boolean midiChanPerRowReversed;         // indicates whether channel per row channels count upwards or downwards across the rows
+  boolean midiChanSet[16];                // Indicates whether each channel is used.  If midiMode!=channelPerNote, only one channel can be set.
+  BendRangeOption bendRangeOption;        // see BendRangeOption
+  byte customBendRange;                   // 1 - 96
+  boolean sendX;                          // true to send continuous X, false if not
+  boolean sendY;                          // true to send continuous Y, false if not
+  boolean sendZ;                          // true to send continuous Z, false if not
+  boolean pitchCorrectQuantize;           // true to quantize pitch of initial touch, false if not
+  byte pitchCorrectHold;                  // See PitchCorrectHoldSpeed values
+  boolean pitchResetOnRelease;            // true to enable pitch bend being set back to 0 when releasing a touch
+  TimbreExpression expressionForY;        // the expression that should be used for timbre
+  unsigned short customCCForY;            // 0-129 (with 128 and 129 being placeholders for PolyPressure and ChannelPressure)
+  unsigned short minForY;                 // 0-127
+  unsigned short maxForY;                 // 0-127
+  boolean relativeY;                      // true when Y should be sent relative to the initial touch, false when it's absolute
+  unsigned short initialRelativeY;        // 0-127
+  LoudnessExpression expressionForZ;      // the expression that should be used for loudness
+  unsigned short customCCForZ;            // 0-127
+  unsigned short minForZ;                 // 0-127
+  unsigned short maxForZ;                 // 0-127
+  boolean ccForZ14Bit;                    // true when 14-bit messages should be sent when Z CC is between 0-31, false when only 7-bit messages should be sent
+  unsigned short ccForFader[8];           // each fader can control a CC number ranging from 0-128 (with 128 being placeholder for ChannelPressure)
+  byte colorMain;                         // color for non-accented cells
+  byte colorAccent;                       // color for accented cells
+  byte colorPlayed;                       // color for played notes
+  byte colorLowRow;                       // color for low row if on
+  byte colorSequencerEmpty;               // color for sequencer low row step with no events
+  byte colorSequencerEvent;               // color for sequencer low row step with events
+  byte colorSequencerDisabled;            // color for sequencer low row step that's not being played
+  byte playedTouchMode;                   // see PlayedTouchMode values
+  byte lowRowMode;                        // see LowRowMode values
+  byte lowRowBendBehavior;                // see LowRowBendBehavior values
+  byte lowRowCCXBehavior;                 // see LowRowCCBehavior values
+  unsigned short ccForLowRow;             // 0-128 (with 128 being placeholder for ChannelPressure)
+  byte lowRowCCXYZBehavior;               // see LowRowCCBehavior values
+  unsigned short ccForLowRowX;            // 0-128 (with 128 being placeholder for ChannelPressure)
+  unsigned short ccForLowRowY;            // 0-128 (with 128 being placeholder for ChannelPressure)
+  unsigned short ccForLowRowZ;            // 0-128 (with 128 being placeholder for ChannelPressure)
+  signed char transposeOctave;            // -60, -48, -36, -24, -12, 0, +12, +24, +36, +48, +60
+  signed char transposePitch;             // transpose output midi notes. Range is -12 to +12
+  signed char transposeLights;            // transpose lights on display. Range is -12 to +12
+  boolean ccFaders;                       // true to activated 8 CC faders for this split, false for regular music performance
+  boolean arpeggiator;                    // true when the arpeggiator is on, false if notes should be played directly
+  boolean strum;                          // true when this split strums the touches of the other split
+  boolean mpe;                            // true when MPE is active for this split
+  boolean sequencer;                      // true when the sequencer of this split is displayed
+  SequencerView sequencerView;            // see SequencerView
+};
+
+struct PresetSettingsV17 {
+  GlobalSettingsVLatest global;                  // unchanged in V17
+  SplitSettingsV17 split[NUMSPLITS];
+};
+
+struct ConfigurationV17 {
+  DeviceSettingsVLatest device;                  // unchanged in V17
+  PresetSettingsV17 settings;
+  PresetSettingsV17 preset[6];
+  SequencerProject project;
+};
+
 /*************************************************************************************************/
 
 boolean upgradeConfigurationSettings(int32_t confSize, const byte* buff2) {
@@ -1148,11 +1156,11 @@ boolean upgradeConfigurationSettings(int32_t confSize, const byte* buff2) {
           copyConfigurationFunction = &copyConfigurationVLatest;
         }
         break;
-      // this is the v17 of the configuration configuration, apply it if the size is right
+      // this is the v17 of the configuration (official v2.3.4), microLinn keeps the v16 layout, so convert it
       case 17:
-        if (confSize == sizeof(Configuration)) {
-          memcpy(&config, buff2, confSize);
-          result = true;
+        updaterImpliedSettingsSize = sizeof(ConfigurationV17);
+        if (confSize == sizeof(ConfigurationV17)) {
+          copyConfigurationFunction = &copyConfigurationV17;
         }
         break;
       // this is the MicroLinn variant of v16, apply it if the size is right
@@ -1171,10 +1179,17 @@ boolean upgradeConfigurationSettings(int32_t confSize, const byte* buff2) {
             }
           } else if (microLinnVersion == 1) {
             updaterImpliedSettingsSize = sizeof(Configuration);
+            if (confSize == sizeof(Configuration)) {                      // 72.1 has the same layout as 72.2
+              copyConfigurationMicroLinnV72_1(&config, buff2);
+              setupMicroLinn();
+              result = true;
+            } else {
+              result = false;
+            }
+          } else if (microLinnVersion == 2) {
+            updaterImpliedSettingsSize = sizeof(Configuration);
             if (confSize == sizeof(Configuration)) {
               memcpy(&config, buff2, confSize);
-              // when version 72.2 is released, replace the previous memcpy with the following line
-              // copyConfigurationFunction = &copyConfigurationMicroLinnV72_1;
               setupMicroLinn();
               result = true;
             } else {
@@ -2360,9 +2375,109 @@ void copyConfigurationV14(void* target, const void* source) {
 
 /*************************************************************************************************/
 
-void copySplitSettingsV7(void* target, const void* source) {
+void copyConfigurationV15(void* target, const void* source) {
+  Configuration* t = (Configuration*)target;
+  const ConfigurationV15* s = (const ConfigurationV15*)source;
+
+  copyDeviceSettingsV12(&t->device, &s->device);
+
+  copyPresetSettingsVLatest(&t->settings, &s->settings);
+  for (byte p = 0; p < 6; ++p) {
+    copyPresetSettingsVLatest(&t->preset[p], &s->preset[p]);
+  }
+
+  memcpy(&t->project, &s->project, sizeof(SequencerProject));
+
+  initMicroLinnData();
+}
+
+/*************************************************************************************************/
+
+void initMicroLinnData() {
+  // shouldn't be needed, but fixes a mysterious bug where the first 2 microLinn vars are both zero after updating
+  // but initializeMicroLinn() explicitly sets those vars as well as others that aren't zeroed out, e.g. anchorCol
+  // the bug might be using sizeof(GlobalSettings) or sizeof(MicroLinnGlobal) when there's 2 bytes of padding somewhere
+  // initializeMicroLinn() will override what things are set to here, so it seems to run after this function
+
+  byte maxRowOffset = 25;
+  config.settings.global.microLinn.drumPadMode = 0; 
+  config.settings.global.microLinn.dotsCarryOver = false; 
+  config.settings.global.microLinn.locatingCC1 = 255; 
+  //config.settings.global.microLinn.EDO = 4; 
+  //config.settings.global.microLinn.useRainbow = true;
+  for (byte split = 0; split < NUMSPLITS; split++) {
+    config.settings.split[split].microLinn.colOffset = 1;
+    config.settings.split[split].microLinn.rowOffset = -maxRowOffset - 1;
+  }
+
+  for (byte p = 0; p < NUMPRESETS; p++) {
+    config.preset[p].global.microLinn.drumPadMode = 0; 
+    config.preset[p].global.microLinn.dotsCarryOver = false; 
+    config.preset[p].global.microLinn.locatingCC1 = 255; 
+    //config.preset[p].global.microLinn.EDO = 4; 
+    //config.preset[p].global.microLinn.useRainbow = true;
+    for (byte split = 0; split < NUMSPLITS; split++) {
+      config.preset[p].split[split].microLinn.colOffset = 1;
+      config.preset[p].split[split].microLinn.rowOffset = -maxRowOffset - 1;
+    }
+  }
+
+  config.device.microLinn.MLversion = MICROLINN_MLVERSION;
+  config.device.microLinn.uninstall = false;
+}
+
+void copyGlobalSettingsVLatest(void* target, const void* source) {           // copies V15, V16 or V17 global settings to microLinn
+  GlobalSettings* t = (GlobalSettings*)target;
+  const GlobalSettingsVLatest* s = (const GlobalSettingsVLatest*)source;
+
+  memcpy(t, s, sizeof(GlobalSettingsVLatest));
+  if (t->customRowOffset == -17) t->customRowOffset = -5;                       // the "-GUI" option
+}
+
+void copyPresetSettingsVLatest(void* target, const void* source) {           // copies V15 or V16 presets to microLinn
+  PresetSettings* t = (PresetSettings*)target;
+  const PresetSettingsVLatest* s = (const PresetSettingsVLatest*)source;
+
+  copyGlobalSettingsVLatest(&t->global, &s->global);
+
+  for (int split = 0; split < NUMSPLITS; split++) {
+    memcpy(&t->split[split], &s->split[split], sizeof(s->split[split]));
+    if (t->split[split].playedTouchMode > playedSame) {
+        t->split[split].playedTouchMode += 1;                                 // make room for the BLNK option
+    }
+  }
+}
+
+void copyConfigurationVLatest(void* target, const void* source) {            // copies from V16 to microLinn 72.1
+  Configuration* t = (Configuration*)target;
+  const ConfigurationVLatest* s = (const ConfigurationVLatest*) source;
+
+  memcpy(&t->device, &s->device, sizeof(s->device));
+  t->device.version = 16 + MICROLINN_VERSION_OFFSET;
+
+  copyPresetSettingsVLatest(&t->settings, &s->settings);
+
+  // condense both arrays of ints down to shorts
+  //short* array = (short *) &Global.mainNotes;                   // configure both old arrays as a simple array of bytes
+  //for (byte i = 0; i < 9; i++) {
+  //  Global.mainNotes[i] = array[2*i];
+  //}
+  //for (byte i = 0; i < 9; i++) {
+  //  Global.accentNotes[i] = array[2*i + 18];
+  //}
+  //memset (array[18], 0, 60);
+
+  for (byte p = 0; p < 6; p++) {
+    copyPresetSettingsVLatest(&t->preset[p], &s->preset[p]);
+  }
+  memcpy(&t->project, &s->project, sizeof(s->project));
+
+  initMicroLinnData();
+}
+
+void copySplitSettingsV17(void* target, const void* source) {                // copies an official V17 split to microLinn, field by field
   SplitSettings* t = (SplitSettings*)target;
-  const SplitSettingsV7* s = (const SplitSettingsV7*)source;
+  const SplitSettingsV17* s = (const SplitSettingsV17*)source;
 
   t->midiMode = s->midiMode;
   t->midiChanMain = s->midiChanMain;
@@ -2398,8 +2513,11 @@ void copySplitSettingsV7(void* target, const void* source) {
   t->colorSequencerEvent = s->colorSequencerEvent;
   t->colorSequencerDisabled = s->colorSequencerDisabled;
   t->playedTouchMode = s->playedTouchMode;
+  if (t->playedTouchMode > playedSame) {
+    t->playedTouchMode += 1;                                            // make room for the BLNK option
+  }
   t->lowRowMode = s->lowRowMode;
-  t->lowRowBendBehavior = lowRowBendBend;
+  t->lowRowBendBehavior = s->lowRowBendBehavior;                        // microLinn keeps it in the V16 ccForLowRow's high byte
   t->lowRowCCXBehavior = s->lowRowCCXBehavior;
   t->ccForLowRow = s->ccForLowRow;
   t->lowRowCCXYZBehavior = s->lowRowCCXYZBehavior;
@@ -2417,126 +2535,35 @@ void copySplitSettingsV7(void* target, const void* source) {
   t->sequencerView = s->sequencerView;
 }
 
-void copyPresetSettingsV11(void* target, const void* source) {
+void copyPresetSettingsV17(void* target, const void* source) {               // copies official V17 presets to microLinn
   PresetSettings* t = (PresetSettings*)target;
-  const PresetSettingsV11* s = (const PresetSettingsV11*)source;
+  const PresetSettingsV17* s = (const PresetSettingsV17*)source;
 
-  memcpy(&t->global, &s->global, sizeof(GlobalSettings));
-
-  copySplitSettingsV7(&t->split[LEFT], &s->split[LEFT]);
-  copySplitSettingsV7(&t->split[RIGHT], &s->split[RIGHT]);
-}
-
-void copyConfigurationV15(void* target, const void* source) {
-  Configuration* t = (Configuration*)target;
-  const ConfigurationV15* s = (const ConfigurationV15*)source;
-
-  copyDeviceSettingsV12(&t->device, &s->device);
-
-  copyPresetSettingsV11(&t->settings, &s->settings);
-  for (byte p = 0; p < 6; ++p) {
-    copyPresetSettingsV11(&t->preset[p], &s->preset[p]);
-  }
-
-  memcpy(&t->project, &s->project, sizeof(SequencerProject));
-}
-
-/*************************************************************************************************/
-
-void copyConfigurationV16(void* target, const void* source) {
-  Configuration* t = (Configuration*)target;
-  const ConfigurationV16* s = (const ConfigurationV16*)source;
-
-  memcpy(&t->device, &s->device, sizeof(DeviceSettings));
-
-  copyPresetSettingsV11(&t->settings, &s->settings);
-  for (byte p = 0; p < 6; ++p) {
-    copyPresetSettingsV11(&t->preset[p], &s->preset[p]);
-  }
-
-  memcpy(&t->project, &s->project, sizeof(SequencerProject));
-}
-
-/*************************************************************************************************/
-
-void initMicroLinnData() {
-  // shouldn't be needed, but fixes a mysterious bug where the first 2 microLinn vars are both zero after updating
-  // but initializeMicroLinn() explicitly sets those vars as well as others that aren't zeroed out, e.g. anchorCol
-  // the bug might be using sizeof(GlobalSettings) or sizeof(MicroLinnGlobal) when there's 2 bytes of padding somewhere
-  // initializeMicroLinn() will override what things are set to here, so it seems to run after this function
-
-  byte maxRowOffset = 25;
-  config.settings.global.microLinn.drumPadMode = 0; 
-  config.settings.global.microLinn.dotsCarryOver = false; 
-  config.settings.global.microLinn.locatingCC1 = 255; 
-  //config.settings.global.microLinn.EDO = 4; 
-  //config.settings.global.microLinn.useRainbow = true;
+  copyGlobalSettingsVLatest(&t->global, &s->global);
   for (byte split = 0; split < NUMSPLITS; split++) {
-    config.settings.split[split].microLinn.colOffset = 1;
-    config.settings.split[split].microLinn.rowOffset = -maxRowOffset - 1;
+    copySplitSettingsV17(&t->split[split], &s->split[split]);
   }
-
-  for (byte p = 0; p < NUMPRESETS; p++) {
-    config.preset[p].global.microLinn.drumPadMode = 0; 
-    config.preset[p].global.microLinn.dotsCarryOver = false; 
-    config.preset[p].global.microLinn.locatingCC1 = 255; 
-    //config.preset[p].global.microLinn.EDO = 4; 
-    //config.preset[p].global.microLinn.useRainbow = true;
-    for (byte split = 0; split < NUMSPLITS; split++) {
-      config.preset[p].split[split].microLinn.colOffset = 1;
-      config.preset[p].split[split].microLinn.rowOffset = -maxRowOffset - 1;
-    }
-  }
-
-  config.device.microLinn.MLversion = 1;                               // the 1 in 72.1
-  config.device.microLinn.uninstall = false;
 }
 
-void copyConfigurationVLatest(void* target, void* source) {            // copies from V16 to microLinn 72.1
+void copyConfigurationV17(void* target, const void* source) {                // copies from official V17 to microLinn 72.2
   Configuration* t = (Configuration*)target;
-  ConfigurationVLatest* s = (ConfigurationVLatest*) source;
+  const ConfigurationV17* s = (const ConfigurationV17*)source;
 
   memcpy(&t->device, &s->device, sizeof(s->device));
   t->device.version = 16 + MICROLINN_VERSION_OFFSET;
 
-  memcpy(&t->settings.global, &s->settings.global, sizeof(s->settings.global));
-  if (t->settings.global.customRowOffset == -17) t->settings.global.customRowOffset = -5;   // the "-GUI" option
-
-  // condense both arrays of ints down to shorts
-  //short* array = (short *) &Global.mainNotes;                   // configure both old arrays as a simple array of bytes
-  //for (byte i = 0; i < 9; i++) {
-  //  Global.mainNotes[i] = array[2*i];
-  //}
-  //for (byte i = 0; i < 9; i++) {
-  //  Global.accentNotes[i] = array[2*i + 18];
-  //}
-  //memset (array[18], 0, 60);
-
-  for (int split = 0; split < NUMSPLITS; split++) {
-    memcpy(&t->settings.split[split], &s->settings.split[split], sizeof(s->settings.split[split]));
-    if (t->settings.split[split].playedTouchMode > playedSame) {
-        t->settings.split[split].playedTouchMode += 1;                // make room for the BLNK option
-    }
-  }
-
+  copyPresetSettingsV17(&t->settings, &s->settings);
   for (byte p = 0; p < 6; p++) {
-    memcpy(&t->preset[p].global, &s->preset[p].global, sizeof(s->preset[p].global));
-    if (t->preset[p].global.customRowOffset == -17) t->preset[p].global.customRowOffset = -5;
-    for (int split = 0; split < NUMSPLITS; split++) {
-      memcpy(&t->preset[p].split[split], &s->preset[p].split[split], sizeof(s->preset[p].split[split]));
-      if (t->preset[p].split[split].playedTouchMode > playedSame) {
-          t->preset[p].split[split].playedTouchMode += 1;
-      }
-    }
+    copyPresetSettingsV17(&t->preset[p], &s->preset[p]);
   }
   memcpy(&t->project, &s->project, sizeof(s->project));
 
   initMicroLinnData();
 }
 
-void migrateFromMicroLinnGlobalV72_0 (MicroLinnGlobal* t, void* source) {
+void migrateFromMicroLinnGlobalV72_0 (MicroLinnGlobal* t, const void* source) {
   // copy what's in 72.0, initialize what isn't
-  MicroLinnV72_0::MicroLinnGlobal* s = (typeof(s)) source;
+  const MicroLinnV72_0::MicroLinnGlobal* s = (typeof(s)) source;
   t->drumPadMode = 0;
   t->locatingCC1 = 255;
   t->locatingCC2 = 255;
@@ -2560,9 +2587,9 @@ void migrateFromMicroLinnGlobalV72_0 (MicroLinnGlobal* t, void* source) {
   }
 }
 
-void migrateFromMicroLinnSplitV72_0 (MicroLinnSplit* t, void* source) {
+void migrateFromMicroLinnSplitV72_0 (MicroLinnSplit* t, const void* source) {
   // copy what's in 72.0, initialize what isn't, ignore what's in 72.0 but not in 72.1
-  MicroLinnV72_0::MicroLinnSplit* s = (typeof(s)) source;
+  const MicroLinnV72_0::MicroLinnSplit* s = (typeof(s)) source;
   t->colOffset = s->colOffset;
   t->rowOffset = -26;
   t->monoFixes = 0;
@@ -2577,13 +2604,13 @@ void migrateFromMicroLinnSplitV72_0 (MicroLinnSplit* t, void* source) {
   t->transposeEDOsteps = s->transposeEDOsteps;
 }
 
-void copyConfigurationMicroLinnV72_0(void* target, void* source) {   // copies from 72.0 to 72.1
+void copyConfigurationMicroLinnV72_0(void* target, const void* source) {   // copies from 72.0 to the current 72.x layout
   Configuration* t = (Configuration*)target;
-  MicroLinnV72_0::Configuration* s = (typeof(s)) source;             // "::" refers to the namespace in ls_extstorageMicroLinn.ino
+  const MicroLinnV72_0::Configuration* s = (typeof(s)) source;             // "::" refers to the namespace in ls_extstorageMicroLinn.ino
 
   memcpy(&t->device, &s->device, sizeof(s->device));                 // Device.microLinn gets copied automatically
   t->device.version = 16 + MICROLINN_VERSION_OFFSET;                 // redundant, delete?
-  t->device.microLinn.MLversion = 1;
+  t->device.microLinn.MLversion = MICROLINN_MLVERSION;
   t->device.microLinn.uninstall = false;
 
   memcpy(&t->settings.global, &s->settings.global, sizeof(GlobalSettings) - sizeof(MicroLinnGlobal));
@@ -2604,6 +2631,57 @@ void copyConfigurationMicroLinnV72_0(void* target, void* source) {   // copies f
   memcpy(&t->project, &s->project, sizeof(s->project));
 }
 
+// 72.2 has the same layout as 72.1, but ASSIGNED_TRANSPOSE_UP and ASSIGNED_TRANSPOSE_DOWN were swapped to match the official firmware
+unsigned short switchAssignmentFromMicroLinnV72_1(unsigned short assignment) {    // also used for bulk imports from 72.1
+  if (assignment == 18) return ASSIGNED_TRANSPOSE_UP;                            // 18 was TRANSPOSE_UP in 72.1
+  if (assignment == 19) return ASSIGNED_TRANSPOSE_DOWN;                          // 19 was TRANSPOSE_DOWN in 72.1
+  return assignment;
+}
+
+void migrateSwitchesFromMicroLinnV72_1(GlobalSettings* g) {
+  for (byte i = 0; i < 5; i++) {
+    g->switchAssignment[i] = switchAssignmentFromMicroLinnV72_1(g->switchAssignment[i]);
+    g->customSwitchAssignment[i] = switchAssignmentFromMicroLinnV72_1(g->customSwitchAssignment[i]);
+  }
+}
+
+void copyConfigurationMicroLinnV72_1(void* target, void* source) {   // copies from 72.1 to 72.2
+  Configuration* t = (Configuration*)target;
+
+  memcpy(t, source, sizeof(Configuration));
+  t->device.microLinn.MLversion = MICROLINN_MLVERSION;
+
+  migrateSwitchesFromMicroLinnV72_1(&t->settings.global);
+  for (byte p = 0; p < NUMPRESETS; p++) {
+    migrateSwitchesFromMicroLinnV72_1(&t->preset[p].global);
+  }
+}
+
+void restoreNonMicroLinnGlobal(void* target) {                          // V16 has no microLinn values, see below
+  GlobalSettingsVLatest* g = (GlobalSettingsVLatest*)target;
+
+  g->customRowOffset = constrain(g->customRowOffset, -16, 16);
+  for (byte i = 0; i < 5; i++) {
+    // V16 only has switch values up to ASSIGNED_SEQUENCER_MUTE, so no TRN-, TRN+, 8VE±, 8VE∓, PRE, MEM, SCL, EDO+ or EDO-
+    if (g->customSwitchAssignment[i] > ASSIGNED_SEQUENCER_MUTE) {
+      g->customSwitchAssignment[i] = ASSIGNED_TAP_TEMPO;
+    }
+    if (g->switchAssignment[i] > ASSIGNED_SEQUENCER_MUTE && g->switchAssignment[i] != ASSIGNED_DISABLED) {
+      if (i == SWITCH_FOOT_B) g->switchAssignment[i] = ASSIGNED_DISABLED;             // disable virtual 3rd footswitch
+      else g->switchAssignment[i] = g->customSwitchAssignment[i];                     // keep the custom option selected
+    }
+  }
+}
+
+void restoreNonMicroLinnSplit(void* target) {
+  SplitSettingsVLatest* t = (SplitSettingsVLatest*)target;
+
+  t->ccForLowRow &= 0xFF;                                                            // the high byte is microLinn's lowRowBendBehavior
+  if (t->playedTouchMode > playedSame) {
+      t->playedTouchMode -= 1;                                                       // no BLNK option, so merge it with SAME
+  }
+}
+
 /* Roll back settings to latest non-MicroLinn format, so user can uninstall microLinn */
 void restoreNonMicroLinnConfiguration(void* target, void* source) {
   ConfigurationVLatest* t = (ConfigurationVLatest*)target;
@@ -2614,35 +2692,18 @@ void restoreNonMicroLinnConfiguration(void* target, void* source) {
   t->device.operatingLowPower = false;                                               // avoid 2 = dimmed display
 
   memcpy(&t->settings.global, &s->settings.global, sizeof(t->settings.global));
-  t->settings.global.customRowOffset = constrain(t->settings.global.customRowOffset, -16, 16);
-  for (byte i = 0; i < 5; i++) {
-    if (t->settings.global.customSwitchAssignment[i] > MAX_ASSIGNED - 4) {           // no 8VE_UP, 8VE_DOWN, EDO_UP or EDO_DOWN
-        t->settings.global.customSwitchAssignment[i] = ASSIGNED_TAP_TEMPO;
-        if (i == 4) t->settings.global.switchAssignment[i] = ASSIGNED_DISABLED;      // disable virtual 3rd footswitch
-    }
-  }
-
+  restoreNonMicroLinnGlobal(&t->settings.global);
   for (byte split = 0; split < NUMSPLITS; split++) {
     memcpy(&t->settings.split[split], &s->settings.split[split], sizeof(t->settings.split[split]));
-    if (t->settings.split[split].playedTouchMode > playedSame) {
-        t->settings.split[split].playedTouchMode -= 1;                               // no BLNK option, so merge it with SAME
-    }
+    restoreNonMicroLinnSplit(&t->settings.split[split]);
   }
 
   for (byte p = 0; p < 6; p++) {
     memcpy(&t->preset[p].global, &s->preset[p].global, sizeof(t->preset[p].global));
-    t->preset[p].global.customRowOffset = constrain(t->preset[p].global.customRowOffset, -16, 16);
-    for (byte i = 0; i < 5; i++) {
-      if (t->preset[p].global.customSwitchAssignment[i] > MAX_ASSIGNED - 4) {
-          t->preset[p].global.customSwitchAssignment[i] = ASSIGNED_TAP_TEMPO;
-          if (i == 4) t->preset[p].global.switchAssignment[i] = ASSIGNED_DISABLED;
-      }
-    }
+    restoreNonMicroLinnGlobal(&t->preset[p].global);
     for (byte split = 0; split < NUMSPLITS; split++) {
       memcpy(&t->preset[p].split[split], &s->preset[p].split[split], sizeof(t->preset[p].split[split]));
-      if (t->preset[p].split[split].playedTouchMode > playedSame) {
-          t->preset[p].split[split].playedTouchMode -= 1;
-      }
+      restoreNonMicroLinnSplit(&t->preset[p].split[split]);
     }
   }
 

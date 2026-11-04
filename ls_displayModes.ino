@@ -177,7 +177,7 @@ void updateDisplay() {
       break;
     case displayLowRowBendConfig:
       paintLowRowBendConfigDisplay(Global.currentPerSplit);
-      break;
+      break;      
     case displayLowRowCCXConfig:
       paintLowRowCCXConfigDisplay(Global.currentPerSplit);
       break;
@@ -505,7 +505,7 @@ void paintNormalDisplaySplit(byte split, byte leftEdge, byte rightEdge) {
       if (!userFirmwareActive && row == 0 && Split[split].lowRowMode != lowRowNormal) {
         if (Split[split].lowRowMode == lowRowBend && Split[split].lowRowBendBehavior == lowRowBendTranspose) {
           paintLowRowTranspose(split);
-        }
+        }        
         if (Split[split].lowRowMode == lowRowCCX && Split[split].lowRowCCXBehavior == lowRowCCFader) {
           paintCCFaderDisplayRow(split, 0, Split[split].colorLowRow, Split[split].ccForLowRow, faderLeft, faderLength, LED_LAYER_LOWROW);
         }
@@ -1480,11 +1480,11 @@ void paintCustomSwitchAssignmentConfigDisplay() {
     case ASSIGNED_SEQUENCER_MUTE:
       adaptfont_draw_string(0, 0, "MUTE", globalColor, true);
       break;
-    case ASSIGNED_TRANSPOSE_UP:
-      adaptfont_draw_string(0, 0, "TRN+", globalColor, true);
-      break;
     case ASSIGNED_TRANSPOSE_DOWN:
       adaptfont_draw_string(0, 0, "TRN-", globalColor, true);
+      break;
+    case ASSIGNED_TRANSPOSE_UP:
+      adaptfont_draw_string(0, 0, "TRN+", globalColor, true);
       break;
     case ASSIGNED_MICROLINN_8VE_UP:
       adaptfont_draw_string(0, 0, "8VE", globalColor, true);
@@ -1508,7 +1508,6 @@ void paintCustomSwitchAssignmentConfigDisplay() {
       break;
     case ASSIGNED_MICROLINN_EDO_DOWN:
       adaptfont_draw_string(0, 0, "EDO-", globalColor, true);
-      break;
   }
 }
 
@@ -1910,8 +1909,8 @@ void paintSwitchAssignment(byte mode) {
     case ASSIGNED_SEQUENCER_NEXT:
     case ASSIGNED_STANDALONE_MIDI_CLOCK:
     case ASSIGNED_SEQUENCER_MUTE:
-    case ASSIGNED_TRANSPOSE_UP:
     case ASSIGNED_TRANSPOSE_DOWN:
+    case ASSIGNED_TRANSPOSE_UP:
     case ASSIGNED_MICROLINN_8VE_UP:
     case ASSIGNED_MICROLINN_8VE_DOWN:
     case ASSIGNED_MICROLINN_PREV_PRESET:
