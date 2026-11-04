@@ -139,7 +139,7 @@ static const struct OSinfo {
   const char* OSVersion;
   const char* OSVersionBuild;
 } OSinfo = {
-  .OSVersion = "234.",
+  .OSVersion = "240.",
   .OSVersionBuild = ".076",
 };
 
