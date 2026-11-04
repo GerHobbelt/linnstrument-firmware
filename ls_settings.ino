@@ -1727,7 +1727,7 @@ void handlePerSplitSettingHold() {
             resetNumericDataChange();
             setDisplayMode(displayLowRowBendConfig);
             updateDisplay();
-            break;          
+            break;
           case 5:
             lowRowCCXConfigState = 1;
             resetNumericDataChange();

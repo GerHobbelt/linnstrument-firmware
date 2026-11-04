@@ -1508,6 +1508,7 @@ void paintCustomSwitchAssignmentConfigDisplay() {
       break;
     case ASSIGNED_MICROLINN_EDO_DOWN:
       adaptfont_draw_string(0, 0, "EDO-", globalColor, true);
+      break;
   }
 }
 
