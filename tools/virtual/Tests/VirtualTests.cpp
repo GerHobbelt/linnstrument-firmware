@@ -571,7 +571,21 @@ void each_copy_of_the_firmware_is_handed_to_one_engine_at_a_time() {
   for (auto* instance : taken) firmware::release(instance);
 }
 
-// the two screens a touch app labels, and neither once Per-Split Settings is closed again
+// Per-Split and Global Settings, and neither once Per-Split Settings is closed again
+// a label printed on a switch reads on its light in every colour the firmware gives it, at the
+// contrast small text needs (WCAG's 4.5:1)
+void a_switch_label_reads_on_every_light() {
+  auto luminance = [](juce::Colour c) {
+    auto part = [](juce::uint8 v) { double x = v / 255.0; return x <= 0.03928 ? x / 12.92 : std::pow((x + 0.055) / 1.055, 2.4); };
+    return 0.2126 * part(c.getRed()) + 0.7152 * part(c.getGreen()) + 0.0722 * part(c.getBlue());
+  };
+  double ink = luminance(Surface::switchInk());
+  for (int color : { 1, 2, 3, 4, 5, 6, 8, 9, 10, 11 }) {
+    double light = luminance(Surface::ledColourFor(color));
+    CHECK((juce::jmax(light, ink) + 0.05) / (juce::jmin(light, ink) + 0.05) >= 4.5);
+  }
+}
+
 void the_bridge_reports_which_settings_screen_is_up() {
   auto& e = engine();
   auto tap = [&e](int row) {
@@ -921,6 +935,256 @@ void a_fresh_flash_starts_with_the_settings_given_and_a_saved_one_without() {
   for (auto& m : e.takeMidiOut()) CHECK(!(m.size() == 3 && (m[0] & 0xf0) == 0xb0 && (m[1] == 100 || m[1] == 101)));
 }
 
+void an_engine_without_ports_opens_none_and_keeps_its_flash_out_of_files() {
+  auto& e = engine();
+  e.stop();
+  testFlash().deleteRecursively();
+  // the app's flash, which an engine without a file never boots from
+  e.start(128);
+  nrpn(e, 19, 12);
+  const uint8_t keep[] = { 0xb0, 23, 0 };
+  e.sendMidi(keep, sizeof(keep));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  e.stop();
+  juce::MemoryBlock appFlash;
+  CHECK(testFlash().getChildFile("flash-128.bin").loadFileAsData(appFlash));
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.bootFlash.clear();
+  int fresh = 0;
+  e.onFreshFlash = [&e, &fresh] {
+    ++fresh;
+    configureMpe(e);
+  };
+  e.start(128);
+  CHECK(!e.hasVirtualPorts());
+  CHECK(!e.status().contains("MIDI port"));
+  CHECK(fresh == 1);
+  CHECK(waitFor([&e] { return e.firmware().bendRange() == 48; }));
+  // nothing stored yet, so a fresh flash stays fresh, its starting settings given again
+  CHECK(e.currentFlash().empty());
+  e.stop();
+  CHECK(e.bootFlash.empty());
+  e.start(128);
+  CHECK(fresh == 2);
+  // a change stored, as saving a light pattern stores everything, is kept, read while it runs
+  nrpn(e, 19, 24);
+  const uint8_t store[] = { 0xb0, 23, 0 };
+  e.sendMidi(store, sizeof(store));
+  std::vector<uint8_t> running;
+  CHECK(waitFor([&] { running = e.currentFlash(); return running.size() == firmware::flashSize(); }));
+  e.stop();
+  CHECK(e.bootFlash == running);
+  CHECK(e.currentFlash() == running);
+  e.start(128);
+  CHECK(fresh == 2);
+  CHECK(e.firmware().bendRange() == 24);
+  e.stop();
+  CHECK(e.bootFlash == running);
+  juce::MemoryBlock still;
+  CHECK(testFlash().getChildFile("flash-128.bin").loadFileAsData(still) && still == appFlash);
+  testFlash().deleteRecursively();
+  e.onFreshFlash = nullptr;
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  e.start(128);
+  CHECK(e.hasVirtualPorts());
+  CHECK(e.firmware().bendRange() == 2);
+}
+
+// the flash taken while the instrument plays with settings it hasn't stored, as one
+// changed over MIDI is until a settings screen is left
+void a_flash_kept_in_memory_holds_the_settings_the_firmware_hasnt_stored() {
+  auto& e = engine();
+  e.stop();
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.bootFlash.clear();
+  e.onFreshFlash = [&e] { configureMpe(e); };
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 48);
+  CHECK(e.currentFlash().empty());
+  nrpn(e, 19, 24);
+  CHECK(waitFor([&e] { return e.firmware().bendRange() == 24; }));
+  auto changed = e.currentFlash();
+  CHECK(changed.size() == firmware::flashSize());
+  e.stop();
+  CHECK(e.bootFlash == changed);
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 24);
+  // unchanged since, the same flash
+  CHECK(e.currentFlash() == changed);
+  e.onFreshFlash = nullptr;
+  e.stop();
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  e.start(128);
+}
+
+// a flash saved by a firmware that kept its settings in another layout, elsewhere in the
+// flash: they're converted as the Updater's restore converts them, or the flash starts fresh
+void a_boot_flash_of_another_layout_gives_its_settings_converted() {
+  auto& e = engine();
+  e.stop();
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.onFreshFlash = [&e] { configureMpe(e); };
+  auto flashWith = [&e](int range) {
+    e.stop();
+    e.bootFlash.clear();
+    e.start(128);
+    nrpn(e, 19, range);
+    return e.currentFlash();
+  };
+  auto wanted = flashWith(24);
+  auto other = flashWith(5);
+  CHECK(e.firmware().bendRange() == 5);
+  size_t size = e.firmware().settingsSize(), offset = e.firmware().settingsOffset();
+  size_t moved = offset + sizeof(unsigned long) + 2 * size;
+  CHECK(moved + sizeof(unsigned long) + 2 * size <= other.size());
+  // wanted's settings, in the first of two copies at another place, in a flash that holds others
+  // where this firmware keeps them
+  auto from = wanted.begin() + (long) (offset + sizeof(unsigned long) + (wanted[offset] == 0 ? 0 : size));
+  other[moved] = 0;
+  std::copy(from, from + (long) size, other.begin() + (long) (moved + sizeof(unsigned long)));
+  e.stop();
+  e.setBootFlash(other, size, moved);
+  e.start(128);
+  // with nothing a fresh flash is given after
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  CHECK(e.firmware().bendRange() == 24);
+  CHECK(e.currentFlash().size() == firmware::flashSize());
+  // kept since in this firmware's layout
+  nrpn(e, 19, 12);
+  e.stop();
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 12);
+  // a size no layout of the firmware's has
+  e.stop();
+  e.setBootFlash(other, size + 1, moved);
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 48);
+  e.onFreshFlash = nullptr;
+  e.stop();
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  e.start(128);
+}
+
+// the flash taken on one thread while the engine starts or stops on another
+void a_flash_kept_in_memory_is_whole_and_prompt_while_the_engine_starts_and_stops() {
+  auto& e = engine();
+  e.stop();
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.bootFlash.clear();
+  e.start(128);
+  nrpn(e, 19, 24);
+  CHECK(waitFor([&e] { return !e.currentFlash().empty(); }));
+  std::atomic<bool> done { false };
+  std::thread loads([&] {
+    for (int i = 0; i < 15; ++i) {
+      e.stop();
+      e.start(128);
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    done = true;
+  });
+  double slowest = 0;
+  int torn = 0;
+  while (!done) {
+    auto asked = juce::Time::getMillisecondCounterHiRes();
+    auto flash = e.currentFlash();
+    slowest = juce::jmax(slowest, juce::Time::getMillisecondCounterHiRes() - asked);
+    torn += flash.size() == firmware::flashSize() ? 0 : 1;
+  }
+  loads.join();
+  CHECK(torn == 0);
+  CHECK(slowest < 500);
+  e.stop();
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  testFlash().deleteRecursively();
+  e.start(128);
+}
+
+// ticks at a tempo, in real time, after a start or without one
+void clockAt(Engine& e, double bpm, int ticks, bool start) {
+  const uint8_t go[] = { 0xfa }, tick[] = { 0xf8 };
+  if (start) e.sendMidi(go, 1);
+  auto next = std::chrono::steady_clock::now();
+  for (int i = 0; i < ticks; ++i) {
+    e.sendMidi(tick, 1);
+    next += std::chrono::microseconds((long long) (60.0e6 / bpm / 24));
+    std::this_thread::sleep_until(next);
+  }
+}
+
+void a_copy_booted_again_forgets_the_clock_it_followed() {
+  auto& e = engine();
+  // until the firmware follows it away from the 120 it boots with: a busy machine's late ticks can
+  // keep its average from settling on 100, and what's checked is what a boot forgets
+  clockAt(e, 100, 48, true);
+  for (int beat = 0; beat < 10 && std::abs(e.firmware().tempo() - 120) < 10; ++beat) clockAt(e, 100, 24, false);
+  CHECK(std::abs(e.firmware().tempo() - 120) >= 10);
+  e.stop();
+  e.start(128);
+  CHECK(e.firmware().tempo() == 120);
+  // ticks without a start are no clock to follow
+  clockAt(e, 90, 36, false);
+  CHECK(e.firmware().tempo() == 120);
+  // nor a parameter chosen before, an NRPN's or an RPN's, which a data entry alone would change
+  for (bool registered : { false, true }) {
+    const uint8_t choose[] = { 0xb0, (uint8_t) (registered ? 101 : 99), 0, 0xb0, (uint8_t) (registered ? 100 : 98), (uint8_t) (registered ? 0 : 19) };
+    e.sendMidi(choose, sizeof(choose));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    e.stop();
+    e.start(128);
+    int range = e.firmware().bendRange();
+    int other = range == 24 ? 12 : 24;
+    const uint8_t value[] = { 0xb0, 6, (uint8_t) (registered ? other : 0), 0xb0, 38, (uint8_t) (registered ? 0 : other) };
+    e.sendMidi(value, sizeof(value));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    CHECK(e.firmware().bendRange() == range);
+  }
+}
+
+// as storing the settings would, which the firmware doesn't while its clock runs
+void a_flash_kept_in_memory_keeps_the_tempo_it_plays_at() {
+  auto& e = engine();
+  e.stop();
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.bootFlash.clear();
+  e.start(128);
+  clockAt(e, 100, 48, true);
+  for (int beat = 0; beat < 10 && std::abs(e.firmware().tempo() - 120) < 10; ++beat) clockAt(e, 100, 24, false);
+  const uint8_t halt[] = { 0xfc };
+  e.sendMidi(halt, 1);
+  // the engine takes its MIDI in on its own pace, so the ticks still on their way and the stop can
+  // move the tempo after this: it's read once it holds still
+  int tempo = e.firmware().tempo();
+  for (int wait = 0; wait < 40; ++wait) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    int now = e.firmware().tempo();
+    if (now == tempo && wait >= 2) break;
+    tempo = now;
+  }
+  CHECK(std::abs(tempo - 120) >= 10);
+  e.stop();
+  e.start(128);
+  CHECK(e.firmware().tempo() == tempo);
+  e.stop();
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  e.start(128);
+}
+
 // ---------------------------------------------------------------------------------------------
 // the instrument's pace
 
@@ -1090,9 +1354,16 @@ Suite bridge("Firmware bridge", {
   { "letting_go_lowers_the_pressure_before_the_note_ends", letting_go_lowers_the_pressure_before_the_note_ends },
   { "a_soft_press_rises_slowly_and_a_hard_one_at_once", a_soft_press_rises_slowly_and_a_hard_one_at_once },
   { "the_bridge_reports_which_settings_screen_is_up", the_bridge_reports_which_settings_screen_is_up },
+  { "a_switch_label_reads_on_every_light", a_switch_label_reads_on_every_light },
   { "each_copy_of_the_firmware_is_handed_to_one_engine_at_a_time", each_copy_of_the_firmware_is_handed_to_one_engine_at_a_time },
   { "two_engines_run_their_own_firmware_side_by_side", two_engines_run_their_own_firmware_side_by_side },
   { "a_fresh_flash_starts_with_the_settings_given_and_a_saved_one_without", a_fresh_flash_starts_with_the_settings_given_and_a_saved_one_without },
+  { "an_engine_without_ports_opens_none_and_keeps_its_flash_out_of_files", an_engine_without_ports_opens_none_and_keeps_its_flash_out_of_files },
+  { "a_copy_booted_again_forgets_the_clock_it_followed", a_copy_booted_again_forgets_the_clock_it_followed },
+  { "a_flash_kept_in_memory_keeps_the_tempo_it_plays_at", a_flash_kept_in_memory_keeps_the_tempo_it_plays_at },
+  { "a_flash_kept_in_memory_holds_the_settings_the_firmware_hasnt_stored", a_flash_kept_in_memory_holds_the_settings_the_firmware_hasnt_stored },
+  { "a_boot_flash_of_another_layout_gives_its_settings_converted", a_boot_flash_of_another_layout_gives_its_settings_converted },
+  { "a_flash_kept_in_memory_is_whole_and_prompt_while_the_engine_starts_and_stops", a_flash_kept_in_memory_is_whole_and_prompt_while_the_engine_starts_and_stops },
 });
 
 Suite surface("The surface", {
