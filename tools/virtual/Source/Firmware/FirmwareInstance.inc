@@ -160,6 +160,14 @@ public:
   bool userFirmwareMode() override { return userFirmwareActive; }
   bool scaleSelectShown() override { return lightSettings == LIGHTS_ACTIVE; }
   bool serialMode() override { return Device.serialMode; }
+  void backToMidi() override {
+    if (userFirmwareActive) changeUserFirmwareMode(false);
+    if (Device.serialMode) {
+      switchSerialMode(false);
+      storeSettings();
+    }
+    updateDisplay();
+  }
   bool showingSettings() override { return displayMode != displayNormal; }
   firmware::Screen screen() override {
     switch (displayMode) {
@@ -227,6 +235,8 @@ public:
     switch (p) {
       case 19: return getBendRange(split);
       case 20: return Split[split].sendX;
+      // the special feature as the firmware's own query answers it
+      case 35: return Split[split].sequencer ? 4 : Split[split].strum ? 3 : Split[split].ccFaders ? 2 : Split[split].arpeggiator ? 1 : 0;
       case 24: return Split[split].sendY;
       case 25: return Split[split].expressionForY == timbreCC1 ? 1 : Split[split].customCCForY;
       case 26: return Split[split].relativeY;

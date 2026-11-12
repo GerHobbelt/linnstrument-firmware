@@ -19,6 +19,8 @@ limitations under the License.
 
 #include <JuceHeader.h>
 
+#include <vector>
+
 #include <functional>
 #include <map>
 #include <set>
@@ -43,6 +45,11 @@ public:
   // the pads and the switches in one dark silicone, the LEDs glowing through it, inside the plate's
   // rim; or the instrument's grey plastic, as it is
   void setDarkMaterial(bool dark);
+  // what the surface shows that changes with the firmware and the touches, which a timer tick
+  // repaints for only when it changed, since a full repaint of an idle surface costs dearly
+  std::vector<uint32_t> shownState() const;
+  // a timer tick: a repaint where that changed, and whether it did
+  bool repaintIfChanged();
   bool darkMaterial() const { return dark; }
   // a pad of the dark material, lit by a colour where it isn't transparent
   static void paintDarkPad(juce::Graphics& g, juce::Rectangle<float> pad, float rounding, juce::Colour lit);
@@ -109,6 +116,9 @@ protected:
   // what a control switch is labelled with now, its printed label unless a subclass names what
   // the switch does on the screen shown
   virtual juce::String switchLabel(int row) const { return controlLabel(row); }
+  // a setting a switch shows under its label, such as what it's assigned, in a quieter type; none
+  // where it has none
+  virtual juce::String switchValue(int) const { return {}; }
 
   Engine& engine;
   int columns = 26;
@@ -118,8 +128,10 @@ protected:
   juce::Rectangle<float> panel;
   juce::Rectangle<float> steel;
 
+
 private:
   void timerCallback() override;
+  std::vector<uint32_t> lastShown;
   void toggleFocusedCell();
   void moveFocus(int dCol, int dRow);
   juce::Colour ledColour(int color) const { return ledColourFor(color); }

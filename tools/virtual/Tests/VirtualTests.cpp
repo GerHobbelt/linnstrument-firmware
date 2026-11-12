@@ -277,6 +277,21 @@ void the_bridge_reads_a_screens_values_and_the_small_font() {
   CHECK(e.firmware().settingsColor() == 5);
 }
 
+// each split's special feature read back as it was set: the arpeggiator, CC faders, strum, the
+// sequencer and none
+void the_bridge_reads_each_splits_special_feature() {
+  auto& e = engine();
+  auto& f = e.firmware();
+  for (int parameter : { 35, 135 }) {
+    int before = f.nrpn(parameter);
+    for (int value : { 1, 2, 3, 4, 0 }) {
+      nrpn(e, parameter, value);
+      CHECK(waitFor([&f, parameter, value] { return f.nrpn(parameter) == value; }));
+    }
+    nrpn(e, parameter, before);
+  }
+}
+
 // Notes view's chosen step's notes lit in the played colour, and only its: a step chosen after another
 // leaves the other's pads as the playing surface lights them, as the instrument's own choosing does
 void the_bridge_lights_only_the_chosen_steps_notes_in_notes_view() {
@@ -1750,6 +1765,48 @@ void an_engine_without_ports_opens_none_and_keeps_its_flash_out_of_files() {
   CHECK(e.firmware().bendRange() == 2);
 }
 
+// OS update (serial) mode, which plays nothing over MIDI, and User Firmware Mode left again
+void the_bridge_goes_back_to_midi_from_update_and_user_firmware_mode() {
+  auto& e = engine();
+  nrpn(e, 271, 1);
+  CHECK(waitFor([&e] { return e.firmware().serialMode(); }));
+  e.onFirmware([](firmware::Instance& f) { f.backToMidi(); });
+  CHECK(waitFor([&e] { return !e.firmware().serialMode(); }));
+  nrpn(e, 245, 1);
+  CHECK(waitFor([&e] { return e.firmware().userFirmwareMode(); }));
+  e.onFirmware([](firmware::Instance& f) { f.backToMidi(); });
+  CHECK(waitFor([&e] { return !e.firmware().userFirmwareMode(); }));
+}
+
+// a flash file saved with what the firmware plays with, which it hasn't stored, as while a
+// sequencer runs, at once when asked and when the engine stops
+void a_flash_file_saved_live_keeps_the_settings_the_firmware_hasnt_stored() {
+  auto& e = engine();
+  e.stop();
+  testFlash().deleteRecursively();
+  e.saveLive = true;
+  e.start(128);
+  nrpn(e, 19, 24);
+  CHECK(waitFor([&e] { return e.firmware().bendRange() == 24; }));
+  e.saveNow();
+  juce::MemoryBlock saved;
+  CHECK(testFlash().getChildFile("flash-128.bin").loadFileAsData(saved));
+  nrpn(e, 19, 12);
+  CHECK(waitFor([&e] { return e.firmware().bendRange() == 12; }));
+  e.stop();
+  e.saveLive = false;
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 12);
+  e.stop();
+  juce::MemoryBlock block = saved;
+  testFlash().getChildFile("flash-128.bin").replaceWithData(block.getData(), block.getSize());
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 24);
+  e.stop();
+  testFlash().deleteRecursively();
+  e.start(128);
+}
+
 // the flash taken while the instrument plays with settings it hasn't stored, as one
 // changed over MIDI is until a settings screen is left
 void a_flash_kept_in_memory_holds_the_settings_the_firmware_hasnt_stored() {
@@ -1999,6 +2056,30 @@ void a_touch_lands_on_the_pad_under_it() {
   }
 }
 
+// an idle surface left as it is between timer ticks, repainted once a light or a touch changes
+void an_idle_surface_isnt_repainted() {
+  Whole l;
+  l.surface.repaintIfChanged();
+  CHECK(!l.surface.repaintIfChanged());
+  engine().press(5, 3, 0.5f, 0.5f);
+  CHECK(waitFor([&l] { return l.surface.repaintIfChanged(); }));
+  // a held finger moving, its light as it was, once its pressure has settled
+  CHECK(waitFor([&l] { return !l.surface.repaintIfChanged(); }));
+  engine().move(5, 3, 0.8f, 0.5f);
+  CHECK(waitFor([&l] { return l.surface.repaintIfChanged(); }));
+  engine().release(5, 3);
+  CHECK(waitFor([&l] { return l.surface.repaintIfChanged(); }));
+  CHECK(waitFor([&l] { return !l.surface.repaintIfChanged(); }));
+  // a light sent over MIDI
+  const uint8_t light[] = { 0xb0, 20, 5, 0xb0, 21, 2, 0xb0, 22, 1 };
+  engine().sendMidi(light, sizeof(light));
+  CHECK(waitFor([] { return engine().firmware().led(5, 2).color == 1; }));
+  CHECK(l.surface.repaintIfChanged());
+  const uint8_t off[] = { 0xb0, 20, 5, 0xb0, 21, 2, 0xb0, 22, 0 };
+  engine().sendMidi(off, sizeof(off));
+  CHECK(waitFor([] { return engine().firmware().led(5, 2).color == 0; }));
+}
+
 juce::MouseEvent mouseAt(Surface& surface, juce::Point<float> at) {
   auto mouse = juce::Desktop::getInstance().getMainMouseSource();
   return juce::MouseEvent(mouse, at, {}, juce::MouseInputSource::defaultPressure, 0, 0, 0, 0, &surface, &surface,
@@ -2142,12 +2223,15 @@ Suite bridge("Firmware bridge", {
   { "a_copy_booted_again_forgets_the_clock_it_followed", a_copy_booted_again_forgets_the_clock_it_followed },
   { "a_flash_kept_in_memory_keeps_the_tempo_it_plays_at", a_flash_kept_in_memory_keeps_the_tempo_it_plays_at },
   { "a_flash_kept_in_memory_holds_the_settings_the_firmware_hasnt_stored", a_flash_kept_in_memory_holds_the_settings_the_firmware_hasnt_stored },
+  { "a_flash_file_saved_live_keeps_the_settings_the_firmware_hasnt_stored", a_flash_file_saved_live_keeps_the_settings_the_firmware_hasnt_stored },
+  { "the_bridge_goes_back_to_midi_from_update_and_user_firmware_mode", the_bridge_goes_back_to_midi_from_update_and_user_firmware_mode },
   { "a_boot_flash_of_another_layout_gives_its_settings_converted", a_boot_flash_of_another_layout_gives_its_settings_converted },
   { "a_flash_kept_in_memory_is_whole_and_prompt_while_the_engine_starts_and_stops", a_flash_kept_in_memory_is_whole_and_prompt_while_the_engine_starts_and_stops },
 });
 
 Suite surface("The surface", {
   { "a_touch_lands_on_the_pad_under_it", a_touch_lands_on_the_pad_under_it },
+  { "an_idle_surface_isnt_repainted", an_idle_surface_isnt_repainted },
   { "a_press_is_told_after_the_engine_has_it", a_press_is_told_after_the_engine_has_it },
   { "the_focus_ring_shows_only_while_the_keyboard_moves_it", the_focus_ring_shows_only_while_the_keyboard_moves_it },
 });
@@ -2155,6 +2239,7 @@ Suite surface("The surface", {
 Suite pace("The instrument's pace", {
   { "a_scan_takes_as_long_as_on_the_instrument", a_scan_takes_as_long_as_on_the_instrument },
   { "the_engine_scans_at_the_instruments_rate", the_engine_scans_at_the_instruments_rate },
+  { "the_bridge_reads_each_splits_special_feature", the_bridge_reads_each_splits_special_feature },
 });
 
 

@@ -75,6 +75,8 @@ float Surface::aspectRatio() const {
 void Surface::resized() {
   columns = engine.firmware().columns();
   layOut();
+  // called on its own too, as a change of layout that keeps the bounds is, which the timer leaves
+  repaint();
 }
 
 void Surface::layOut() {
@@ -336,8 +338,9 @@ void Surface::paintPads(juce::Graphics& g) {
   // the printed label of each control switch, above it or, where the surface has it so, on it
   bool onSwitches = labelsOnSwitches();
   g.setFont(labelFontOfHeight(switchLabelHeight()));
-  g.setColour(onSwitches ? switchInk() : juce::Colour(0xffe6e6e6));
+  auto printed = onSwitches ? switchInk() : juce::Colour(0xffe6e6e6);
   for (int row = 0; row < 8; ++row) {
+    auto ink = printed;
     juce::Rectangle<float> label, sw;
     controlSlot(row, label, sw);
     if (sw.isEmpty()) continue;
@@ -345,9 +348,24 @@ void Surface::paintPads(juce::Graphics& g) {
     if (dark && onSwitches) {
       auto led = engine.firmware().led(0, row);
       bool on = led.color != 0 && led.color != 7 && engine.firmware().pulseOn(led.display);
-      g.setColour(on ? switchInk() : juce::Colour(0xffe6e5e1));
+      ink = on ? switchInk() : juce::Colour(0xffe6e5e1);
     }
-    g.drawFittedText(switchLabel(row), label.toNearestInt(), onSwitches ? juce::Justification::centred : juce::Justification::centredBottom, 2, 1.0f);
+    g.setColour(ink);
+    auto value = switchValue(row);
+    if (value.isEmpty()) {
+      g.drawFittedText(switchLabel(row), label.toNearestInt(), onSwitches ? juce::Justification::centred : juce::Justification::centredBottom, 2, 1.0f);
+      continue;
+    }
+    // the label and its value as one block, the value lighter, smaller and dimmer
+    auto name = switchLabel(row);
+    float height = switchLabelHeight(), valueHeight = height * 0.85f, lines = name.containsChar('\n') ? 2.0f : 1.0f;
+    float block = 1.1f * (height * lines + valueHeight);
+    float top = onSwitches ? label.getCentreY() - block / 2 : label.getBottom() - block;
+    g.drawFittedText(name, label.withY(top).withHeight(1.1f * height * lines).toNearestInt(), juce::Justification::centred, 2, 1.0f);
+    g.setFont(juce::Font(juce::FontOptions(valueHeight)).withExtraKerningFactor(0.04f));
+    g.setColour(ink.withMultipliedAlpha(0.7f));
+    g.drawFittedText(value, label.withY(top + 1.1f * height * lines).withHeight(1.1f * valueHeight).toNearestInt(), juce::Justification::centred, 1, 1.0f);
+    g.setFont(labelFontOfHeight(height));
   }
 }
 
@@ -377,8 +395,43 @@ void Surface::paintBrand(juce::Graphics& g) {
   g.restoreState();
 }
 
-void Surface::timerCallback() {
+std::vector<uint32_t> Surface::shownState() const {
+  auto& f = engine.firmware();
+  std::vector<uint32_t> state;
+  state.reserve(2 * 8 * (size_t) columns + 64);
+  state.push_back((uint32_t) columns);
+  state.push_back((uint32_t) f.screen());
+  for (int split = 0; split < 2; ++split) {
+    state.push_back((uint32_t) f.mainColor(split));
+    auto faders = f.ccFaders(split);
+    state.push_back((uint32_t) (faders.shown ? 1 : 0) | (uint32_t) (faders.left << 8) | (uint32_t) (faders.length << 16));
+    for (int value : faders.values) state.push_back((uint32_t) value);
+  }
+  for (int col = 0; col < columns; ++col) {
+    for (int row = 0; row < 8; ++row) {
+      auto led = f.led(col, row);
+      bool lit = led.color != 0 && led.color != 7 && f.pulseOn(led.display);
+      state.push_back((uint32_t) led.color | (uint32_t) (lit ? 0x100 : 0));
+      Engine::TouchView touch;
+      if (engine.touchAt(col, row, touch))
+        state.push_back(0x80000000u | (uint32_t) (touch.xFraction * 1023) | (uint32_t) (touch.yFraction * 1023) << 10 | (uint32_t) (touch.pressure * 1023) << 20);
+      else state.push_back(0);
+    }
+  }
+  for (int row = 0; row < 8; ++row) state.push_back((uint32_t) (switchLabel(row) + "\n" + switchValue(row)).hashCode());
+  return state;
+}
+
+bool Surface::repaintIfChanged() {
+  auto state = shownState();
+  if (state == lastShown) return false;
+  lastShown = std::move(state);
   repaint();
+  return true;
+}
+
+void Surface::timerCallback() {
+  repaintIfChanged();
 }
 
 void Surface::mouseDown(const juce::MouseEvent& e) {
