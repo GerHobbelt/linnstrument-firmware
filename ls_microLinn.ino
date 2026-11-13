@@ -2190,7 +2190,13 @@ short handleMicroLinnColumnSlide(int calibratedX) {
                                 : fast <= CALX_QUARTER_UNIT * 64 && fast >= v.strike * 64 - 8 * band;
   boolean inwards = (fast > 0 && fingerX < fast) || (fast < 0 && fingerX > fast);
   if (!(quick && inPad && inwards && v.age < MICROLINN_SETTLE_LANDING_MS && v.home != MICROLINN_HOME_PENDING)) {
+    boolean closing = v.age < MICROLINN_SETTLE_LANDING_MS && v.age + dt >= MICROLINN_SETTLE_LANDING_MS;
     v.age = v.age + dt > 255 ? 255 : v.age + dt;
+    // as the landing ends with the pitch on the struck note, where the finger is becomes the note's place: a finger that
+    // slid into its pad from its edge then stays on the pad's note rather than counting as having strayed from it
+    if (closing && v.home != MICROLINN_HOME_PENDING && abs(fingerX - v.offset - v.home * 64) < 8 * band) {
+      v.strike = constrain(microLinnRoundedDivide(v.offset, 64), -127, 127);
+    }
   }
 
   // the pad whose centre the slow average is nearest to, pads are FXD_CALX_FULL_UNIT apart, and whether it's within a
