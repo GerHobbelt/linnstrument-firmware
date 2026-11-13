@@ -91,6 +91,10 @@ boolean potentialSlideTransferCandidate(byte col) {
     return false;
   }
 
+  if (isMicroLinnOtherFingersNote(col)) {                                // microLinn: a lifted note doesn't carry on under another finger
+    return false;
+  }
+
   return cell(col, sensorRow).touched != untouchedCell &&                                                    // the sibling cell has an active touch
     (cell(col, sensorRow).pendingReleaseCount ||                                                             // either a release is pending to be performed, or
      abs(sensorCell->calibratedX() - cell(col, sensorRow).currentCalibratedX) < TRANSFER_SLIDE_PROXIMITY ||  // both cells are touched simultaneously on the edges, or
@@ -484,6 +488,9 @@ boolean handleNewTouch() {
         // only allow a certain number of touches in a single column to prevent cross talk
         else if (countTouchesInColumn() > MAX_TOUCHES_IN_COLUMN) {
           cellTouched(ignoredCell);
+        }
+        else if (isMicroLinnSlideEdgeKeptSilent()) {         // microLinn: the edge of a finger that has slid on stays silent
+          cellTouched(transferCell);
         }
         // this is really a new touch without any relationship to an ongoing slide
         // however, it could be the low row and in certain situations it doesn't allow new touches

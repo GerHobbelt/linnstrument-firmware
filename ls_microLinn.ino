@@ -1445,6 +1445,8 @@ struct MicroLinnSlideVoice {                                    // Column Slide 
 MicroLinnSlideVoice microLinnSlideVoice[16];
 byte microLinnWaitingCell[16];                                  // per channel, the cell waiting to take over its note in a slide, column + 32 x row, 0 for none
 byte microLinnWaitedFor = 0;                                    // the channel whose note the cell handleNewTouch() is handling was waiting for, 0 for none
+byte microLinnLeftCell[16];                                     // per channel, the cell its note was last handed on from in a slide, column + 32 x row, 0 for none
+byte microLinnSilentEdge[16];                                   // per channel, a cell its note left that was then refused another finger's lifted note, 0 for none
 
 // not yet used
 //struct MicroLinnPull {boolean sharp, flat;};                    // used to sweeten 41edo
@@ -2082,6 +2084,9 @@ void initMicroLinnColumnSlide() {
 void moveMicroLinnColumnSlide(byte channel, byte fromCol, byte toCol) {
   MicroLinnSlideVoice& voice = microLinnSlideVoice[channel - 1];
   if (voice.cell == fromCol + 32 * sensorRow) voice.cell = toCol + 32 * sensorRow;
+  microLinnLeftCell[channel - 1] = fromCol + 32 * sensorRow;           // the edge of the finger that slid on, if it's still there
+  byte silent = microLinnSilentEdge[channel - 1];                     // a silent edge stays one while the note is within two cells
+  if (silent / 32 != sensorRow || abs((silent & 31) - toCol) > 2 || (silent & 31) == toCol) microLinnSilentEdge[channel - 1] = 0;
 }
 
 // The handover latch, at every setting. A new touch next to a sounding note in its row takes the note over (a slide)
@@ -2116,6 +2121,58 @@ boolean isMicroLinnHandoverLatched(byte col) {
   return microLinnWaitedFor != 0 && cell(col, sensorRow).channel == microLinnWaitedFor &&
          !userFirmwareActive && !Split[Global.currentPerSplit].sequencer && !isLowRow() &&
          countTouchesForMidiChannel(sensorSplit, col, sensorRow) <= 1 && isReadyForSlideTransfer(col);
+}
+
+// A lifted note handed to another finger. When a finger lifts while moving, its note's release is deferred, so that a
+// slide crossing the groove lightly can still hand the note on; a touch beside it would take the note over whatever its
+// reading. A touch that belongs to another finger, as far as the slide code can tell (it was waiting for another note
+// at its last scan, or it's the edge of a finger that has slid on to the cell on its other side), doesn't take the
+// lifted note unless their X readings are as close as a slide's: the lifted note ends at the lift. And the edge of a
+// finger that has slid on, once refused such a note, stays silent while its own note sounds within two cells of it,
+// rather than starting a note in the slide's wake: another finger lifting next to it pulls its reading away from its
+// note's, which would otherwise start one.
+
+// whether the touch being handled has handed its note on and still has the note of channel (1-16) within reach cells
+// of it in its row
+boolean microLinnNoteNearEdge(byte channel, byte reach) {
+  if (!sensorCell->slideTransfer || sensorCell->hasNote()) return false;
+  for (signed char col = sensorCol - reach; col <= sensorCol + reach; ++col) {
+    if (col >= 1 && col < NUMCOLS && col != sensorCol && cell(col, sensorRow).touched == touchedCell &&
+        cell(col, sensorRow).channel == channel && cell(col, sensorRow).hasNote()) return true;
+  }
+  return false;
+}
+
+// whether the cell being handled is the edge left behind by the note of channel (1-16): the touch has handed its note
+// on and is still there, that note was last handed on from this cell, and it sounds on the cell beside it
+boolean microLinnIsSlideEdge(byte channel) {
+  return microLinnLeftCell[channel - 1] == sensorCol + 32 * sensorRow && microLinnNoteNearEdge(channel, 1);
+}
+
+// called by potentialSlideTransferCandidate() in ls_handleTouches.ino for a neighbour whose note's release is deferred:
+// whether that note would go to another finger (see above)
+boolean isMicroLinnOtherFingersNote(byte col) {
+  signed char channel = cell(col, sensorRow).channel;
+  if (!cell(col, sensorRow).pendingReleaseCount || channel < 1 || channel > 16 ||
+      abs(sensorCell->calibratedX() - cell(col, sensorRow).currentCalibratedX) < TRANSFER_SLIDE_PROXIMITY) return false;
+  boolean other = microLinnWaitedFor != 0 && channel != microLinnWaitedFor;
+  for (byte ch = 1; ch <= 16; ++ch) {
+    if (ch != channel && microLinnIsSlideEdge(ch)) {
+      microLinnSilentEdge[ch - 1] = sensorCol + 32 * sensorRow;
+      other = true;
+    }
+  }
+  return other;
+}
+
+// called by handleNewTouch() in ls_handleTouches.ino for a touch that has no slide to take part in and would start a
+// note of its own: whether it's the edge of a finger that has slid on, refused another finger's lifted note since, with
+// its note still sounding within two cells of it (see above)
+boolean isMicroLinnSlideEdgeKeptSilent() {
+  for (byte ch = 1; ch <= 16; ++ch) {
+    if (microLinnSilentEdge[ch - 1] == sensorCol + 32 * sensorRow && microLinnNoteNearEdge(ch, 2)) return true;
+  }
+  return false;
 }
 
 // called by handleXExpression() in ls_handleTouches.ino for a cell in the transfer state next to the cell being read:
