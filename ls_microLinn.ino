@@ -2039,6 +2039,12 @@ const byte MICROLINN_SETTLE_LANDED = MICROLINN_SETTLE_BAND;     // the landing e
                                                                 // is becomes the note's place
 const byte MICROLINN_SETTLE_QUICK = 12;                         // a reading this far from its fast average is a finger moving quickly (faster
                                                                 // than about a pad a second): no landing then, so a slide isn't held back
+const boolean MICROLINN_SETTLE_MOVING_HOLDS = true;             // a note whose finger was already moving when it started (a voice re-attacking
+                                                                // in a chord slide) stays on its note while the finger comes in to the pad's
+                                                                // centre, then follows; false: it follows at once, and overshoots its note
+                                                                // when the finger stops in the pad
+const byte MICROLINN_SETTLE_MOVING_MS = 25;                     // a finger moving quickly towards its pad's centre within this much of the
+                                                                // landing's time (which stands still meanwhile) was already moving
 const short MICROLINN_SETTLE_FADE_MS = 100;                     // the strike's offset fades at half a pad in this long
 const byte MICROLINN_SETTLE_PAD_CLEAR = 63;                     // after a slide, the pad under the finger owns the correction if the centre of
                                                                 // the movement is this near its centre (an eighth of a pad from its groove)
@@ -2232,6 +2238,7 @@ short handleMicroLinnColumnSlide(int calibratedX) {
       // a quick movement, or one that strays from home, is a slide: home is chosen again where it stops
       if (abs(fast - slow) >= 16 * band || (v.home != MICROLINN_HOME_PENDING && abs(slow - v.strike * 64 - v.home * 64) > range)) {
         v.home = MICROLINN_HOME_PENDING;
+        if (v.offset == 0) v.strike = 0;                                // the strike's offset used up: none is left
       }
     }
     else if (doQuantizeHold()) {
@@ -2251,6 +2258,14 @@ short handleMicroLinnColumnSlide(int calibratedX) {
       if (young && quick) step = 0;                                     // the landing waits while the finger moves quickly
       // the correction stays within HOME_RANGE of the finger's own pitch, or of its place on the pad without an offset
       v.offset = constrain(v.offset - constrain(step, -most, most), min(v.strike, 0) * 64 - range, max(v.strike, 0) * 64 + range);
+      // a note whose finger was already moving when it started: while the finger comes in towards the pad's centre from
+      // where it landed, the pitch stays on home (the offset follows the finger, using up the strike's offset); past the
+      // centre, or outwards, it follows the finger
+      if (MICROLINN_SETTLE_MOVING_HOLDS && landing && v.age < MICROLINN_SETTLE_MOVING_MS) {
+        int32_t held = fingerX - v.home * 64;
+        if (v.strike > 0 && v.offset > 0) v.offset = constrain(held, 0, v.offset);
+        else if (v.strike < 0 && v.offset < 0) v.offset = constrain(held, v.offset, 0);
+      }
       if (!young && abs(target - centre) < 64) {
         // the first time it settles on home with the finger at rest (255 ms), where the finger is becomes the note's: a
         // strike's first reading, taken at a light pressure, can be a quarter pad further out than where it settles
