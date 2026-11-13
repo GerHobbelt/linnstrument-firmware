@@ -2335,6 +2335,16 @@ short handleMicroLinnColumnSlide(int calibratedX) {
         // from its groove): from the groove, the centre of a wide vibrato swings back into the middle of the pad it's on
         if (fromCentre <= MICROLINN_SETTLE_PAD_CLEAR) v.pad = nearestCol;
       }
+      // a strike's first reading that the finger doesn't bear out (taken at a light pressure, fingers beside it can pull it
+      // a pad's width): where the finger first comes to rest after a strike read a quarter pad or more from its pad's
+      // centre, on its pad's note without the strike's offset while the offset holds the pitch more than HOME_RANGE off
+      // that note, the note lands again from there, on its pad's note (the landing's closing then takes the strike's
+      // offset from where the finger is)
+      if (!young && v.rebase && abs(v.strike) >= MICROLINN_SETTLE_LANDING_REACH && microLinnSlideDivision(fast) == 0 &&
+          microLinnSlideDivision(own) != 0 && abs(fast - v.offset) > range) {
+        v.home = 0;
+        v.age = MICROLINN_SETTLE_MOVING_MS;
+      }
       int32_t target = young || abs(own - v.home * 64) <= range ? v.home * 64 : microLinnSlideDivision(own) * 64;
       int32_t centre = (young ? fingerX : fast) - v.offset;             // the pitch of the fast average, or of the finger while landing
       byte speed = Split[sensorSplit].pitchCorrectHold;
