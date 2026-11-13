@@ -1427,11 +1427,19 @@ byte microLinnNumNotes;                                         // number of not
 byte microLinnLargestStep = 1;                                  // largest step in the condensed scale, 1..55
 byte microLinnLastClipLaunched = 0;                             // 0 = none, 1-8 = the 8 left-split clips, 9-16 = the 8 right-split clips
 struct MicroLinnSlideVoice {                                    // Column Slide Divisions: per channel, the pitch of its focused cell
-  short offset;                                                 // the pitch is the finger's distance from its note's pad minus this
-  short lastX;                                                  // the finger's distance from its note's pad at the last scan
-  short stillScans;                                             // how many scans in a row the finger has been still
+  short offset;                                                 // the pitch is the finger's distance from its note's pad minus this, in 64ths of a calibrated X unit
+  short home;                                                   // the division the note is on, as a pitch in calibrated X units; MICROLINN_HOME_PENDING after a slide
+  unsigned short fast;                                          // the finger's position averaged over MICROLINN_SETTLE_FAST_MS, (calibrated X + 128) x 8
+  unsigned short slow;                                          // the same over MICROLINN_SETTLE_SLOW_MS
+  unsigned short last;                                          // when it was last updated, millis()
+  signed char strike;                                           // what is left of the strike's offset, in calibrated X units
+  signed char anchor;                                           // where the anchor is from the slow average, in 8ths of a unit
+  signed char drift;                                            // how far the anchor has moved since it last counted as moving, 8ths
+  byte still;                                                   // milliseconds since the anchor last counted as moving, up to 255
+  byte age;                                                     // milliseconds since the note started, up to 255
   byte cell;                                                    // the cell it belongs to, column + 32 x row, 0 for none
-  byte pad;                                                     // the pad the offset belongs to
+  byte pad;                                                     // the pad the strike's offset belongs to
+  boolean rebase;                                               // until the pitch first settles on home after a strike or a slide
 };
 MicroLinnSlideVoice microLinnSlideVoice[16];
 
@@ -1987,49 +1995,55 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 }************************************/
 
 // Column Slide Divisions above 1, on a split whose column offset is above 1, changes how Quantize and Quantize Hold
-// turn a note's X into pitch. The pitch follows the finger, measured from the centre of the note's pad, minus an
-// offset, so finger movement always becomes pitch at the column offset's rate:
+// turn a note's X into pitch. At every scan the pitch is the finger's distance from the centre of the note's pad
+// minus an offset, so finger movement always becomes pitch at the column offset's rate, at once; only the offset
+// moves, gradually:
 // - at the strike, with Quantize or Quantize Hold on, the offset is where the finger landed, so the note starts on
 //   its pad's own note; with neither, it's 0 and where the finger lands sets the pitch
-// - a slide keeps the offset until the finger is within a quarter pad of the centre of another pad than the one the
-//   offset belongs to, then it fades out, so that pad sounds its own note; a vibrato that crosses the groove into the
-//   next pad and comes back doesn't get that far, and keeps it
-// - with Quantize Hold on, while the finger is still the offset moves so that the pitch settles on the division
-//   nearest the pitch heard: the pads' notes, and the points that split each pad's interval into Column Slide
-//   Divisions equal steps. Still is a quarter of the speed below which Quantize Hold counts the finger as resting,
-//   so slow slides and vibratos keep following the finger; moving follows it again at once, from wherever the
-//   pitch is
+// - the offset fades once the centre of the finger's movement (its slow average, so a slide, not the swing of a
+//   vibrato) reaches the middle of another pad than the one it belongs to (the struck pad, or the one under the finger
+//   when the pitch last settled); that pad then sounds its own note
+// - with Quantize Hold on, the offset settles the centre of the finger's movement (its fast average) on a division,
+//   during a vibrato as at rest, and never while the finger travels (slides or bends: its slow average moving beyond
+//   a small band). The divisions are the pads' own notes and the points that split each pad's interval into Column
+//   Slide Divisions equal steps. The division is the note it was on, unless the finger has strayed further than
+//   MICROLINN_SETTLE_HOME_RANGE from where it first settled on it; after a slide, the one where the finger stops: a
+//   pad's note within MICROLINN_SETTLE_PAD_ZONE of it, otherwise the nearest division. Quantize Hold's speed sets
+//   the pace.
 // Only the result changes: the X movement, its rate and Quantize Hold's own state (quantizationOffsetX, lastMovedX,
 // fxdRateX, fxdRateCountX) stay as they are without it, since they also drive pressure, Y, releases and handovers.
-// The offset is kept per channel, the voice, since one channel sounds one pitch bend, and only the channel's focused
+// The state is kept per channel, the voice, since one channel sounds one pitch bend, and only the channel's focused
 // cell, the one whose pitch the channel sends, moves it; when another cell takes the focus, it starts again there.
-const short MICROLINN_SLIDE_STEP = 7;                           // most the offset moves in a scan: half a pad in 12 scans
+//
+// The settling's values, a first try, to be tuned by playing: times in milliseconds, distances in calibrated X units (a
+// pad is 170.625, so 6 is 0.035 pad) or in percent of a division (with column offset 2 and 2 divisions a division is a
+// semitone, so 75% is 75 cents)
+const short MICROLINN_SETTLE_FAST_MS = 60;                      // the fast average of the finger's position: the centre that settles
+const short MICROLINN_SETTLE_SLOW_MS = 150;                     // the slow average: the centre of a vibrato, which tells a slide from it; it
+                                                                // trails the fast one by at most two bands
+const byte MICROLINN_SETTLE_BAND = 6;                           // the slow average leaving a band this wide (each way) around an anchor is travelling
+const byte MICROLINN_SETTLE_REST_MS = 50;                       // travelling until the anchor has moved less than a third of the band for this long
+const byte MICROLINN_SETTLE_HOME_RANGE = 75;                    // % of a division: a finger this near the note it was on comes back to it
+const byte MICROLINN_SETTLE_PAD_ZONE = 65;                      // % of a division: after a slide, a finger this near a pad's note settles on it
+const byte MICROLINN_SETTLE_LANDING_MS = 250;                   // after the strike, this long settles on the struck note, the finger's
+const byte MICROLINN_SETTLE_LANDING_TAU_MS = 40;                // own reading rather than its average, this quickly (time constant), even
+                                                                // while it travels from where it landed towards the pad's centre
+const short MICROLINN_SETTLE_FADE_MS = 100;                     // the strike's offset fades at half a pad in this long
+// the pace at Quantize Hold's speeds, indexed by pitchCorrectHold (Off, Medium, Fast, Slow): the time constant of the
+// correction, and its top speed, as the time to correct half a division (50 cents with column offset 2 and 2 divisions)
+const byte MICROLINN_SETTLE_TAU_MS[4] = {0, 40, 12, 100};
+const short MICROLINN_SETTLE_HALF_DIVISION_MS[4] = {0, 400, 170, 1000};
+const short MICROLINN_HOME_PENDING = -32768;                    // home is chosen where the finger stops after a slide
 
 // called by handleXExpression(), transferFromSameRowCell() and transferToSameRowCell() in ls_handleTouches.ino
 boolean isMicroLinnColumnSlideOn(byte side) {
   return !userFirmwareActive && Split[side].microLinn.colOffset > 1 && Global.microLinn.columnSlideDivisions() > 1;
 }
 
-// the offset of a note's start, or of a cell that has just taken the channel's focus, from Quantize's offset: where
-// the finger landed, or 0 once it has slid to another pad
-void startMicroLinnColumnSlide(byte channel, short fingerX) {
-  MicroLinnSlideVoice& voice = microLinnSlideVoice[channel - 1];
-  if (Split[sensorSplit].pitchCorrectQuantize || doQuantizeHold()) {
-    voice.offset = constrain(sensorCell->quantizationOffsetX, -CALX_VALUE_MARGIN, CALX_VALUE_MARGIN);
-  }
-  else {
-    voice.offset = 0;
-  }
-  voice.lastX = fingerX;
-  voice.stillScans = FXD_TO_INT(fxdPitchHoldSamples[sensorSplit]);    // as Quantize Hold's count starts at a new note
-  voice.cell = sensorCol + 32 * sensorRow;
-  voice.pad = sensorCol;
-}
-
-// called by handleXExpression() in ls_handleTouches.ino at the first X reading of a note, after refreshX() has set
-// Quantize's offset to where the finger landed
+// called by handleXExpression() in ls_handleTouches.ino at the first X reading of a note: the voice starts again at
+// the note's first usable X, from Quantize's offset, which refreshX() has set to where the finger landed
 void initMicroLinnColumnSlide() {
-  startMicroLinnColumnSlide(sensorCell->channel, sensorCell->quantizationOffsetX);
+  microLinnSlideVoice[sensorCell->channel - 1].cell = 0;
 }
 
 // called by transferFromSameRowCell() and transferToSameRowCell() in ls_handleTouches.ino when the channel's focus
@@ -2039,58 +2053,127 @@ void moveMicroLinnColumnSlide(byte channel, byte fromCol, byte toCol) {
   if (voice.cell == fromCol + 32 * sensorRow) voice.cell = toCol + 32 * sensorRow;
 }
 
+// value moved towards target, with a time constant of ms, after dt milliseconds; never stuck short of it
+int32_t microLinnTowards(int32_t value, int32_t target, int32_t dt, int32_t ms) {
+  int32_t step = microLinnRoundedDivide((target - value) * dt, ms + dt);
+  if (step == 0 && dt > 0 && target != value) step = target > value ? 1 : -1;
+  return value + step;
+}
+
+// the division a pitch settles on, after a slide or when it has strayed from home: the nearest pad's note if it's
+// within MICROLINN_SETTLE_PAD_ZONE of it, otherwise the nearest division. The pitch is in 64ths of a calibrated X
+// unit, the result in units; a pad is 1365/8 units, a division 1365/(8 x Column Slide Divisions)
+short microLinnSlideDivision(int32_t pitch) {
+  int32_t divisions = Global.microLinn.columnSlideDivisions();
+  int32_t steps = microLinnRoundedDivide(pitch * 8 * divisions, 1365);                // in 64ths of a division
+  int32_t padNote = microLinnRoundedDivide(steps, 64 * divisions) * divisions;        // the nearest pad's note, in divisions
+  int32_t division = abs(steps - 64 * padNote) <= 64 * MICROLINN_SETTLE_PAD_ZONE / 100 ? padNote : microLinnRoundedDivide(steps, 64);
+  return microLinnRoundedDivide(division * 1365, 8 * divisions);
+}
+
 // called by handleXExpression() in ls_handleTouches.ino with X usable, for the channel's focused cell, in place of
 // Quantize's and Quantize Hold's result: fingerX is the finger's distance from the centre of the note's pad,
-// calibratedX where the finger is. The pitch never jumps: the offset moves at most MICROLINN_SLIDE_STEP in a scan
+// calibratedX where the finger is. Returns the pitch: fingerX minus the offset
 short handleMicroLinnColumnSlide(short fingerX, int calibratedX) {
-  MicroLinnSlideVoice& voice = microLinnSlideVoice[sensorCell->channel - 1];
-  if (voice.cell != sensorCol + 32 * sensorRow) startMicroLinnColumnSlide(sensorCell->channel, fingerX);    // a new focus
-  short offset = voice.offset;
-  byte* offsetPad = &voice.pad;
-  boolean still = fxdRateXThreshold[sensorSplit] >= 4 * sensorCell->fxdRateX;           // slow slides and vibratos aren't
+  MicroLinnSlideVoice& v = microLinnSlideVoice[sensorCell->channel - 1];
+  unsigned short now = millis();
+  int32_t position = constrain(calibratedX + 128, 0, 8000) * 8;
+  int32_t toPitch = (int32_t)(fingerX - calibratedX - 128) * 64;      // an average to its pitch: x 8, then this
 
-  // the pad whose centre the finger is nearest to, pads are FXD_CALX_FULL_UNIT apart, and whether it's within a
-  // quarter pad of that centre
-  byte nearestCol = constrain(FXD_TO_INT(FXD_DIV(FXD_FROM_INT(calibratedX), FXD_CALX_FULL_UNIT)) + 1, 1, NUMCOLS - 1);
-  boolean nearCentre = abs(calibratedX - FXD_TO_INT(Device.calRows[nearestCol][0].fxdReferenceX)) <= CALX_QUARTER_UNIT;
-  boolean fading = offset != 0 && nearestCol != *offsetPad && nearCentre;
-  int32_t holdScans = FXD_TO_INT(fxdPitchHoldSamples[sensorSplit]);
+  if (v.cell != sensorCol + 32 * sensorRow) {                         // a new note, or a cell that has taken the focus
+    v.strike = Split[sensorSplit].pitchCorrectQuantize || doQuantizeHold() ?
+               constrain(sensorCell->quantizationOffsetX, -CALX_VALUE_MARGIN, CALX_VALUE_MARGIN) : 0;
+    v.offset = v.strike * 64;
+    v.home = microLinnSlideDivision((int32_t)(fingerX - v.strike) * 64);
+    v.fast = v.slow = position;
+    v.anchor = v.drift = 0;
+    v.still = MICROLINN_SETTLE_REST_MS;
+    v.age = 0;
+    v.last = now;
+    v.cell = sensorCol + 32 * sensorRow;
+    v.pad = sensorCol;
+    v.rebase = true;
+  }
+  int32_t dt = (unsigned short)(now - v.last);                       // milliseconds since the last scan, at most 50
+  if (dt > 50) dt = 50;
+  v.last = now;
+  v.age = v.age + dt > 255 ? 255 : v.age + dt;
+  v.still = v.still + dt > 255 ? 255 : v.still + dt;
 
-  if (fading) {
-    offset -= constrain(offset, -MICROLINN_SLIDE_STEP, MICROLINN_SLIDE_STEP);
-    if (offset == 0) *offsetPad = nearestCol;
+  // the averages, and the anchor that follows the slow one with a dead band: the finger travels while it moves. The
+  // slow average never trails the fast one by more than two bands, so that it catches up soon after a slide stops
+  int32_t anchor = v.slow + v.anchor;
+  int32_t band = 8 * MICROLINN_SETTLE_BAND;
+  v.fast = microLinnTowards(v.fast, position, dt, MICROLINN_SETTLE_FAST_MS);
+  v.slow = constrain(microLinnTowards(v.slow, position, dt, MICROLINN_SETTLE_SLOW_MS), v.fast - 2 * band, v.fast + 2 * band);
+  int32_t moved = constrain(anchor, v.slow - band, v.slow + band);
+  int32_t drift = v.drift + moved - anchor;
+  if (abs(drift) * 3 > band) {
+    drift = 0;
+    v.still = 0;
   }
-  else if (doQuantizeHold() && still) {
-    // the nearest division, a pad is 1365/8 calibrated X units
-    short pitch = fingerX - offset;
-    byte divisions = Global.microLinn.columnSlideDivisions();
-    int32_t target = microLinnRoundedDivide(microLinnRoundedDivide((int32_t)pitch * 8 * divisions, 1365) * 1365, 8 * divisions);
-    // half a division in the Quantize Hold speed's number of scans, spread evenly by rounding the pull so far at
-    // each scan counted; once stable, at least a unit a scan to keep the pitch there
-    int32_t scans = voice.stillScans;
-    int32_t perScans = 16 * divisions * holdScans;
-    short pull = microLinnRoundedDivide(1365 * (scans + 1), perScans) - microLinnRoundedDivide(1365 * scans, perScans);
-    if (scans >= holdScans) pull = max(pull, 1);
-    // a finger creeping away from the division still moves the pitch at least half as far
-    short moved = fingerX - voice.lastX;
-    if ((target > pitch && moved < 0) || (target < pitch && moved > 0)) pull = min(pull, abs(moved) / 2);
-    offset -= constrain(target - pitch, -pull, pull);
-  }
-  voice.offset = offset;
-  voice.lastX = fingerX;
+  v.drift = drift;
+  v.anchor = moved - v.slow;
+  boolean travelling = v.still < MICROLINN_SETTLE_REST_MS;
+  int32_t fast = v.fast * 8 + toPitch, slow = v.slow * 8 + toPitch;    // the averages as pitch, in 64ths of a unit
+  int32_t division = 1365 * 8 / Global.microLinn.columnSlideDivisions();
+  int32_t range = division * MICROLINN_SETTLE_HOME_RANGE / 100;
 
-  // count how long the finger has been still, so that each settling takes the Quantize Hold speed's time
-  if (!still) {
-    voice.stillScans = 0;
+  // the pad whose centre the slow average is nearest to, pads are FXD_CALX_FULL_UNIT apart, and whether it's within a
+  // quarter pad of that centre: there, the offset fades, and the pad then owns it
+  int slowX = v.slow / 8 - 128;
+  byte nearestCol = constrain(FXD_TO_INT(FXD_DIV(FXD_FROM_INT(slowX), FXD_CALX_FULL_UNIT)) + 1, 1, NUMCOLS - 1);
+  boolean nearCentre = abs(slowX - FXD_TO_INT(Device.calRows[nearestCol][0].fxdReferenceX)) <= CALX_QUARTER_UNIT;
+  if (v.offset != 0 && nearestCol != v.pad && nearCentre) {
+    int32_t step = dt * 1365 * 4 / MICROLINN_SETTLE_FADE_MS;          // half a pad is 1365 x 4 64ths
+    int32_t units = (step + 63) / 64;
+    v.offset -= constrain(v.offset, -step, step);
+    v.strike -= constrain(v.strike, -units, units);
+    if (v.offset == 0) {                                              // arrived: home is chosen where the finger stops
+      v.strike = 0;
+      v.pad = nearestCol;
+      v.home = MICROLINN_HOME_PENDING;
+    }
   }
-  else if (voice.stillScans < holdScans) {
-    voice.stillScans += 1;
-    if (voice.stillScans >= holdScans && doQuantizeHold() && nearCentre && !fading) {
-      *offsetPad = nearestCol;                                  // a pitch settled on a pad belongs to it
+  else {
+    // while the strike's finger settles into its pad, moving from where it landed towards the pad's centre, the pitch
+    // stays on the struck note, travelling or not
+    boolean young = v.age < MICROLINN_SETTLE_LANDING_MS;
+    boolean landing = young && v.home != MICROLINN_HOME_PENDING &&
+                      (v.strike >= 0 ? fast >= -8 * band && fast <= v.strike * 64 + 8 * band
+                                     : fast <= 8 * band && fast >= v.strike * 64 - 8 * band);
+    if (travelling && !landing) {
+      // a quick movement, or one that strays from home, is a slide: home is chosen again where it stops
+      if (abs(fast - slow) >= 16 * band || (v.home != MICROLINN_HOME_PENDING && abs(slow - v.strike * 64 - v.home * 64) > range)) {
+        v.home = MICROLINN_HOME_PENDING;
+      }
+    }
+    else if (doQuantizeHold()) {
+      int32_t own = fast - v.strike * 64;                               // the finger's own pitch, without the strike's offset
+      if (v.home == MICROLINN_HOME_PENDING) {
+        v.home = microLinnSlideDivision(own);
+        v.rebase = true;
+      }
+      int32_t target = young || abs(own - v.home * 64) <= range ? v.home * 64 : microLinnSlideDivision(own) * 64;
+      int32_t centre = (young ? fingerX * 64 : fast) - v.offset;        // the pitch of the fast average, or of the finger while landing
+      byte speed = Split[sensorSplit].pitchCorrectHold;
+      int32_t most = young ? 64 * division : dt * division / 2 / MICROLINN_SETTLE_HALF_DIVISION_MS[speed];
+      int32_t step = microLinnRoundedDivide((target - centre) * dt, (young ? MICROLINN_SETTLE_LANDING_TAU_MS : MICROLINN_SETTLE_TAU_MS[speed]) + dt);
+      // the correction stays within HOME_RANGE of the finger's own pitch, or of its place on the pad without an offset
+      v.offset = constrain(v.offset - constrain(step, -most, most), min(v.strike, 0) * 64 - range, max(v.strike, 0) * 64 + range);
+      if (!young && abs(target - centre) < 64) {
+        // the first time it settles on home with the finger at rest (255 ms), where the finger is becomes the note's: a
+        // strike's first reading, taken at a light pressure, can be a quarter pad further out than where it settles
+        if (v.rebase && target == v.home * 64 && v.still == 255) {
+          v.strike = constrain(microLinnRoundedDivide(v.offset, 64), -127, 127);
+          v.rebase = false;
+        }
+        v.pad = nearestCol;                                             // settled: the pad under the finger owns the offset
+      }
     }
   }
 
-  return fingerX - offset;
+  return fingerX - microLinnRoundedDivide(v.offset, 64);
 }
 
 // called by determineRowOffsetNote() in ls_handleTouches.ino, duplicates the original determineRowOffsetNote function 
