@@ -1426,7 +1426,14 @@ byte microLinnScaleLookup[MICROLINN_MAX_EDO+1];                 // look up scale
 byte microLinnNumNotes;                                         // number of notes in the condensed scale, 1..55
 byte microLinnLargestStep = 1;                                  // largest step in the condensed scale, 1..55
 byte microLinnLastClipLaunched = 0;                             // 0 = none, 1-8 = the 8 left-split clips, 9-16 = the 8 right-split clips
-byte microLinnSlidePad[16];                                     // Column Slide Divisions: per channel, the pad a held note's X offset belongs to
+struct MicroLinnSlideVoice {                                    // Column Slide Divisions: per channel, the pitch of its focused cell
+  short offset;                                                 // the pitch is the finger's distance from its note's pad minus this
+  short lastX;                                                  // the finger's distance from its note's pad at the last scan
+  short stillScans;                                             // how many scans in a row the finger has been still
+  byte cell;                                                    // the cell it belongs to, column + 32 x row, 0 for none
+  byte pad;                                                     // the pad the offset belongs to
+};
+MicroLinnSlideVoice microLinnSlideVoice[16];
 
 // not yet used
 //struct MicroLinnPull {boolean sharp, flat;};                    // used to sweeten 41edo
@@ -1981,7 +1988,7 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 
 // Column Slide Divisions above 1, on a split whose column offset is above 1, changes how Quantize and Quantize Hold
 // turn a note's X into pitch. The pitch follows the finger, measured from the centre of the note's pad, minus an
-// offset, quantizationOffsetX, so finger movement always becomes pitch at the column offset's rate:
+// offset, so finger movement always becomes pitch at the column offset's rate:
 // - at the strike, with Quantize or Quantize Hold on, the offset is where the finger landed, so the note starts on
 //   its pad's own note; with neither, it's 0 and where the finger lands sets the pitch
 // - a slide keeps the offset until the finger is within a quarter pad of the centre of another pad than the one the
@@ -1992,7 +1999,10 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 //   Divisions equal steps. Still is a quarter of the speed below which Quantize Hold counts the finger as resting,
 //   so slow slides and vibratos keep following the finger; moving follows it again at once, from wherever the
 //   pitch is
-// The pad the offset belongs to is kept per channel, the voice, since one channel sounds one pitch bend.
+// Only the result changes: the X movement, its rate and Quantize Hold's own state (quantizationOffsetX, lastMovedX,
+// fxdRateX, fxdRateCountX) stay as they are without it, since they also drive pressure, Y, releases and handovers.
+// The offset is kept per channel, the voice, since one channel sounds one pitch bend, and only the channel's focused
+// cell, the one whose pitch the channel sends, moves it; when another cell takes the focus, it starts again there.
 const short MICROLINN_SLIDE_STEP = 7;                           // most the offset moves in a scan: half a pad in 12 scans
 
 // called by handleXExpression(), transferFromSameRowCell() and transferToSameRowCell() in ls_handleTouches.ino
@@ -2000,23 +2010,43 @@ boolean isMicroLinnColumnSlideOn(byte side) {
   return !userFirmwareActive && Split[side].microLinn.colOffset > 1 && Global.microLinn.columnSlideDivisions() > 1;
 }
 
-// called by handleXExpression() in ls_handleTouches.ino at the first X reading of a note
-void initMicroLinnColumnSlide() {
-  if (Split[sensorSplit].pitchCorrectQuantize || doQuantizeHold()) {    // refreshX() set it to where the finger landed
-    sensorCell->quantizationOffsetX = constrain(sensorCell->quantizationOffsetX, -CALX_VALUE_MARGIN, CALX_VALUE_MARGIN);
+// the offset of a note's start, or of a cell that has just taken the channel's focus, from Quantize's offset: where
+// the finger landed, or 0 once it has slid to another pad
+void startMicroLinnColumnSlide(byte channel, short fingerX) {
+  MicroLinnSlideVoice& voice = microLinnSlideVoice[channel - 1];
+  if (Split[sensorSplit].pitchCorrectQuantize || doQuantizeHold()) {
+    voice.offset = constrain(sensorCell->quantizationOffsetX, -CALX_VALUE_MARGIN, CALX_VALUE_MARGIN);
   }
   else {
-    sensorCell->quantizationOffsetX = 0;
+    voice.offset = 0;
   }
-  microLinnSlidePad[sensorCell->channel - 1] = sensorCol;
+  voice.lastX = fingerX;
+  voice.stillScans = FXD_TO_INT(fxdPitchHoldSamples[sensorSplit]);    // as Quantize Hold's count starts at a new note
+  voice.cell = sensorCol + 32 * sensorRow;
+  voice.pad = sensorCol;
 }
 
-// called by handleXExpression() in ls_handleTouches.ino in place of Quantize and Quantize Hold, with X usable
-// fingerX is the finger's distance from the centre of the note's pad, calibratedX where the finger is
-// the pitch never jumps: the offset moves at most MICROLINN_SLIDE_STEP in a scan
+// called by handleXExpression() in ls_handleTouches.ino at the first X reading of a note, after refreshX() has set
+// Quantize's offset to where the finger landed
+void initMicroLinnColumnSlide() {
+  startMicroLinnColumnSlide(sensorCell->channel, sensorCell->quantizationOffsetX);
+}
+
+// called by transferFromSameRowCell() and transferToSameRowCell() in ls_handleTouches.ino when the channel's focus
+// moves with a slide to the next cell: the voice goes with it
+void moveMicroLinnColumnSlide(byte channel, byte fromCol, byte toCol) {
+  MicroLinnSlideVoice& voice = microLinnSlideVoice[channel - 1];
+  if (voice.cell == fromCol + 32 * sensorRow) voice.cell = toCol + 32 * sensorRow;
+}
+
+// called by handleXExpression() in ls_handleTouches.ino with X usable, for the channel's focused cell, in place of
+// Quantize's and Quantize Hold's result: fingerX is the finger's distance from the centre of the note's pad,
+// calibratedX where the finger is. The pitch never jumps: the offset moves at most MICROLINN_SLIDE_STEP in a scan
 short handleMicroLinnColumnSlide(short fingerX, int calibratedX) {
-  short offset = sensorCell->quantizationOffsetX;
-  byte* offsetPad = &microLinnSlidePad[sensorCell->channel - 1];
+  MicroLinnSlideVoice& voice = microLinnSlideVoice[sensorCell->channel - 1];
+  if (voice.cell != sensorCol + 32 * sensorRow) startMicroLinnColumnSlide(sensorCell->channel, fingerX);    // a new focus
+  short offset = voice.offset;
+  byte* offsetPad = &voice.pad;
   boolean still = fxdRateXThreshold[sensorSplit] >= 4 * sensorCell->fxdRateX;           // slow slides and vibratos aren't
 
   // the pad whose centre the finger is nearest to, pads are FXD_CALX_FULL_UNIT apart, and whether it's within a
@@ -2024,6 +2054,7 @@ short handleMicroLinnColumnSlide(short fingerX, int calibratedX) {
   byte nearestCol = constrain(FXD_TO_INT(FXD_DIV(FXD_FROM_INT(calibratedX), FXD_CALX_FULL_UNIT)) + 1, 1, NUMCOLS - 1);
   boolean nearCentre = abs(calibratedX - FXD_TO_INT(Device.calRows[nearestCol][0].fxdReferenceX)) <= CALX_QUARTER_UNIT;
   boolean fading = offset != 0 && nearestCol != *offsetPad && nearCentre;
+  int32_t holdScans = FXD_TO_INT(fxdPitchHoldSamples[sensorSplit]);
 
   if (fading) {
     offset -= constrain(offset, -MICROLINN_SLIDE_STEP, MICROLINN_SLIDE_STEP);
@@ -2036,27 +2067,26 @@ short handleMicroLinnColumnSlide(short fingerX, int calibratedX) {
     int32_t target = microLinnRoundedDivide(microLinnRoundedDivide((int32_t)pitch * 8 * divisions, 1365) * 1365, 8 * divisions);
     // half a division in the Quantize Hold speed's number of scans, spread evenly by rounding the pull so far at
     // each scan counted; once stable, at least a unit a scan to keep the pitch there
-    int32_t scans = FXD_TO_INT(sensorCell->fxdRateCountX);
-    int32_t perScans = 16 * divisions * FXD_TO_INT(fxdPitchHoldSamples[sensorSplit]);
+    int32_t scans = voice.stillScans;
+    int32_t perScans = 16 * divisions * holdScans;
     short pull = microLinnRoundedDivide(1365 * (scans + 1), perScans) - microLinnRoundedDivide(1365 * scans, perScans);
-    if (isQuantizeHoldStable()) pull = max(pull, 1);
+    if (scans >= holdScans) pull = max(pull, 1);
     // a finger creeping away from the division still moves the pitch at least half as far
-    short moved = fingerX - sensorCell->lastMovedX;
+    short moved = fingerX - voice.lastX;
     if ((target > pitch && moved < 0) || (target < pitch && moved > 0)) pull = min(pull, abs(moved) / 2);
     offset -= constrain(target - pitch, -pull, pull);
   }
-  sensorCell->quantizationOffsetX = offset;
-  sensorCell->lastMovedX = fingerX;
+  voice.offset = offset;
+  voice.lastX = fingerX;
 
   // count how long the finger has been still, so that each settling takes the Quantize Hold speed's time
   if (!still) {
-    sensorCell->fxdRateCountX = 0;
+    voice.stillScans = 0;
   }
-  else if (sensorCell->fxdRateCountX < fxdPitchHoldSamples[sensorSplit]) {
-    sensorCell->fxdRateCountX += FXD_CONST_1;
-    if (isQuantizeHoldStable()) {
-      sensorCell->fxdRateCountX = fxdPitchHoldSamples[sensorSplit];
-      if (doQuantizeHold() && nearCentre && !fading) *offsetPad = nearestCol;    // a pitch settled on a pad belongs to it
+  else if (voice.stillScans < holdScans) {
+    voice.stillScans += 1;
+    if (voice.stillScans >= holdScans && doQuantizeHold() && nearCentre && !fading) {
+      *offsetPad = nearestCol;                                  // a pitch settled on a pad belongs to it
     }
   }
 
