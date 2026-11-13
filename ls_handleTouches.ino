@@ -1505,11 +1505,13 @@ short handleXExpression() {
   int calibratedX = sensorCell->calibratedX();
 
   // determine if a slide transfer is in progress and which column it is with
+  // microLinn: only with a cell the same finger is on, not one another finger presses, see isMicroLinnSlideNeighbour()
   short transferCol = 0;
-  if (cell(sensorCol-1, sensorRow).touched == transferCell) {
+  if (cell(sensorCol-1, sensorRow).touched == transferCell && isMicroLinnSlideNeighbour(sensorCol-1, calibratedX)) {
     transferCol = sensorCol-1;
   }
-  else if (sensorCol+1 < NUMCOLS && cell(sensorCol+1, sensorRow).touched == transferCell) {
+  else if (sensorCol+1 < NUMCOLS && cell(sensorCol+1, sensorRow).touched == transferCell &&
+           isMicroLinnSlideNeighbour(sensorCol+1, calibratedX)) {
     transferCol = sensorCol+1;
   }
 

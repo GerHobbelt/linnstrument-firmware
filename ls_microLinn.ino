@@ -2116,6 +2116,17 @@ boolean isMicroLinnHandoverLatched(byte col) {
          countTouchesForMidiChannel(sensorSplit, col, sensorRow) <= 1 && isReadyForSlideTransfer(col);
 }
 
+// called by handleXExpression() in ls_handleTouches.ino for a cell in the transfer state next to the cell being read:
+// whether the same finger is on both, so that X is read between the two as the finger crosses the groove. It is if their
+// X readings are as close as a slide's (TRANSFER_SLIDE_PROXIMITY), or if that cell was waiting for this cell's note at
+// its last scan, whatever its reading now: a finger on this cell's other side can pull this cell's own reading towards
+// it while the finger moves on. Otherwise it's another finger, such as the next finger of a chord sliding along the row,
+// and reading X between the two would pull the pitch towards that finger
+boolean isMicroLinnSlideNeighbour(byte col, int calibratedX) {
+  if (abs(cell(col, sensorRow).currentCalibratedX - calibratedX) < TRANSFER_SLIDE_PROXIMITY) return true;
+  return sensorCell->hasNote() && microLinnWaitingCell[sensorCell->channel - 1] == col + 32 * sensorRow;
+}
+
 // value moved towards target, with a time constant of ms, after dt milliseconds; never stuck short of it
 int32_t microLinnTowards(int32_t value, int32_t target, int32_t dt, int32_t ms) {
   int32_t step = microLinnRoundedDivide((target - value) * dt, ms + dt);
