@@ -1442,6 +1442,8 @@ struct MicroLinnSlideVoice {                                    // Column Slide 
   boolean rebase;                                               // until the pitch first settles on home after a strike or a slide
 };
 MicroLinnSlideVoice microLinnSlideVoice[16];
+byte microLinnWaitingCell[16];                                  // per channel, the cell waiting to take over its note in a slide, column + 32 x row, 0 for none
+byte microLinnWaitedFor = 0;                                    // the channel whose note the cell handleNewTouch() is handling was waiting for, 0 for none
 
 // not yet used
 //struct MicroLinnPull {boolean sharp, flat;};                    // used to sweeten 41edo
@@ -2051,6 +2053,40 @@ void initMicroLinnColumnSlide() {
 void moveMicroLinnColumnSlide(byte channel, byte fromCol, byte toCol) {
   MicroLinnSlideVoice& voice = microLinnSlideVoice[channel - 1];
   if (voice.cell == fromCol + 32 * sensorRow) voice.cell = toCol + 32 * sensorRow;
+}
+
+// The handover latch, at every setting. A new touch next to a sounding note in its row takes the note over (a slide)
+// once it's pressed harder than the note's cell, if their X readings are close enough; with the readings close but
+// the pressure not yet higher, it waits, and the test runs again at its next scan. A cell that was waiting for a note
+// skips the X test on the scan the handover is due anyway: while it waits, the cell being left often reads further
+// back than the finger, and the readings drifting apart would start a new note in mid-slide. Per channel, the cell
+// waiting for its note; each cell's wait lasts until its next scan.
+
+// called by handleNewTouch() in ls_handleTouches.ino first, before the cell's touch state changes: the cell's wait ends
+void beginMicroLinnHandover() {
+  byte waiting = sensorCol + 32 * sensorRow;
+  microLinnWaitedFor = 0;
+  for (byte ch = 0; ch < 16; ++ch) {
+    if (microLinnWaitingCell[ch] == waiting) {
+      microLinnWaitingCell[ch] = 0;
+      if (sensorCell->touched == transferCell) microLinnWaitedFor = ch + 1;
+    }
+  }
+}
+
+// called by handleSlideTransferCandidate() in ls_handleTouches.ino when the cell waits for the note on col
+void waitForMicroLinnHandover(byte col) {
+  signed char channel = cell(col, sensorRow).channel;
+  if (channel >= 1 && channel <= 16) microLinnWaitingCell[channel - 1] = sensorCol + 32 * sensorRow;
+}
+
+// called by potentialSlideTransferCandidate() in ls_handleTouches.ino when the X readings of the cell and of the note
+// on col are too far apart: a cell that was waiting for that note takes it over if the handover is due (the cell is
+// pressed harder), on notes played on the surface, with one touch on the note's channel
+boolean isMicroLinnHandoverLatched(byte col) {
+  return microLinnWaitedFor != 0 && cell(col, sensorRow).channel == microLinnWaitedFor &&
+         !userFirmwareActive && !Split[Global.currentPerSplit].sequencer && !isLowRow() &&
+         countTouchesForMidiChannel(sensorSplit, col, sensorRow) <= 1 && isReadyForSlideTransfer(col);
 }
 
 // value moved towards target, with a time constant of ms, after dt milliseconds; never stuck short of it

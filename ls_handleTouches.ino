@@ -93,7 +93,8 @@ boolean potentialSlideTransferCandidate(byte col) {
 
   return cell(col, sensorRow).touched != untouchedCell &&                                                    // the sibling cell has an active touch
     (cell(col, sensorRow).pendingReleaseCount ||                                                             // either a release is pending to be performed, or
-     abs(sensorCell->calibratedX() - cell(col, sensorRow).currentCalibratedX) < TRANSFER_SLIDE_PROXIMITY);   // both cells are touched simultaneously on the edges
+     abs(sensorCell->calibratedX() - cell(col, sensorRow).currentCalibratedX) < TRANSFER_SLIDE_PROXIMITY ||  // both cells are touched simultaneously on the edges, or
+     isMicroLinnHandoverLatched(col));                                                                       // microLinn: this cell was waiting for that note and is ready to take it
 }
 
 boolean isReadyForSlideTransfer(byte col) {
@@ -389,6 +390,7 @@ void handleSlideTransferCandidate(byte siblingCol) {
   // otherwise act as if this new touch never happend
   else {
     cellTouched(transferCell);
+    waitForMicroLinnHandover(siblingCol);                   // microLinn: this cell waits for that note
   }
 }
 
@@ -399,6 +401,8 @@ boolean handleNewTouch() {
   DEBUGPRINT((1," velocityZ="));DEBUGPRINT((1,(int)sensorCell->velocityZ));
   DEBUGPRINT((1," pressureZ="));DEBUGPRINT((1,(int)sensorCell->pressureZ));
   DEBUGPRINT((1,"\n"));
+
+  beginMicroLinnHandover();                                 // microLinn: whether this cell was waiting for a note to slide onto it
 
   lastTouchMoment = millis();
   
