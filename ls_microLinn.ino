@@ -2147,11 +2147,14 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   int32_t toPitch = (int32_t)(-reference - 128) * 64;                 // an average to its pitch: x 8, then this
 
   if (v.cell != sensorCol + 32 * sensorRow) {                         // a new note, or a cell that has taken the focus
-    v.offset = Split[sensorSplit].pitchCorrectQuantize || doQuantizeHold() ?
-               constrain((microLinnStraightX(reference + sensorCell->quantizationOffsetX) - reference * 16) * 4,
-                         -CALX_VALUE_MARGIN * 64, CALX_VALUE_MARGIN * 64) : 0;
+    boolean locked = Split[sensorSplit].pitchCorrectQuantize || doQuantizeHold();
+    v.offset = locked ? constrain((microLinnStraightX(reference + sensorCell->quantizationOffsetX) - reference * 16) * 4,
+                                  -CALX_VALUE_MARGIN * 64, CALX_VALUE_MARGIN * 64) : 0;
     v.strike = microLinnRoundedDivide(v.offset, 64);
-    v.home = microLinnSlideDivision(fingerX - v.offset);
+    // a new note is on its pad's own note even when the finger's reading has moved on since the strike was read (a
+    // light touch near the pad's edge, as a slide arrives, reads unsteadily at first); a cell that takes the focus is on
+    // the division nearest its pitch
+    v.home = v.cell == 0 && locked ? 0 : microLinnSlideDivision(fingerX - v.offset);
     v.fast = v.slow = position;
     v.anchor = v.drift = 0;
     v.still = MICROLINN_SETTLE_REST_MS;
