@@ -243,8 +243,15 @@ Quantize's offset, the X result, the X movement rate and Quantize Hold's count (
 - **Pitch only:** a configuration with `pitchonly=SETTING=VALUE` (in `configurations.txt`) has settings
   that may change only pitch, such as Column Slide Divisions. Each of its runs is replayed again on the
   same build with SETTING=VALUE, and the MIDI other than pitch bends must be the same messages in the
-  same order (their times can differ, since each pitch bend takes the UART for about 1 ms); the replay
-  fails if not, and shows the first difference.
+  same order (their times can differ, since each pitch bend takes the UART for about 1 ms), or differ
+  only in values the MIDI output wrote over while they waited to go out. When the output falls behind,
+  a newer pitch bend, channel pressure or control change value replaces one of the same kind on its
+  channel that is still waiting, and which ones depends on how long the queue is, which the pitch bends
+  change. So the messages never written over (notes, values of zero, every other kind) must be the same
+  in the same order, and on each channel the last value of each kind before each of them the same, since
+  nothing moves across them. The replay fails if not, and shows the first difference. A value sent
+  always looks like any other in the MIDI, so a difference in one is caught only where it changes such a
+  last value.
 - `--save DIR` copies the logs to DIR, gzipped, with `SHA256SUMS` of the uncompressed files;
   `--baseline DIR` then compares with them instead of building BASE.
 

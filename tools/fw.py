@@ -495,23 +495,36 @@ def cmd_replay(args):
     if checks:
         log('')
         log('pitch only: each run of a configuration with pitchonly=SETTING=VALUE, replayed again with that setting '
-            'on the same build; the MIDI other than pitch bends must be identical (in order; times can differ)')
-        bad = 0
-        for r, report, shift in checks:
+            'on the same build; the MIDI other than pitch bends must be identical (in order; times can differ), or '
+            'differ only in values the MIDI output wrote over while they waited to go out, which depends on how long '
+            'its queue is: the messages never written over the same, in order, and the last value of each kind on a '
+            'channel before each of them the same')
+        bad = replaced = 0
+        for r, verdict, found in checks:
             setting = '%s=%s' % r.config.pitchonly
-            log('%-22s %-14s %s' % (r.config.name, r.name, 'identical to %s (times within %.1f ms)' % (setting, shift)
-                                    if report is None else 'DIFFERENT from %s' % setting))
-            bad += report is not None
-        for r, report, _ in checks:
-            if report is not None:
+            if verdict == 'identical':
+                text = 'identical to %s (times within %.1f ms)' % (setting, found)
+            elif verdict == 'replaced':
+                text = 'the same as %s but for values written over while waiting (values that may be: %d there, %d ' \
+                       'here)' % ((setting,) + found)
+            else:
+                text = 'DIFFERENT from %s' % setting
+            log('%-22s %-14s %s' % (r.config.name, r.name, text))
+            bad += verdict == 'different'
+            replaced += verdict == 'replaced'
+        for r, verdict, found in checks:
+            if verdict == 'different':
                 log('')
                 log('%s, %s, against %s=%s (- that run, + this one):' % ((r.config.name, r.name) + r.config.pitchonly))
-                for line in report:
+                for line in found:
                     log(line)
-        log('pitch only: %s' % ('identical in all %d runs' % len(checks) if not bad else
-                                '%d of %d runs differ' % (bad, len(checks))))
         if bad:
+            log('pitch only: %d of %d runs differ' % (bad, len(checks)))
             failed.append('a setting that may change only pitch changes other MIDI')
+        else:
+            log('pitch only: %s' % ('identical in all %d runs' % len(checks) if not replaced else
+                                    'the same in all %d runs, %d of them but for values written over while waiting'
+                                    % (len(checks), replaced)))
 
     if args.repeat:
         checks = replay.repeat_check(tc, target, plan, results, jobs=args.jobs, log=log)

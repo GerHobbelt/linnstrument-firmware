@@ -22,7 +22,8 @@
 # replays the configuration only with its own events, RECORDING.NAME.events, instead of the
 # recording's. `pitchonly=SETTING=VALUE` says the configuration's settings may change only pitch: each
 # of its runs is replayed again on the same build with SETTING=VALUE, and the MIDI other than pitch
-# bends must be identical. A comment at the end of a config line is its description.
+# bends must be identical, or differ only in values the MIDI output wrote over while they waited to go
+# out (tools/README.md, Replays). A comment at the end of a config line is its description.
 
 base    mpe=15                          # channel per note with the firmware's MPE setup (main channel 1,
                                         # bend range 48, Y as CC 74, Z as channel pressure), 15 note channels: 2-16

@@ -506,32 +506,87 @@ def midi_messages(path):
     return out
 
 
+def value_kind(m):
+    """For a message (its bytes as text), whether it is a value the MIDI output may write over while it waits to go out:
+    (kind, value, True) for a pitch bend, channel pressure or control change below 120 other than sustain (64) that
+    isn't zero, the kind being (type, channel), with the controller for a control change; (kind, value, False) for one
+    of these that is zero (pitch bend 8192); (None, None, False) for any other message. When the output falls behind, a
+    newer value of the same kind replaces one still waiting, and the search for it stops at any other message on its
+    channel (microLinnQueueMidiValue() in ls_midi.ino). Values sent always and 14-bit controllers, which are never
+    written over, can't be told apart from the others in the MIDI, so they count as values that may be."""
+    b = [int(x, 16) for x in m.split()]
+    status, channel = b[0] & 0xF0, b[0] & 0x0F
+    if status == 0xE0 and len(b) >= 3:
+        value = b[1] | (b[2] << 7)
+        return ('pitch bend', channel), value, value != 8192
+    if status == 0xD0 and len(b) >= 2:
+        return ('channel pressure', channel), b[1], b[1] != 0
+    if status == 0xB0 and len(b) >= 3 and b[1] < 120 and b[1] != 64:
+        return ('control change %d' % b[1], channel), b[2], b[2] != 0
+    return None, None, False
+
+
+def replaced_only(ma, mb):
+    """Whether two lists of messages [(time_us, bytes as text)] with no pitch bends can differ only through the MIDI
+    output writing newer values over older ones still waiting to go out, which depends on how long the queue is: the
+    messages it never writes over (notes, values of zero, every other kind) the same messages in the same order, and on
+    each channel the last value of each kind before each of those messages on the channel the same, since nothing moves
+    across them and the newest value before one always goes out. Returns None if so, else (index in ma, index in mb,
+    what differs) for the first message that breaks it."""
+    fa = [(i, m) for i, (t, m) in enumerate(ma) if not value_kind(m)[2]]
+    fb = [(i, m) for i, (t, m) in enumerate(mb) if not value_kind(m)[2]]
+    n = next((k for k, (x, y) in enumerate(zip(fa, fb)) if x[1] != y[1]), None)
+    if n is not None or len(fa) != len(fb):
+        k = n if n is not None else min(len(fa), len(fb))
+        return (fa[k][0] if k < len(fa) else len(ma)), (fb[k][0] if k < len(fb) else len(mb)), \
+            'a message never written over differs'
+
+    def lasts(ms):
+        current, out = {}, []
+        for i, (t, m) in enumerate(ms):
+            kind, value, replaceable = value_kind(m)
+            if kind is not None:
+                current[kind] = value
+            if not replaceable and int(m.split()[0], 16) < 0xF0:       # a channel message nothing moves across
+                channel = int(m.split()[0], 16) & 0x0F
+                out.append((i, sorted((k, v) for k, v in current.items() if k[1] == channel)))
+        return out
+    for (i, x), (j, y) in zip(lasts(ma), lasts(mb)):
+        if x != y:
+            diff = ['%s %d: %d against %d' % (k[0], k[1] + 1, dict(x).get(k, -1), dict(y).get(k, -1))
+                    for k in sorted(set(dict(x)) | set(dict(y))) if dict(x).get(k) != dict(y).get(k)]
+            return i, j, 'the last values before it on its channel differ (%s)' % ', '.join(diff)
+    return None
+
+
 def compare_nonpitch(a, b, context=3, shown=6):
     """Compares two midi.txt files without their pitch bends: the other messages must be the same, in the
-    same order (their times can differ, since each pitch bend takes the UART for about 1 ms). Returns
-    (None, the largest time difference in ms) if they are, else (message number, lines of a report) for the
-    first difference."""
+    same order (their times can differ, since each pitch bend takes the UART for about 1 ms), or differ only
+    through values the MIDI output wrote over while they waited (replaced_only()). Returns ('identical', the
+    largest time difference in ms) if they are the same, ('replaced', (values that may be written over in a,
+    in b)) if they differ only so, else ('different', lines of a report on the first difference)."""
     ma = [m for m in midi_messages(a) if not m[1].startswith('E')]
     mb = [m for m in midi_messages(b) if not m[1].startswith('E')]
     if [m[1] for m in ma] == [m[1] for m in mb]:
-        return None, max([abs(x[0] - y[0]) for x, y in zip(ma, mb)] or [0]) / 1000
-    n = next((i for i, (x, y) in enumerate(zip(ma, mb)) if x[1] != y[1]), min(len(ma), len(mb)))
-    report = ['  first difference at message %d other than a pitch bend (%d such messages, against %d):'
-              % (n + 1, len(ma), len(mb))]
-    for t, m in ma[max(0, n - context):n]:
-        report.append('      %12.1f %s' % (t, m))
-    for t, m in ma[n:n + shown]:
+        return 'identical', max([abs(x[0] - y[0]) for x, y in zip(ma, mb)] or [0]) / 1000
+    broken = replaced_only(ma, mb)
+    if broken is None:
+        return 'replaced', tuple(sum(1 for t, m in ms if value_kind(m)[2]) for ms in (ma, mb))
+    n, k, what = broken
+    report = ['  messages other than pitch bends: %d, against %d; they differ in more than values written over while '
+              'waiting to go out, at message %d (%d in this run): %s' % (len(ma), len(mb), n + 1, k + 1, what)]
+    for t, m in ma[max(0, n - context):n + shown]:
         report.append('    - %12.1f %s' % (t, m))
-    for t, m in mb[n:n + shown]:
+    for t, m in mb[max(0, k - context):k + shown]:
         report.append('    + %12.1f %s' % (t, m))
-    return n + 1, report
+    return 'different', report
 
 
 def pitchonly_check(tc, target, plan, results, jobs=None, log=print):
     """For the runs of a configuration with pitchonly=SETTING=VALUE (a setting that may change only pitch,
     such as Column Slide Divisions): replays each again on the same build with SETTING=VALUE, in a scratch
-    folder, and compares the MIDI other than pitch bends. Returns [(result, None or the report, the largest
-    time difference in ms)]."""
+    folder, and compares the MIDI other than pitch bends. Returns [(result, verdict, what it found)], as
+    compare_nonpitch() gives them; the scratch folder keeps the runs that differ."""
     todo = [r for r in results if r.config.pitchonly]
     if not todo:
         return []
@@ -554,14 +609,13 @@ def pitchonly_check(tc, target, plan, results, jobs=None, log=print):
         config = result.config.with_setting(*result.config.pitchonly)
         folder = os.path.join(scratch, result.config.name, result.name)
         run_one(exe, plan, config, result.rec, result.events, folder)
-        n, report = compare_nonpitch(folder + '/midi.txt', result.midi)
-        if n is None:
+        verdict, found = compare_nonpitch(folder + '/midi.txt', result.midi)
+        if verdict != 'different':
             shutil.rmtree(folder)
-            return result, None, report
-        return result, report, None
+        return result, verdict, found
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs or os.cpu_count()) as pool:
         out = list(pool.map(check, todo))
-    if not any(report for _, report, _ in out):
+    if not any(verdict == 'different' for _, verdict, _ in out):
         shutil.rmtree(scratch)
     return out
 
