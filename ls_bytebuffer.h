@@ -51,6 +51,10 @@ public:
     return write_ == read_;
   }
 
+  unsigned int size() const {                       // microLinn: how many bytes are queued
+    return write_ >= read_ ? write_ - read_ : Size - (read_ - write_);
+  }
+
 private:
   byte buffer_[Size];
   byte* write_;

@@ -2424,6 +2424,12 @@ void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
   midiOutQueue.push(param2 & 0x7F);
 }
 
+// microLinn: whether the pitch bend last queued on this channel (1-16) may still be waiting to go out: the messages
+// waiting now would take longer to send, at the pacing's interval, than the time since it was queued
+boolean isMicroLinnPitchBendQueued(byte channel) {
+  return (unsigned long)(midiOutQueue.size() / 4) * midiMinimumInterval * 3 > calcTimeDelta(micros(), lastMomentMidiPB[channel - 1]);
+}
+
 void handlePendingMidi(unsigned long now) {
   static unsigned long lastEnvoy = 0;
   static byte inMsgIndex = 0;

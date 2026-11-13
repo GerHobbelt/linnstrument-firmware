@@ -2019,6 +2019,8 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 //   MICROLINN_SETTLE_HOME_RANGE from where it first settled on it; after a slide, the one where the finger stops: a
 //   pad's note within MICROLINN_SETTLE_PAD_ZONE of it, otherwise the nearest division. Quantize Hold's speed sets
 //   the pace.
+// - when the MIDI output is backed up (many fingers, Y sent too), a voice's new pitch waits until the last one queued
+//   on its channel has gone out, then the newest goes; otherwise nothing waits
 // Only the result changes: the X movement, its rate and Quantize Hold's own state (quantizationOffsetX, lastMovedX,
 // fxdRateX, fxdRateCountX) stay as they are without it, since they also drive pressure, Y, releases and handovers.
 // The state is kept per channel, the voice, since one channel sounds one pitch bend, and only the channel's focused
@@ -2304,6 +2306,12 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     }
   }
 
+  // when the MIDI output is backed up, a new pitch waits until the last one queued on this voice's channel has gone out,
+  // and then the newest goes: the queue never holds two of a voice's pitches, which would only make every message after
+  // them, new notes too, wait longer
+  if (sensorCell->lastValueX != INVALID_DATA && isMicroLinnPitchBendQueued(sensorCell->channel)) {
+    return isLeftHandedSplit(sensorSplit) ? -sensorCell->lastValueX : sensorCell->lastValueX;
+  }
   return microLinnRoundedDivide(fingerX - v.offset, 64);
 }
 
