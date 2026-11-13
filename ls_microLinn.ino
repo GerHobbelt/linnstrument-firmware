@@ -2004,6 +2004,8 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 //   less near the grooves than in the middle of a pad, and so would the pitch
 // - at the strike, with Quantize or Quantize Hold on, the offset is where the finger landed, so the note starts on
 //   its pad's own note; with neither, it's 0 and where the finger lands sets the pitch
+// - with Quantize Hold on, for a moment after the strike (the landing) the offset keeps the note on the struck note
+//   while the finger settles into its pad; a finger moving quickly, as in a slide, is followed at once
 // - the offset fades once the centre of the finger's movement (its slow average, so a slide, not the swing of a
 //   vibrato) reaches the middle of another pad than the one it belongs to (the struck pad, or the one under the finger
 //   when the pitch last settled); that pad then sounds its own note
@@ -2030,8 +2032,10 @@ const byte MICROLINN_SETTLE_REST_MS = 50;                       // travelling un
 const byte MICROLINN_SETTLE_HOME_RANGE = 75;                    // % of a division: a finger this near the note it was on comes back to it
 const byte MICROLINN_SETTLE_PAD_ZONE = 65;                      // % of a division: after a slide, a finger this near a pad's note settles on it
 const byte MICROLINN_SETTLE_LANDING_MS = 250;                   // after the strike, this long settles on the struck note, the finger's
-const byte MICROLINN_SETTLE_LANDING_TAU_MS = 40;                // own reading rather than its average, this quickly (time constant), even
-                                                                // while it travels from where it landed towards the pad's centre
+const byte MICROLINN_SETTLE_LANDING_TAU_MS = 40;                // own reading rather than its average, this quickly (time constant), while
+                                                                // the finger settles into its pad: from where it landed to its middle
+const byte MICROLINN_SETTLE_QUICK = 12;                         // a reading this far from its fast average is a finger moving quickly (faster
+                                                                // than about a pad a second): no landing then, so a slide isn't held back
 const short MICROLINN_SETTLE_FADE_MS = 100;                     // the strike's offset fades at half a pad in this long
 // the pace at Quantize Hold's speeds, indexed by pitchCorrectHold (Off, Medium, Fast, Slow): the time constant of the
 // correction, and its top speed, as the time to correct half a division (50 cents with column offset 2 and 2 divisions)
@@ -2155,7 +2159,6 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   int32_t dt = (unsigned short)(now - v.last);                       // milliseconds since the last scan, at most 50
   if (dt > 50) dt = 50;
   v.last = now;
-  v.age = v.age + dt > 255 ? 255 : v.age + dt;
   v.still = v.still + dt > 255 ? 255 : v.still + dt;
 
   // the averages, and the anchor that follows the slow one with a dead band: the finger travels while it moves. The
@@ -2177,6 +2180,19 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   int32_t division = 1365 * 8 / Global.microLinn.columnSlideDivisions();
   int32_t range = division * MICROLINN_SETTLE_HOME_RANGE / 100;
 
+  // the landing: for MICROLINN_SETTLE_LANDING_MS after the strike the pitch settles on the struck note while the finger
+  // settles into its pad, from where it landed to the far edge of the pad's middle (a quarter pad past its centre), but
+  // not while the finger moves quickly. That time stands still while the finger moves quickly towards the pad's centre
+  // within this stretch: a finger sliding into its pad gets the whole time once it slows down, while a finger sliding
+  // through the pad leaves the stretch and is never held back
+  boolean quick = abs(fingerX - fast) >= MICROLINN_SETTLE_QUICK * 64;
+  boolean inPad = v.strike >= 0 ? fast >= -CALX_QUARTER_UNIT * 64 && fast <= v.strike * 64 + 8 * band
+                                : fast <= CALX_QUARTER_UNIT * 64 && fast >= v.strike * 64 - 8 * band;
+  boolean inwards = (fast > 0 && fingerX < fast) || (fast < 0 && fingerX > fast);
+  if (!(quick && inPad && inwards && v.age < MICROLINN_SETTLE_LANDING_MS && v.home != MICROLINN_HOME_PENDING)) {
+    v.age = v.age + dt > 255 ? 255 : v.age + dt;
+  }
+
   // the pad whose centre the slow average is nearest to, pads are FXD_CALX_FULL_UNIT apart, and whether it's within a
   // quarter pad of that centre: there, the offset fades, and the pad then owns it
   int slowX = v.slow / 8 - 128;
@@ -2194,12 +2210,9 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     }
   }
   else {
-    // while the strike's finger settles into its pad, moving from where it landed towards the pad's centre, the pitch
-    // stays on the struck note, travelling or not
+    // while the strike's finger settles into its pad the pitch stays on the struck note, travelling or not
     boolean young = v.age < MICROLINN_SETTLE_LANDING_MS;
-    boolean landing = young && v.home != MICROLINN_HOME_PENDING &&
-                      (v.strike >= 0 ? fast >= -8 * band && fast <= v.strike * 64 + 8 * band
-                                     : fast <= 8 * band && fast >= v.strike * 64 - 8 * band);
+    boolean landing = young && v.home != MICROLINN_HOME_PENDING && inPad;
     if (travelling && !landing) {
       // a quick movement, or one that strays from home, is a slide: home is chosen again where it stops
       if (abs(fast - slow) >= 16 * band || (v.home != MICROLINN_HOME_PENDING && abs(slow - v.strike * 64 - v.home * 64) > range)) {
@@ -2217,6 +2230,7 @@ short handleMicroLinnColumnSlide(int calibratedX) {
       byte speed = Split[sensorSplit].pitchCorrectHold;
       int32_t most = young ? 64 * division : dt * division / 2 / MICROLINN_SETTLE_HALF_DIVISION_MS[speed];
       int32_t step = microLinnRoundedDivide((target - centre) * dt, (young ? MICROLINN_SETTLE_LANDING_TAU_MS : MICROLINN_SETTLE_TAU_MS[speed]) + dt);
+      if (young && quick) step = 0;                                     // the landing waits while the finger moves quickly
       // the correction stays within HOME_RANGE of the finger's own pitch, or of its place on the pad without an offset
       v.offset = constrain(v.offset - constrain(step, -most, most), min(v.strike, 0) * 64 - range, max(v.strike, 0) * 64 + range);
       if (!young && abs(target - centre) < 64) {
