@@ -43,10 +43,16 @@ DESKTOP_MODEL = 200         # the hardware model reports a LinnStrument 200 (pin
 
 
 class Config:
-    def __init__(self, name, calibration, settings, description, recordings=None, events=None):
+    def __init__(self, name, calibration, settings, description, recordings=None, events=None, pitchonly=None):
         self.name, self.calibration, self.settings, self.description = name, calibration, settings, description
         self.recordings = recordings            # the recordings it applies to, or None for all
         self.events = events                    # NAME: replayed only with RECORDING.NAME.events
+        self.pitchonly = pitchonly              # (SETTING, VALUE): with it instead, only pitch bends may differ
+
+    def with_setting(self, name, value):
+        """The same configuration with one of its settings changed (or added)."""
+        settings = [(k, v) for k, v in self.settings if k != name] + [(name, value)]
+        return Config(self.name, self.calibration, settings, self.description, self.recordings, self.events)
 
 
 def _words(line):
@@ -71,7 +77,7 @@ def read_configurations(path=CONFIGURATIONS_FILE):
                 base += pairs
             elif words[0] == 'config' and len(words) >= 2:
                 calibration = 'export'
-                recordings = events = None
+                recordings = events = pitchonly = None
                 settings = []
                 for k, v in pairs:
                     if k == 'calibration':
@@ -82,11 +88,15 @@ def read_configurations(path=CONFIGURATIONS_FILE):
                         recordings = v.split(',')
                     elif k == 'events':
                         events = v
+                    elif k == 'pitchonly':
+                        if '=' not in v:
+                            raise RuntimeError('%s:%d: pitchonly is SETTING=VALUE' % (path, n))
+                        pitchonly = tuple(v.split('=', 1))
                     else:
                         settings.append((k, v))
                 if any(c.name == words[1] for c in configs):
                     raise RuntimeError('%s:%d: configuration %s defined twice' % (path, n, words[1]))
-                configs.append(Config(words[1], calibration, settings, comment, recordings, events))
+                configs.append(Config(words[1], calibration, settings, comment, recordings, events, pitchonly))
             else:
                 raise RuntimeError('%s:%d: expected `base SETTING=VALUE...` or `config NAME [SETTING=VALUE...]`' % (path, n))
     if not configs:
@@ -334,7 +344,7 @@ def replay(tc, target, plan, jobs=None, log=print, fresh=False):
     root = os.path.join(target.work_dir(), 'replay')
     if os.path.isdir(root):                     # results of configurations or runs that no longer exist
         for d in os.listdir(root):
-            if d not in plan.config_names and d not in ('desktop', 'repeat', 'sanitize'):
+            if d not in plan.config_names and d not in ('desktop', 'repeat', 'sanitize', 'pitchonly'):
                 shutil.rmtree(os.path.join(root, d))
         for c in plan.all_configs:
             folder = os.path.join(root, c.name)
@@ -361,6 +371,8 @@ def replay(tc, target, plan, jobs=None, log=print, fresh=False):
 
     log('replay of %s: building with the replay harness' % target.describe())
     exe = build(tc, src, os.path.join(root, 'desktop'))
+    with open(os.path.join(root, 'desktop', 'key.txt'), 'w') as f:
+        f.write(common + '\n')
     log('replay of %s: %d runs (%d cached)' % (target.describe(), len(todo), len(runs) - len(todo)))
 
     def run(item):
@@ -478,6 +490,78 @@ def sanitize_check(tc, target, plan, results, jobs=None, log=print):
     with concurrent.futures.ThreadPoolExecutor(max_workers=jobs or os.cpu_count()) as pool:
         out = list(pool.map(check, results))
     if not any(what for _, what in out):
+        shutil.rmtree(scratch)
+    return out
+
+
+def midi_messages(path):
+    """[(time_us, bytes as text)] of the messages in a midi.txt"""
+    out = []
+    with open(path) as f:
+        for line in f:
+            if line.startswith('#'):
+                continue
+            words = line.split('  ')[0].split()
+            out.append((float(words[0]), ' '.join(words[1:])))
+    return out
+
+
+def compare_nonpitch(a, b, context=3, shown=6):
+    """Compares two midi.txt files without their pitch bends: the other messages must be the same, in the
+    same order (their times can differ, since each pitch bend takes the UART for about 1 ms). Returns
+    (None, the largest time difference in ms) if they are, else (message number, lines of a report) for the
+    first difference."""
+    ma = [m for m in midi_messages(a) if not m[1].startswith('E')]
+    mb = [m for m in midi_messages(b) if not m[1].startswith('E')]
+    if [m[1] for m in ma] == [m[1] for m in mb]:
+        return None, max([abs(x[0] - y[0]) for x, y in zip(ma, mb)] or [0]) / 1000
+    n = next((i for i, (x, y) in enumerate(zip(ma, mb)) if x[1] != y[1]), min(len(ma), len(mb)))
+    report = ['  first difference at message %d other than a pitch bend (%d such messages, against %d):'
+              % (n + 1, len(ma), len(mb))]
+    for t, m in ma[max(0, n - context):n]:
+        report.append('      %12.1f %s' % (t, m))
+    for t, m in ma[n:n + shown]:
+        report.append('    - %12.1f %s' % (t, m))
+    for t, m in mb[n:n + shown]:
+        report.append('    + %12.1f %s' % (t, m))
+    return n + 1, report
+
+
+def pitchonly_check(tc, target, plan, results, jobs=None, log=print):
+    """For the runs of a configuration with pitchonly=SETTING=VALUE (a setting that may change only pitch,
+    such as Column Slide Divisions): replays each again on the same build with SETTING=VALUE, in a scratch
+    folder, and compares the MIDI other than pitch bends. Returns [(result, None or the report, the largest
+    time difference in ms)]."""
+    todo = [r for r in results if r.config.pitchonly]
+    if not todo:
+        return []
+    root = os.path.join(target.work_dir(), 'replay')
+    scratch = os.path.join(root, 'pitchonly')
+    if os.path.exists(scratch):
+        shutil.rmtree(scratch)
+    src = target.stage()
+    common = common_key(tc, src, plan)
+    exe = os.path.join(root, 'desktop', 'linnstrument-desktop')
+    if _read(os.path.join(root, 'desktop', 'key.txt')) != common or not os.path.exists(exe):
+        log('replay of %s: building with the replay harness' % target.describe())
+        exe = build(tc, src, os.path.join(root, 'desktop'))
+        with open(os.path.join(root, 'desktop', 'key.txt'), 'w') as f:
+            f.write(common + '\n')
+    log('replay of %s: %d runs again with the setting their configuration may change only pitch with'
+        % (target.describe(), len(todo)))
+
+    def check(result):
+        config = result.config.with_setting(*result.config.pitchonly)
+        folder = os.path.join(scratch, result.config.name, result.name)
+        run_one(exe, plan, config, result.rec, result.events, folder)
+        n, report = compare_nonpitch(folder + '/midi.txt', result.midi)
+        if n is None:
+            shutil.rmtree(folder)
+            return result, None, report
+        return result, report, None
+    with concurrent.futures.ThreadPoolExecutor(max_workers=jobs or os.cpu_count()) as pool:
+        out = list(pool.map(check, todo))
+    if not any(report for _, report, _ in out):
         shutil.rmtree(scratch)
     return out
 

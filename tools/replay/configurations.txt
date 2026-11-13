@@ -17,10 +17,12 @@
 # arpeggiator, both footswitches disabled) unless an events file assigns them.
 #
 # Format: `base SETTING=VALUE...`, and `config NAME [calibration=other] [recordings=NAME,...]
-# [events=NAME] [SETTING=VALUE...]`. `recordings` limits a configuration to some recordings, where the
-# others would only repeat the main configuration's runs. `events=NAME` replays the configuration only
-# with its own events, RECORDING.NAME.events, instead of the recording's. A comment at the end of a
-# config line is its description.
+# [events=NAME] [pitchonly=SETTING=VALUE] [SETTING=VALUE...]`. `recordings` limits a configuration to
+# some recordings, where the others would only repeat the main configuration's runs. `events=NAME`
+# replays the configuration only with its own events, RECORDING.NAME.events, instead of the
+# recording's. `pitchonly=SETTING=VALUE` says the configuration's settings may change only pitch: each
+# of its runs is replayed again on the same build with SETTING=VALUE, and the MIDI other than pitch
+# bends must be identical. A comment at the end of a config line is its description.
 
 base    mpe=15                          # channel per note with the firmware's MPE setup (main channel 1,
                                         # bend range 48, Y as CC 74, Z as channel pressure), 15 note channels: 2-16
@@ -40,3 +42,5 @@ config  other-calibration   calibration=other                         # the oppo
 config  fixed-low           velocitySensitivity=fixed pressureSensitivity=low      # fixed velocity, low pressure sensitivity
 config  fixed-medium        velocitySensitivity=fixed pressureSensitivity=medium   # fixed velocity, medium pressure sensitivity
 config  fixed-high          velocitySensitivity=fixed pressureSensitivity=high     # fixed velocity, high pressure sensitivity
+config  csd2                quantize=on quantizeHold=slow columnSlideDivisions=2 pitchonly=columnSlideDivisions=1   # Column Slide Divisions 2 with Quantize on and Quantize Hold Slow; only pitch may differ from Column Slide Divisions 1
+config  csd2-one-channel    midiMode=oneChannel quantize=on quantizeHold=slow columnSlideDivisions=2 pitchonly=columnSlideDivisions=1   # the same in One Channel, where every note shares channel 1
