@@ -2203,7 +2203,8 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   // quarter pad of that centre: there, the offset fades, and the pad then owns it
   int slowX = v.slow / 8 - 128;
   byte nearestCol = constrain(FXD_TO_INT(FXD_DIV(FXD_FROM_INT(slowX), FXD_CALX_FULL_UNIT)) + 1, 1, NUMCOLS - 1);
-  boolean nearCentre = abs(slowX - FXD_TO_INT(Device.calRows[nearestCol][0].fxdReferenceX)) <= CALX_QUARTER_UNIT;
+  int fromCentre = abs(slowX - FXD_TO_INT(Device.calRows[nearestCol][0].fxdReferenceX));
+  boolean nearCentre = fromCentre <= CALX_QUARTER_UNIT;
   if (v.offset != 0 && nearestCol != v.pad && nearCentre) {
     int32_t step = dt * 1365 * 4 / MICROLINN_SETTLE_FADE_MS;          // half a pad is 1365 x 4 64ths
     int32_t units = (step + 63) / 64;
@@ -2230,7 +2231,9 @@ short handleMicroLinnColumnSlide(int calibratedX) {
       if (v.home == MICROLINN_HOME_PENDING) {
         v.home = microLinnSlideDivision(own);
         v.rebase = true;
-        v.pad = nearestCol;                                             // the pad under the finger owns the correction
+        // the pad under the finger owns the correction, if the finger is clearly on it (more than an eighth of a pad
+        // from its groove): from the groove, the centre of a wide vibrato swings back into the middle of the pad it's on
+        if (fromCentre <= CALX_QUARTER_UNIT * 3 / 2) v.pad = nearestCol;
       }
       int32_t target = young || abs(own - v.home * 64) <= range ? v.home * 64 : microLinnSlideDivision(own) * 64;
       int32_t centre = (young ? fingerX : fast) - v.offset;             // the pitch of the fast average, or of the finger while landing
