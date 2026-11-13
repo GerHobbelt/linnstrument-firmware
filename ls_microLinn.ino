@@ -2008,7 +2008,7 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 //   while the finger settles into its pad; a finger moving quickly, as in a slide, is followed at once
 // - the offset fades once the centre of the finger's movement (its slow average, so a slide, not the swing of a
 //   vibrato) reaches the middle of another pad than the one it belongs to (the struck pad, or the one under the finger
-//   when the pitch last settled); that pad then sounds its own note
+//   when home was last chosen after a slide or the pitch last settled); that pad then sounds its own note
 // - with Quantize Hold on, the offset settles the centre of the finger's movement (its fast average) on a division,
 //   during a vibrato as at rest, and never while the finger travels (slides or bends: its slow average moving beyond
 //   a small band). The divisions are the pads' own notes and the points that split each pad's interval into Column
@@ -2224,6 +2224,7 @@ short handleMicroLinnColumnSlide(int calibratedX) {
       if (v.home == MICROLINN_HOME_PENDING) {
         v.home = microLinnSlideDivision(own);
         v.rebase = true;
+        v.pad = nearestCol;                                             // the pad under the finger owns the correction
       }
       int32_t target = young || abs(own - v.home * 64) <= range ? v.home * 64 : microLinnSlideDivision(own) * 64;
       int32_t centre = (young ? fingerX : fast) - v.offset;             // the pitch of the fast average, or of the finger while landing
