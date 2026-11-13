@@ -1440,6 +1440,7 @@ struct MicroLinnSlideVoice {                                    // Column Slide 
   byte cell;                                                    // the cell it belongs to, column + 32 x row, 0 for none
   byte pad;                                                     // the pad the strike's offset belongs to
   boolean rebase;                                               // until the pitch first settles on home after a strike or a slide
+  short reading;                                                // where the finger was at the last scan, in calibrated X units from the note's pad
 };
 MicroLinnSlideVoice microLinnSlideVoice[16];
 byte microLinnWaitingCell[16];                                  // per channel, the cell waiting to take over its note in a slide, column + 32 x row, 0 for none
@@ -2039,6 +2040,9 @@ const byte MICROLINN_SETTLE_LANDED = MICROLINN_SETTLE_BAND;     // the landing e
                                                                 // is becomes the note's place
 const byte MICROLINN_SETTLE_QUICK = 12;                         // a reading this far from its fast average is a finger moving quickly (faster
                                                                 // than about a pad a second): no landing then, so a slide isn't held back
+const byte MICROLINN_SETTLE_STOPPING = 3;                       // and only while it moves, at each scan, at least 1/this of what a steady
+                                                                // movement as far from its fast average would: once the finger stops, the
+                                                                // landing resumes at once, rather than once its average has caught up
 const boolean MICROLINN_SETTLE_MOVING_HOLDS = true;             // a note whose finger was already moving when it started (a voice re-attacking
                                                                 // in a chord slide) stays on its note while the finger comes in to the pad's
                                                                 // centre, then follows; false: it follows at once, and overshoots its note
@@ -2169,11 +2173,14 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     v.cell = sensorCol + 32 * sensorRow;
     v.pad = sensorCol;
     v.rebase = true;
+    v.reading = microLinnRoundedDivide(fingerX, 64);
   }
   int32_t dt = (unsigned short)(now - v.last);                       // milliseconds since the last scan, at most 50
   if (dt > 50) dt = 50;
   v.last = now;
   v.still = v.still + dt > 255 ? 255 : v.still + dt;
+  int32_t scanMove = fingerX - v.reading * 64;                        // the finger's movement since the last scan
+  v.reading = microLinnRoundedDivide(fingerX, 64);
 
   // the averages, and the anchor that follows the slow one with a dead band: the finger travels while it moves. The
   // slow average never trails the fast one by more than two bands, so that it catches up soon after a slide stops
@@ -2199,7 +2206,8 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   // the finger moves quickly. That time stands still while the finger moves quickly towards the pad's centre within
   // this stretch: a finger sliding into its pad gets the whole time once it slows down, while a finger sliding through
   // the pad leaves the stretch and is never held back
-  boolean quick = abs(fingerX - fast) >= MICROLINN_SETTLE_QUICK * 64;
+  boolean quick = abs(fingerX - fast) >= MICROLINN_SETTLE_QUICK * 64 &&
+                  abs(scanMove) * MICROLINN_SETTLE_STOPPING * MICROLINN_SETTLE_FAST_MS >= abs(fingerX - fast) * dt;
   boolean inPad = v.strike >= 0 ? fast >= -MICROLINN_SETTLE_LANDING_REACH * 64 && fast <= v.strike * 64 + 8 * band
                                 : fast <= MICROLINN_SETTLE_LANDING_REACH * 64 && fast >= v.strike * 64 - 8 * band;
   boolean inwards = (fast > 0 && fingerX < fast) || (fast < 0 && fingerX > fast);
