@@ -2006,10 +2006,12 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 // - at the strike, with Quantize or Quantize Hold on, the offset is where the finger landed, so the note starts on
 //   its pad's own note; with neither, it's 0 and where the finger lands sets the pitch
 // - with Quantize Hold on, for a moment after the strike (the landing) the offset keeps the note on the struck note
-//   while the finger settles into its pad; a finger moving quickly, as in a slide, is followed at once
+//   while the finger settles into its pad; a finger moving quickly, as in a slide, is followed at once, except that a
+//   note whose finger was already moving when it started stays on its note until the finger reaches the pad's centre
 // - the offset fades once the centre of the finger's movement (its slow average, so a slide, not the swing of a
 //   vibrato) reaches the middle of another pad than the one it belongs to (the struck pad, or the one under the finger
-//   when home was last chosen after a slide or the pitch last settled); that pad then sounds its own note
+//   when home was last chosen after a slide or the pitch last settled); that pad then sounds its own note. While the
+//   finger moves on the other way than the fade takes the pitch, it fades no faster than the finger moves
 // - with Quantize Hold on, the offset settles the centre of the finger's movement (its fast average) on a division,
 //   during a vibrato as at rest, and never while the finger travels (slides or bends: its slow average moving beyond
 //   a small band). The divisions are the pads' own notes and the points that split each pad's interval into Column
