@@ -2756,6 +2756,8 @@ void setupMicroLinn() {                              // runs when the Linnstrume
   microLinnPerSplitXenSettingsLinked[4] = microLinnIsLinked(Split[LEFT].microLinn.groupingCC, Split[RIGHT].microLinn.groupingCC, 255);
   microLinnPerSplitXenSettingsLinked[3] = microLinnIsLinked(Split[LEFT].microLinn.reattachGlide, Split[RIGHT].microLinn.reattachGlide, 0);
 
+  microLinnSemitonesPerPad[LEFT]  = Split[LEFT].microLinn.colOffset;     // assumes 12edo, if not calcTuning will overwrite this
+  microLinnSemitonesPerPad[RIGHT] = Split[RIGHT].microLinn.colOffset;
   calcMicroLinnTuning();
   for (byte side = 0; side < NUMSPLITS; ++side) {
     microLinnCalcHammerOnEdosteps(side);
@@ -2767,9 +2769,7 @@ void setupMicroLinn() {                              // runs when the Linnstrume
     microLinnCalcGuitarRowOffsetCents(row);
   }
   microLinnCalcGuitarTuning();
-  microLinnSemitonesPerPad[LEFT]  = Split[LEFT].microLinn.colOffset;     // assumes 12edo, if not calcTuning will overwrite this
-  microLinnSemitonesPerPad[RIGHT] = Split[RIGHT].microLinn.colOffset;
-  microLinnImportType = 0;                                               // 0 means no import is currently happening
+  microLinnImportType = 0;                                              // 0 means no import is currently happening
   microLinnUpdateAnchorString();
   updateDisplay();
 }
