@@ -2424,6 +2424,37 @@ void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
   midiOutQueue.push(param2 & 0x7F);
 }
 
+// microLinn: pitch bend, channel pressure and control change values that the decimation rate lets through are queued
+// with this flag in their channel byte (handlePendingMidi() masks it off). When the MIDI output falls behind, such a
+// value can still be waiting to go out when the next one for its channel (and controller) comes, at least the
+// decimation rate later: the newer value is then written over it in the queue rather than queued behind it, so the
+// newest value goes out where the older one would have, and stale values don't pile up ahead of everything queued
+// after them. Nothing moves across a note on, a note off or any other message on the same channel that isn't such a
+// value: the search for the waiting value stops there and the new value is queued. Values of zero, values sent always,
+// poly pressure (which also carries microLinn's settings export) and 14-bit controllers are queued as before and never
+// written over.
+const byte MICROLINN_QUEUED_VALUE = 0x10;
+
+void microLinnQueueMidiValue(MIDIStatus type, byte param1, byte param2, byte channel) {
+  // the newest message first, back to the oldest not yet started (the one being sent may have been read in part)
+  unsigned int waiting = 4 * (midiOutQueue.size() / 4);
+  for (unsigned int back = 4; back <= waiting; back += 4) {
+    byte queuedChannel = midiOutQueue.fromEnd(back);
+    if ((queuedChannel & 0x0F) != channel) continue;
+    byte queuedType = midiOutQueue.fromEnd(back - 1);
+    if (queuedType >= MIDISystemExclusive) continue;                // system messages are queued on channel 0
+    if (!(queuedChannel & MICROLINN_QUEUED_VALUE)) break;           // a note or another message on this channel
+    if (queuedType != type || (type == MIDIControlChange && midiOutQueue.fromEnd(back - 2) != param1)) continue;
+    midiOutQueue.fromEnd(back - 2) = param1 & 0x7F;
+    midiOutQueue.fromEnd(back - 3) = param2 & 0x7F;
+    return;
+  }
+  midiOutQueue.push(channel | MICROLINN_QUEUED_VALUE);
+  midiOutQueue.push((byte)type);
+  midiOutQueue.push(param1 & 0x7F);
+  midiOutQueue.push(param2 & 0x7F);
+}
+
 // microLinn: whether the pitch bend last queued on this channel (1-16) may still be waiting to go out: the messages
 // waiting now would take longer to send, at the pacing's interval, than the time since it was queued
 boolean isMicroLinnPitchBendQueued(byte channel) {
@@ -2451,7 +2482,7 @@ void handlePendingMidi(unsigned long now) {
   if (!midiOutQueue.empty() && Serial.availableForWrite() > 3) {
     // the first queued byte is always the MIDI channel
     if (inMsgIndex == 0) {
-      lastChannel = midiOutQueue.pop();
+      lastChannel = midiOutQueue.pop() & 0x0F;                      // microLinn: without the flag of a queued value
       inMsgIndex++;
     }
     // the others will constitute the actual MIDI message
@@ -2719,6 +2750,9 @@ void midiSendControlChange(byte controlnum, byte controlval, byte channel, boole
     }
 #endif
   }
+  else if (!always && controlnum < 120 && controlnum != 64 && controlval != 0) {
+    microLinnQueueMidiValue(MIDIControlChange, controlnum, controlval, channel);   // microLinn: may replace a waiting value
+  }
   else {
     queueMidiMessage(MIDIControlChange, controlnum, controlval, channel);
   }
@@ -2927,6 +2961,9 @@ void midiSendPitchBend(int pitchval, byte channel) {
     }
 #endif
   }
+  else if (pitchval != 0) {
+    microLinnQueueMidiValue(MIDIPitchBend, bend & 0x7F, (bend >> 7) & 0x7F, channel);   // microLinn: may replace a waiting value
+  }
   else {
     queueMidiMessage(MIDIPitchBend, bend & 0x7F, (bend >> 7) & 0x7F, channel);
   }
@@ -2974,6 +3011,9 @@ void midiSendAfterTouch(byte value, byte channel, boolean always) {
       Serial.print((int)channel);
       Serial.print("\n");
     }
+  }
+  else if (!always && value != 0) {
+    microLinnQueueMidiValue(MIDIChannelPressure, value, 0, channel);   // microLinn: may replace a waiting value
   }
   else {
     queueMidiMessage(MIDIChannelPressure, value, 0, channel);

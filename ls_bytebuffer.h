@@ -55,6 +55,10 @@ public:
     return write_ >= read_ ? write_ - read_ : Size - (read_ - write_);
   }
 
+  byte& fromEnd(unsigned int n) {                   // microLinn: the byte pushed n pushes ago (1 is the last), 0 < n <= size()
+    return n > (unsigned int)(write_ - buffer_) ? *(write_ + Size - n) : *(write_ - n);
+  }
+
 private:
   byte buffer_[Size];
   byte* write_;
