@@ -2186,6 +2186,7 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   // slow average never trails the fast one by more than two bands, so that it catches up soon after a slide stops
   int32_t anchor = v.slow + v.anchor;
   int32_t band = 8 * MICROLINN_SETTLE_BAND;
+  int32_t lastFast = v.fast;
   v.fast = microLinnTowards(v.fast, position, dt, MICROLINN_SETTLE_FAST_MS);
   v.slow = constrain(microLinnTowards(v.slow, position, dt, MICROLINN_SETTLE_SLOW_MS), v.fast - 2 * band, v.fast + 2 * band);
   int32_t moved = constrain(anchor, v.slow - band, v.slow + band);
@@ -2229,6 +2230,10 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   boolean nearCentre = fromCentre <= CALX_QUARTER_UNIT;
   if (v.offset != 0 && nearestCol != v.pad && nearCentre) {
     int32_t step = dt * 1365 * 4 / MICROLINN_SETTLE_FADE_MS;          // half a pad is 1365 x 4 64ths
+    // never against the finger: while the finger (its fast average) moves the other way than the fade takes the pitch,
+    // the offset fades at most as fast as the finger moves, so the pitch waits for the finger rather than turning back
+    int32_t followed = (v.fast - lastFast) * 8;
+    if (followed * v.offset < 0) step = min(step, abs(followed));
     int32_t units = (step + 63) / 64;
     v.offset -= constrain(v.offset, -step, step);
     v.strike -= constrain(v.strike, -units, units);
