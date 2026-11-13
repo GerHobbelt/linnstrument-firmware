@@ -1618,7 +1618,7 @@ short handleXExpression() {
 
     // microLinn: with Column Slide Divisions, the pitch of the cell the channel sends is its own, the rest as above
     if (columnSlide && isFocusedCell()) {
-      result = handleMicroLinnColumnSlide(calibratedX - FXD_TO_INT(sensorCell->fxdInitialReferenceX()), calibratedX);
+      result = handleMicroLinnColumnSlide(calibratedX);
     }
   }
 

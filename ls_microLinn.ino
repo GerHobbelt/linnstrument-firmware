@@ -2000,6 +2000,8 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 // turn a note's X into pitch. At every scan the pitch is the finger's distance from the centre of the note's pad
 // minus an offset, so finger movement always becomes pitch at the column offset's rate, at once; only the offset
 // moves, gradually:
+// - the finger's position is its X reading straightened within each pad (MICROLINN_STRAIGHT_X): the reading moves
+//   less near the grooves than in the middle of a pad, and so would the pitch
 // - at the strike, with Quantize or Quantize Hold on, the offset is where the finger landed, so the note starts on
 //   its pad's own note; with neither, it's 0 and where the finger lands sets the pitch
 // - the offset fades once the centre of the finger's movement (its slow average, so a slide, not the swing of a
@@ -2036,6 +2038,10 @@ const short MICROLINN_SETTLE_FADE_MS = 100;                     // the strike's 
 const byte MICROLINN_SETTLE_TAU_MS[4] = {0, 40, 12, 100};
 const short MICROLINN_SETTLE_HALF_DIVISION_MS[4] = {0, 400, 170, 1000};
 const short MICROLINN_HOME_PENDING = -32768;                    // home is chosen where the finger stops after a slide
+// The straightening: the X reading at each tenth of a pad from its left groove, against how far across the pad the
+// finger is, in thousandths. Measured on a LinnStrument 200, from fingers sliding steadily across its pads in both
+// directions (averaged): the tenths of the reading next to the grooves take 2.5 times as long to cross as the middle two
+const short MICROLINN_STRAIGHT_X[11] = {0, 152, 255, 336, 406, 472, 539, 613, 702, 825, 1000};
 
 // called by handleXExpression(), transferFromSameRowCell() and transferToSameRowCell() in ls_handleTouches.ino
 boolean isMicroLinnColumnSlideOn(byte side) {
@@ -2107,20 +2113,36 @@ short microLinnSlideDivision(int32_t pitch) {
   return microLinnRoundedDivide(division * 1365, 8 * divisions);
 }
 
+// a calibrated X straightened within its pad (MICROLINN_STRAIGHT_X), in 16ths of a unit; pads are FXD_CALX_FULL_UNIT
+// apart, column 1's centre is 0. In 16ths of a unit a pad is 2730, a tenth of it 273
+int32_t microLinnStraightX(int calibratedX) {
+  int32_t x = (int32_t)calibratedX * 16 + 1365;                       // from column 1's left groove
+  if (x < 0) return (int32_t)calibratedX * 16;
+  int32_t inPad = x % 2730;
+  int32_t tenth = inPad / 273;
+  int32_t straight = (MICROLINN_STRAIGHT_X[tenth] * 273 +
+                      (MICROLINN_STRAIGHT_X[tenth + 1] - MICROLINN_STRAIGHT_X[tenth]) * (inPad - tenth * 273)) / 100;
+  return x - inPad + straight - 1365;
+}
+
 // called by handleXExpression() in ls_handleTouches.ino with X usable, for the channel's focused cell, in place of
-// Quantize's and Quantize Hold's result: fingerX is the finger's distance from the centre of the note's pad,
-// calibratedX where the finger is. Returns the pitch: fingerX minus the offset
-short handleMicroLinnColumnSlide(short fingerX, int calibratedX) {
+// Quantize's and Quantize Hold's result: calibratedX is where the finger is, straightened here. Returns the pitch: the
+// finger's distance from the centre of the note's pad minus the offset
+short handleMicroLinnColumnSlide(int calibratedX) {
   MicroLinnSlideVoice& v = microLinnSlideVoice[sensorCell->channel - 1];
   unsigned short now = millis();
-  int32_t position = constrain(calibratedX + 128, 0, 8000) * 8;
-  int32_t toPitch = (int32_t)(fingerX - calibratedX - 128) * 64;      // an average to its pitch: x 8, then this
+  int reference = FXD_TO_INT(sensorCell->fxdInitialReferenceX());
+  int32_t straight = microLinnStraightX(calibratedX);                 // where the finger is, in 16ths of a unit
+  int32_t fingerX = (straight - reference * 16) * 4;                  // its distance from the note's pad, in 64ths
+  int32_t position = constrain(straight + 128 * 16, 0, 8000 * 16) / 2;
+  int32_t toPitch = (int32_t)(-reference - 128) * 64;                 // an average to its pitch: x 8, then this
 
   if (v.cell != sensorCol + 32 * sensorRow) {                         // a new note, or a cell that has taken the focus
-    v.strike = Split[sensorSplit].pitchCorrectQuantize || doQuantizeHold() ?
-               constrain(sensorCell->quantizationOffsetX, -CALX_VALUE_MARGIN, CALX_VALUE_MARGIN) : 0;
-    v.offset = v.strike * 64;
-    v.home = microLinnSlideDivision((int32_t)(fingerX - v.strike) * 64);
+    v.offset = Split[sensorSplit].pitchCorrectQuantize || doQuantizeHold() ?
+               constrain((microLinnStraightX(reference + sensorCell->quantizationOffsetX) - reference * 16) * 4,
+                         -CALX_VALUE_MARGIN * 64, CALX_VALUE_MARGIN * 64) : 0;
+    v.strike = microLinnRoundedDivide(v.offset, 64);
+    v.home = microLinnSlideDivision(fingerX - v.offset);
     v.fast = v.slow = position;
     v.anchor = v.drift = 0;
     v.still = MICROLINN_SETTLE_REST_MS;
@@ -2191,7 +2213,7 @@ short handleMicroLinnColumnSlide(short fingerX, int calibratedX) {
         v.rebase = true;
       }
       int32_t target = young || abs(own - v.home * 64) <= range ? v.home * 64 : microLinnSlideDivision(own) * 64;
-      int32_t centre = (young ? fingerX * 64 : fast) - v.offset;        // the pitch of the fast average, or of the finger while landing
+      int32_t centre = (young ? fingerX : fast) - v.offset;             // the pitch of the fast average, or of the finger while landing
       byte speed = Split[sensorSplit].pitchCorrectHold;
       int32_t most = young ? 64 * division : dt * division / 2 / MICROLINN_SETTLE_HALF_DIVISION_MS[speed];
       int32_t step = microLinnRoundedDivide((target - centre) * dt, (young ? MICROLINN_SETTLE_LANDING_TAU_MS : MICROLINN_SETTLE_TAU_MS[speed]) + dt);
@@ -2209,7 +2231,7 @@ short handleMicroLinnColumnSlide(short fingerX, int calibratedX) {
     }
   }
 
-  return fingerX - microLinnRoundedDivide(v.offset, 64);
+  return microLinnRoundedDivide(fingerX - v.offset, 64);
 }
 
 // called by determineRowOffsetNote() in ls_handleTouches.ino, duplicates the original determineRowOffsetNote function 
