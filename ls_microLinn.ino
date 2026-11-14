@@ -2037,9 +2037,10 @@ const short MICROLINN_SETTLE_FAST_MS = 60;                      // the fast aver
 const short MICROLINN_SETTLE_SLOW_MS = 150;                     // the slow average: the centre of a vibrato, which tells a slide from it; it
                                                                 // trails the fast one by at most two bands
 const byte MICROLINN_SETTLE_BAND = 6;                           // the slow average leaving a band this wide (each way) around an anchor is travelling
-const byte MICROLINN_SETTLE_REST_MS[4] = {50, 50, 20, 50};      // travelling until the anchor has moved less than a third of the band for this
-                                                                // long, at Quantize Hold's speeds (Off, Medium, Fast, Slow): shorter at
-                                                                // Fast, so that a finger counts as stopped sooner there
+const byte MICROLINN_SETTLE_REST_MS[4] = {50, 50, 50, 50};      // travelling until the anchor has moved less than a third of the band for this
+                                                                // long, at Quantize Hold's speeds (Off, Medium, Fast, Slow): shorter, a
+                                                                // finger counts as stopped sooner, but a slow slide then counts as
+                                                                // stopping too and the pitch trails it
 const byte MICROLINN_SETTLE_HOME_RANGE = 75;                    // % of a division: a finger this near the note it was on comes back to it
 const byte MICROLINN_SETTLE_PAD_ZONE = 65;                      // % of a division: after a slide, a finger this near a pad's note settles on it
 const byte MICROLINN_SETTLE_LANDING_MS = 250;                   // after the strike, this long settles on the struck note, the finger's
