@@ -1973,6 +1973,29 @@ void takeMicroLinnHeldChannels(byte side) {
   }
 }
 
+// Setting a split's channels up again also forgets which notes are on (initializeLastMidiTracking() in ls_midi.ino),
+// and a note-off goes out only for a note that is on. So each held touch whose note sounds (a muted hammer-on's
+// doesn't) marks it on again, as the note and channel its release sends, in the split its column is in, and the
+// note ends when the finger lifts.
+// called by initializeLastMidiTracking() in ls_midi.ino, after it has set every note off
+void keepMicroLinnHeldNotesOn() {
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if (c.touched != touchedCell || !c.hasNote()) continue;
+      byte side = getSplitOf(col);
+      signed char note = c.note;
+      signed char channel = c.channel;
+      if (Global.microLinn.drumPadMode == 0 && isMicroLinnOn()) {
+        note = getMicroLinnCellMidiNote(side, c);
+        channel = rechannelMicroLinnGroup(side, channel, c.microLinnGroup);
+      }
+      if (note < 0 || channel < 1) continue;
+      lastValueMidiNotesOn[side][note][channel - 1] = 1;
+    }
+  }
+}
+
 // called by scalePitch() in ls_midi.ino
 float getMicroLinnSemitonesPerPad(byte side, int pitchValue) {
   if (Split[side].microLinn.condensedBendPerPad != 1) return microLinnSemitonesPerPad[side];

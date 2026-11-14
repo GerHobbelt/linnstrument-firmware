@@ -2414,6 +2414,8 @@ void initializeLastMidiTracking() {
       performContinuousTasks();
     }
   }
+
+  keepMicroLinnHeldNotesOn();                              // microLinn: but the notes still held stay on
 }
 
 void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
