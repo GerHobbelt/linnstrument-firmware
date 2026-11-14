@@ -1350,8 +1350,8 @@ void sendNewNote() {
       channel = rechannelMicroLinnGroup(sensorSplit, channel, sensorCell->microLinnGroup);
       if (channel == -1) return;
       tuningBend = getMicroLinnTuningBend(sensorSplit, sensorCell->note, sensorCell->microLinnGroup);
-      setMicroLinnSoundingNote(*sensorCell, note, tuningBend);   // keep using these even if transposing changes the tables
     }
+    startMicroLinnVoice(note, channel, tuningBend);              // microLinn: the note's voice keeps these, even if transposing changes the tables
 
     sendMicroLinnGroupingAndLocatingCCs(channel, sensorSplit);
 
@@ -2007,7 +2007,7 @@ void handleTouchRelease() {
       }
     }
 
-    releaseChannel(sensorSplit, sensorCell->channel);
+    releaseMicroLinnVoiceChannel(sensorSplit, sensorCell->channel);   // microLinn: the note's voice ends, and releases the channel
 
     // Reset all this cell's musical data
     sensorCell->clearMusicalData();

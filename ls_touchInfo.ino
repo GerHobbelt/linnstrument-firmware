@@ -607,9 +607,9 @@ boolean TouchInfo::hasUsableX() {
 }
 
 void TouchInfo::clearMusicalData() {
+  clearMicroLinnSoundingNote(*this);                 // microLinn: first, so that the note's channel still finds its voice
   note = -1;
   channel = -1;
-  clearMicroLinnSoundingNote(*this);
   octaveOffset = 0;
   fxdPrevPressure = 0;
   fxdPrevTimbre = FXD_CONST_255;
