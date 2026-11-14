@@ -2332,9 +2332,10 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     else if (doQuantizeHold()) {
       int32_t own = fast - v.strike * 64;                               // the finger's own pitch, without the strike's offset
       if (v.home == MICROLINN_HOME_PENDING) {
-        // the division under the finger, wherever it struck; but a finger back within the struck note's own zone around
-        // where it struck, as after a wide vibrato there, settles on the note it struck and keeps the strike's offset
-        boolean struck = v.strike != 0 && microLinnSlideDivision(own) == 0;
+        // the division under the finger, wherever it struck; but a finger within HOME_RANGE of where it struck, as after a
+        // wide vibrato or a quick tilt there, settles on the note it struck and keeps the strike's offset, as a slow tilt
+        // that never counted as moving on does
+        boolean struck = abs(own) <= range;
         v.home = struck ? 0 : microLinnSlideDivision(fast);
         v.rebase = struck ? MICROLINN_REBASE_STRIKE : MICROLINN_REBASE_SLIDE;
         // the pad under the finger owns the correction, if the finger is clearly on it (more than an eighth of a pad
