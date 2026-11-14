@@ -1440,7 +1440,8 @@ struct MicroLinnSlideVoice {                                    // Column Slide 
   byte cell;                                                    // the cell it belongs to, column + 32 x row, 0 for none
   byte pad;                                                     // the pad the strike's offset belongs to
   byte rebase;                                                  // until the pitch first settles on home: MICROLINN_REBASE_STRIKE after
-                                                                // a strike, MICROLINN_REBASE_SLIDE after a slide; then 0
+                                                                // a strike, MICROLINN_REBASE_MOVING after a strike whose finger was
+                                                                // already moving, MICROLINN_REBASE_SLIDE after a slide; then 0
   short reading;                                                // where the finger was at the last scan, in calibrated X units from the note's pad
 };
 MicroLinnSlideVoice microLinnSlideVoice[16];
@@ -2011,9 +2012,10 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 // - with Quantize Hold on, for a moment after the strike (the landing) the offset keeps the note on the struck note
 //   while the finger settles into its pad; a finger moving quickly, as in a slide, is followed at once, except that a
 //   note whose finger was already moving when it started stays on its note until the finger reaches the pad's centre
-// - after a strike off its pad's middle, the strike's offset is used up as the finger comes in towards the middle (its
-//   fast average, so not by a vibrato's swings): the struck note doesn't move, and from the middle on the note follows
-//   the finger, so that a slide to the next pad or a groove lands where the finger is
+// - with Quantize Hold on, after a strike off its pad's middle at rest, the strike's offset is used up as the finger
+//   comes in towards the middle (its fast average, which takes in part of each of a vibrato's swings): the struck note
+//   doesn't move, and from the middle on the note follows the finger, so that a slide to the next pad or a groove lands
+//   where the finger is. A vibrato played where it struck sits off the note, on the side it struck, while it lasts
 // - the offset fades once the centre of the finger's movement (its slow average, so a slide, not the swing of a
 //   vibrato) reaches the middle of another pad than the one it belongs to (the struck pad, or the one under the finger
 //   when home was last chosen after a slide or the pitch last settled); that pad then sounds its own note. While the
@@ -2306,7 +2308,8 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   // with Quantize Hold on, after a strike off its pad's middle at rest, the strike's offset is used up as the finger
   // comes in towards the middle: the struck note doesn't move, and from the middle on the note follows the finger. In the
   // landing, while the finger moves in quickly (when the landing waits), as the finger's reading comes in; after it, as
-  // its fast average comes in, so that a vibrato's swings towards the middle count only as far as its centre moves. The
+  // its fast average comes in, which takes in part of each swing of a vibrato towards the middle: a vibrato played
+  // where it struck uses up some of the offset and sits off the note, on the side it struck, while it lasts. The
   // strike's offset only shrinks here (a lean outwards is the settling's), and a note whose finger was already moving
   // when it started keeps its own hold
   boolean young = v.age < MICROLINN_SETTLE_LANDING_MS;
