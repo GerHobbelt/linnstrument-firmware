@@ -2319,7 +2319,15 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     if (v.strike > 0 && v.offset > 0) v.offset = constrain(in, 0, v.offset);
     else if (v.strike < 0 && v.offset < 0) v.offset = constrain(in, v.offset, 0);
     int32_t left = microLinnRoundedDivide(v.offset, 64);
-    if (abs(left) < abs(v.strike)) v.strike = left;
+    // this rule leaves the strike alone in the landing; after it, the strike takes what is left of the offset once
+    // that is smaller (and changes sign when the landing has pulled the offset across zero). In the landing the strike
+    // bounds the landing's stretch (inPad above): kept where the finger struck, a quick roll in just past the middle
+    // stays within the stretch from either side. Shrunk there, the stretch would end a band beyond the finger's
+    // reading, short of its fast average, and a strike used up entirely would take the stretch of a strike right of
+    // the middle, which reaches a quarter pad past the middle to the left and only a band to the right. The slide test
+    // can still clear the strike in the landing once the offset is used up, and the fade shrinks it near another pad's
+    // centre
+    if (abs(left) < abs(v.strike) && !young) v.strike = left;
   }
 
   // the pad whose centre the slow average is nearest to, pads are FXD_CALX_FULL_UNIT apart, and whether it's within a
@@ -2381,7 +2389,12 @@ short handleMicroLinnColumnSlide(int calibratedX) {
       byte speed = Split[sensorSplit].pitchCorrectHold;
       int32_t most = young ? 64 * division : dt * division / 2 / MICROLINN_SETTLE_HALF_DIVISION_MS[speed];
       int32_t step = microLinnRoundedDivide((target - centre) * dt, (young ? MICROLINN_SETTLE_LANDING_TAU_MS : MICROLINN_SETTLE_TAU_MS[speed]) + dt);
-      if (young && quick) step = 0;                                     // the landing waits while the finger moves quickly
+      // the landing waits while the finger moves quickly, and while the stretch, which its fast average decides, holds
+      // a finger whose reading is already past the stretch's far end: the average trails a quick roll, and a finger
+      // that has stopped beyond the stretch would otherwise be pulled towards the struck note until the average caught
+      // up, and keep that pull as an offset once it counted as moving on
+      if (young && (quick || (inPad && (v.strike >= 0 ? fingerX < -MICROLINN_SETTLE_LANDING_REACH * 64
+                                                      : fingerX > MICROLINN_SETTLE_LANDING_REACH * 64)))) step = 0;
       // the correction stays within HOME_RANGE of the finger's own pitch, or of its place on the pad without an offset
       v.offset = constrain(v.offset - constrain(step, -most, most), min(v.strike, 0) * 64 - range, max(v.strike, 0) * 64 + range);
       // a note whose finger was already moving when it started: while the finger comes in towards the pad's centre from
