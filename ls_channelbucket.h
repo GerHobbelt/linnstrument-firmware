@@ -82,9 +82,28 @@ public:
     }
   }
 
-  byte take() {
+  // microLinn: avoid has a bit for each channel (bit 0 for channel 1) whose note sounds with no finger on it; such a
+  // channel always counts as taken, and when every channel is taken it isn't handed out while another one can be
+  byte take(unsigned short avoid) {
     // return an invalid channel if none have been added
     if (-1 == top_) return 0;
+
+    // microLinn: with every channel taken, the least recently used one not to avoid goes to the top
+    if (-1 == bottomReleased_ && (avoid & (1 << top_))) {
+      int candidate = next_[top_];
+      while (candidate != top_ && (avoid & (1 << candidate))) {
+        candidate = next_[candidate];
+      }
+      if (candidate != top_) {
+        extract(candidate);
+        int bottom = previous_[top_];
+        previous_[candidate] = bottom;
+        next_[bottom] = candidate;
+        next_[candidate] = top_;
+        previous_[top_] = candidate;
+        top_ = candidate;
+      }
+    }
 
     // get the channel at the top of the bucket
     byte channel = top_;

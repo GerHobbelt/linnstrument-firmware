@@ -581,7 +581,7 @@ byte takeChannel(byte split, byte row) {
           return channel;
         }
       }
-      return splitChannels[split].take();
+      return splitChannels[split].take(getMicroLinnFingerlessVoices());   // microLinn: not a channel whose note sounds with no finger on it
     }
 
     case channelPerRow:

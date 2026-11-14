@@ -1456,7 +1456,8 @@ struct MicroLinnVoice {                                         // per channel, 
   byte owner;                                                   // the cell playing it, index into touchInfo plus 1 (see microLinnCellPlusOne()), 0 for none
   byte releaseVelocity;                                         // the note-off velocity, from the touch's release
 };
-MicroLinnVoice microLinnVoice[16];                              // a voice sounds while it has an owner
+MicroLinnVoice microLinnVoice[16];                              // a voice sounds while it has an owner, or its bit below
+unsigned short microLinnFingerlessVoices = 0;                   // per channel, bit 0 for channel 1: a voice sounding with no finger on it
 
 // not yet used
 //struct MicroLinnPull {boolean sharp, flat;};                    // used to sweeten 41edo
@@ -1971,6 +1972,7 @@ void startMicroLinnVoice(signed char note, signed char channel, short tuningBend
     v.tuningBend = tuningBend;
     v.owner = microLinnCellPlusOne(*sensorCell);
     v.releaseVelocity = 0;
+    microLinnFingerlessVoices &= ~(1 << (channel - 1));
     return;
   }
   if (Global.microLinn.drumPadMode == 0 && isMicroLinnOn()) setMicroLinnSoundingNote(*sensorCell, note, tuningBend);
@@ -2006,6 +2008,12 @@ void preSendMicroLinnVoiceLoudness(byte side, byte pressureValueLo, short pressu
   signed char v = microLinnCellVoice(*sensorCell);
   if (v != -1) note = microLinnVoice[v].note;
   preSendLoudness(side, pressureValueLo, pressureValueHi, note, channel);
+}
+
+// called by takeChannel() in ls_handleTouches.ino: the channels whose voice sounds with no finger on it, which
+// ChannelBucket::take() hands out only when every channel is one
+unsigned short getMicroLinnFingerlessVoices() {
+  return microLinnFingerlessVoices;
 }
 
 // called by sendReleasedNote() in ls_handleTouches.ino
@@ -2052,6 +2060,7 @@ void clearMicroLinnSoundingNote(TouchInfo& cell) {
 void clearAllMicroLinnSoundingNotes() {
   memset(microLinnSoundingNotes, 0, sizeof(microLinnSoundingNotes));
   memset(microLinnVoice, 0, sizeof(microLinnVoice));
+  microLinnFingerlessVoices = 0;
 }
 
 // called by transferFromSameRowCell() and transferToSameRowCell() in ls_handleTouches.ino, when a touch slides to
@@ -2096,6 +2105,9 @@ void takeMicroLinnHeldChannels(byte side) {
       }
     }
   }
+  for (byte ch = 0; ch < 16; ++ch) {                                     // and so do voices with no finger on them
+    if ((microLinnFingerlessVoices & (1 << ch)) && microLinnVoice[ch].split == side) splitChannels[side].retake(ch + 1);
+  }
 }
 
 // Setting a split's channels up again also forgets which notes are on (initializeLastMidiTracking() in ls_midi.ino),
@@ -2122,6 +2134,10 @@ void keepMicroLinnHeldNotesOn() {
       if (note < 0 || channel < 1) continue;
       lastValueMidiNotesOn[side][note][channel - 1] = 1;
     }
+  }
+  for (byte ch = 0; ch < 16; ++ch) {                                     // and voices with no finger on them sound on
+    MicroLinnVoice& v = microLinnVoice[ch];
+    if ((microLinnFingerlessVoices & (1 << ch)) && v.note >= 0) lastValueMidiNotesOn[v.split][v.note][ch] = 1;
   }
 }
 
