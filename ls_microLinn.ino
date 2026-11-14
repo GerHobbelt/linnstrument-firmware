@@ -1984,6 +1984,40 @@ void releaseMicroLinnVoiceChannel(byte side, byte channel) {
   releaseChannel(side, channel);
 }
 
+// The sensor cell's pitch bend, Y, pressure and note-off go out through these, in place of the calls they end in.
+// For a note that is a voice, the voice gives the tuning bend its note-on sent (pitch bend) and its midi note (poly
+// pressure and the note-off), and keeps the note-off velocity; every other note's message goes out as it came.
+// called by handleXYZupdate(), sendNewNote() and handleTouchRelease() in ls_handleTouches.ino
+void preSendMicroLinnVoicePitchBend(byte side, int pitchValue, byte channel, short tuningBend) {
+  signed char v = microLinnCellVoice(*sensorCell);
+  if (v != -1) tuningBend = microLinnVoice[v].tuningBend;
+  preSendPitchBend(side, pitchValue, channel, tuningBend);
+}
+
+// called by handleXYZupdate() in ls_handleTouches.ino
+void preSendMicroLinnVoiceTimbre(byte side, byte yValue, byte note, byte channel) {
+  signed char v = microLinnCellVoice(*sensorCell);
+  if (v != -1) note = microLinnVoice[v].note;
+  preSendTimbre(side, yValue, note, channel);
+}
+
+// called by handleXYZupdate(), sendNewNote() and handleTouchRelease() in ls_handleTouches.ino
+void preSendMicroLinnVoiceLoudness(byte side, byte pressureValueLo, short pressureValueHi, byte note, byte channel) {
+  signed char v = microLinnCellVoice(*sensorCell);
+  if (v != -1) note = microLinnVoice[v].note;
+  preSendLoudness(side, pressureValueLo, pressureValueHi, note, channel);
+}
+
+// called by sendReleasedNote() in ls_handleTouches.ino
+void sendMicroLinnVoiceNoteOff(byte side, byte note, byte velocity, byte channel) {
+  signed char v = microLinnCellVoice(*sensorCell);
+  if (v != -1) {
+    microLinnVoice[v].releaseVelocity = velocity;
+    note = microLinnVoice[v].note;
+  }
+  midiSendNoteOffWithVelocity(side, note, velocity, channel);
+}
+
 // called by startMicroLinnVoice() and sendMicroLinnPullOff()
 void setMicroLinnSoundingNote(TouchInfo& cell, signed char midiNote, short tuningBend) {
   signed char v = microLinnCellVoice(cell);
@@ -2077,7 +2111,11 @@ void keepMicroLinnHeldNotesOn() {
       byte side = getSplitOf(col);
       signed char note = c.note;
       signed char channel = c.channel;
-      if (Global.microLinn.drumPadMode == 0 && isMicroLinnOn()) {
+      signed char v = microLinnCellVoice(c);
+      if (v != -1) {
+        note = microLinnVoice[v].note;                                   // a voice's release names its own note
+      }
+      else if (Global.microLinn.drumPadMode == 0 && isMicroLinnOn()) {
         note = getMicroLinnCellMidiNote(side, c);
         channel = rechannelMicroLinnGroup(side, channel, c.microLinnGroup);
       }
@@ -2089,14 +2127,20 @@ void keepMicroLinnHeldNotesOn() {
 
 // noteTouchMapping keeps each note as its touch's note, which with an edo set is the edostep. When the mapping itself
 // ends notes (Legato and Latch letting go of latched notes, the alternate-split switch ending every note), this turns
-// one of its notes into the midi note and channel sent: from the cell, if it still holds the note, otherwise from the
-// tuning tables. Without an edo, and in drum pad mode, the note is the midi note already.
+// one of its notes into the midi note and channel sent: from the cell, if it still holds the note (its voice's note,
+// if it plays one), otherwise from the tuning tables. Without an edo, and in drum pad mode, the note is the midi note
+// already.
 // called by midiSendNoteOffForAllTouches() in ls_midi.ino and NoteTouchMapping::releaseLatched() in
 // ls_noteTouchMapping.ino
 // also called by handleLowRowRestrike() and handleLowRowStrum() in ls_lowRow.ino, with the note the touch holds
 void convertMicroLinnMappedNote(byte side, signed char& note, signed char& channel, byte col, byte row) {
   TouchInfo& c = touchInfo[col][row];
   boolean held = c.note == note && c.channel == channel;
+  signed char v = held ? microLinnCellVoice(c) : -1;
+  if (v != -1) {
+    note = microLinnVoice[v].note;
+    return;
+  }
   if (!isMicroLinnOn() || Global.microLinn.drumPadMode > 0) return;
   byte group = c.microLinnGroup;
   signed char midiNote = held ? getMicroLinnCellMidiNote(side, c) : getMicroLinnMidiNote(side, note, group);

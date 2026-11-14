@@ -1085,7 +1085,7 @@ boolean handleXYZupdate() {
           tuningBend = getMicroLinnCellTuningBend(sensorSplit, *sensorCell);
           channel = rechannelMicroLinnGroup(sensorSplit, sensorCell->channel, sensorCell->microLinnGroup);
         }
-        preSendPitchBend(sensorSplit, pitch, channel, tuningBend);
+        preSendMicroLinnVoicePitchBend(sensorSplit, pitch, channel, tuningBend);   // microLinn: through the note's voice
       }
 
       // if Y-axis movements are enabled and it's a candidate for
@@ -1102,7 +1102,7 @@ boolean handleXYZupdate() {
           note = getMicroLinnCellMidiNote(sensorSplit, *sensorCell);
           channel = rechannelMicroLinnGroup(sensorSplit, channel, sensorCell->microLinnGroup);
         }
-        preSendTimbre(sensorSplit, valueY, note, channel);
+        preSendMicroLinnVoiceTimbre(sensorSplit, valueY, note, channel);            // microLinn: through the note's voice
       }
 
       // send the note on if this in a newly calculated velocity
@@ -1134,7 +1134,7 @@ boolean handleXYZupdate() {
           note = getMicroLinnCellMidiNote(sensorSplit, *sensorCell);
           channel = rechannelMicroLinnGroup(sensorSplit, channel, sensorCell->microLinnGroup);
         }
-        preSendLoudness(sensorSplit, valueZ, valueZHi, note, channel);
+        preSendMicroLinnVoiceLoudness(sensorSplit, valueZ, valueZHi, note, channel);   // microLinn: through the note's voice
       }
 
       // after the initial velocity, new velocity values are continuously being calculated simply based
@@ -1360,13 +1360,13 @@ void sendNewNote() {
     // or if microLinn is on, send the tuning bend
     if ((!Split[sensorSplit].sendX && hasPreviousPitchBendValue(sensorCell->channel)) ||
           isMicroLinnOn()) {
-      preSendPitchBend(sensorSplit, 0, channel, tuningBend);                     // read from old channel, send to new channel
+      preSendMicroLinnVoicePitchBend(sensorSplit, 0, channel, tuningBend);       // read from old channel, send to new channel; microLinn: through the note's voice
     }
 
     // reset pressure to 0 before sending the note, the actually pressure value will
     // be sent right after the note on
     if (Split[sensorSplit].sendZ && isZExpressiveCell() && !isMicroLinnZmaxOn()) {           // don't send 0 when Z-maximizing
-      preSendLoudness(sensorSplit, 0, 0, note, channel);
+      preSendMicroLinnVoiceLoudness(sensorSplit, 0, 0, note, channel);      // microLinn: through the note's voice
     }
 
     // if the same channel and note is already active, send a note off first
@@ -1440,7 +1440,7 @@ void sendReleasedNote() {
       channel = rechannelMicroLinnGroup(sensorSplit, channel, sensorCell->microLinnGroup);
       if (note == -1 || channel == -1) return;
     }
-    midiSendNoteOffWithVelocity(sensorSplit, note, sensorCell->velocity, channel);
+    sendMicroLinnVoiceNoteOff(sensorSplit, note, sensorCell->velocity, channel);   // microLinn: through the note's voice
   }
 }
 
@@ -1914,7 +1914,7 @@ void handleTouchRelease() {
         note = getMicroLinnCellMidiNote(sensorSplit, *sensorCell);
         channel = rechannelMicroLinnGroup(sensorSplit, sensorCell->channel, sensorCell->microLinnGroup);
       }
-      preSendLoudness(sensorSplit, 0, 0, note, channel);
+      preSendMicroLinnVoiceLoudness(sensorSplit, 0, 0, note, channel);      // microLinn: through the note's voice
     }
 
     // unregister the note <> cell mapping
@@ -1989,7 +1989,7 @@ void handleTouchRelease() {
         channel = rechannelMicroLinnGroup(sensorSplit, sensorCell->channel, sensorCell->microLinnGroup);
         tuningBend = getMicroLinnCellTuningBend(sensorSplit, *sensorCell);
       }
-      preSendPitchBend(sensorSplit, 0, channel, tuningBend);
+      preSendMicroLinnVoicePitchBend(sensorSplit, 0, channel, tuningBend);      // microLinn: through the note's voice
     }
 
     // If the released cell had focus, reassign focus to the latest touched cell
