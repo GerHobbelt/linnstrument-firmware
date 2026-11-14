@@ -2070,6 +2070,7 @@ const short MICROLINN_SETTLE_HALF_DIVISION_MS[4] = {0, 480, 170, 1000};
 const short MICROLINN_HOME_PENDING = -32768;                    // home is chosen where the finger stops after a slide
 const byte MICROLINN_REBASE_STRIKE = 1;                         // the voice's rebase: not settled since the strike
 const byte MICROLINN_REBASE_SLIDE = 2;                          // not settled since home was chosen where the finger stopped
+const byte MICROLINN_REBASE_MOVING = 3;                         // not settled since a strike whose finger was already moving
 // The straightening: the X reading at each tenth of a pad from its left groove, against how far across the pad the
 // finger is, in thousandths. Measured on a LinnStrument 200, from fingers sliding steadily across its pads in both
 // directions (averaged): the tenths of the reading next to the grooves take 2.5 times as long to cross as the middle two
@@ -2300,13 +2301,20 @@ short handleMicroLinnColumnSlide(int calibratedX) {
       v.strike = constrain(microLinnRoundedDivide(v.offset, 64), -127, 127);
     }
   }
+  else if (v.age < MICROLINN_SETTLE_MOVING_MS) v.rebase = MICROLINN_REBASE_MOVING;   // its finger was already moving
 
-  // after a strike off its pad's middle, the strike's offset is used up as the finger comes in towards the middle (its
-  // fast average, so that a vibrato's swings towards the middle don't count): the struck note doesn't move, and from
-  // the middle on the note follows the finger. The strike's offset only shrinks here; a lean outwards is the settling's
-  if (v.strike != 0 && (v.home == 0 || v.home == MICROLINN_HOME_PENDING)) {
-    if (v.strike > 0 && v.offset > 0) v.offset = constrain(fast, 0, v.offset);
-    else if (v.strike < 0 && v.offset < 0) v.offset = constrain(fast, v.offset, 0);
+  // with Quantize Hold on, after a strike off its pad's middle at rest, the strike's offset is used up as the finger
+  // comes in towards the middle: the struck note doesn't move, and from the middle on the note follows the finger. In the
+  // landing, while the finger moves in quickly (when the landing waits), as the finger's reading comes in; after it, as
+  // its fast average comes in, so that a vibrato's swings towards the middle count only as far as its centre moves. The
+  // strike's offset only shrinks here (a lean outwards is the settling's), and a note whose finger was already moving
+  // when it started keeps its own hold
+  boolean young = v.age < MICROLINN_SETTLE_LANDING_MS;
+  if (v.strike != 0 && (v.home == 0 || v.home == MICROLINN_HOME_PENDING) && v.rebase != MICROLINN_REBASE_MOVING &&
+      doQuantizeHold() && (!young || (quick && inwards))) {
+    int32_t in = young ? fingerX : fast;
+    if (v.strike > 0 && v.offset > 0) v.offset = constrain(in, 0, v.offset);
+    else if (v.strike < 0 && v.offset < 0) v.offset = constrain(in, v.offset, 0);
     int32_t left = microLinnRoundedDivide(v.offset, 64);
     if (abs(left) < abs(v.strike)) v.strike = left;
   }
@@ -2334,7 +2342,6 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   }
   else {
     // while the strike's finger settles into its pad the pitch stays on the struck note, travelling or not
-    boolean young = v.age < MICROLINN_SETTLE_LANDING_MS;
     boolean landing = young && v.home != MICROLINN_HOME_PENDING && inPad;
     if (travelling && !landing) {
       // a quick movement, or one that strays from home, is a slide: home is chosen again where it stops
