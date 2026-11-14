@@ -144,6 +144,13 @@ inline void performContinuousTasks(unsigned long nowMicros) {
     performCheckAdvanceSequencer();
   }
 
+  static boolean continuousMicroLinnVoices = false;          // microLinn: notes that sound with no finger on them
+  if (!continuousMicroLinnVoices) {
+    continuousMicroLinnVoices = true;
+    checkMicroLinnVoices();
+    continuousMicroLinnVoices = false;
+  }
+
   if (Device.serialMode) {
     if (!continuousSerialIO) {
       continuousSerialIO = true;

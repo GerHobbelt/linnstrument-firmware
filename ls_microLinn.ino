@@ -2016,6 +2016,12 @@ unsigned short getMicroLinnFingerlessVoices() {
   return microLinnFingerlessVoices;
 }
 
+// called by performContinuousTasks() in ls_rtos.ino, which never runs it inside itself (it has its own flag there):
+// the periodic update of voices that sound with no finger on them; no voice does yet, so it returns at once
+void checkMicroLinnVoices() {
+  if (microLinnFingerlessVoices == 0) return;
+}
+
 // called by sendReleasedNote() in ls_handleTouches.ino
 void sendMicroLinnVoiceNoteOff(byte side, byte note, byte velocity, byte channel) {
   signed char v = microLinnCellVoice(*sensorCell);
