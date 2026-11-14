@@ -65,7 +65,7 @@ GUARDED_TASKS = (
     'checkRefreshLedColumn', 'checkStopBlinkingLeds', 'checkTimeToRefreshTouchAnim',
     'checkLegendDisplayTimeout', 'checkTimeToReadFootSwitches', 'checkRefreshGlobalSettingsDisplay',
     'checkSleep', 'checkUpdateClock', 'performCheckAdvanceArpeggiator', 'performCheckAdvanceSequencer',
-    'handleSerialIO', 'handleMidiInput', 'handlePendingMidi',
+    'handleSerialIO', 'handleMidiInput', 'handlePendingMidi', 'checkMicroLinnVoices',
 )
 UNGUARDED_LEAVES = ('millis', 'micros')          # called by performContinuousTasks itself; harmless
 
