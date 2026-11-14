@@ -122,7 +122,10 @@ void NoteTouchMapping::releaseLatched() {
         handleArpeggiatorNoteOff(split, entryNote, entryChannel);
       }
       else {
-        midiSendNoteOffWithVelocity(split, entryNote, entry_cell->velocity, entryChannel);
+        signed char midiNote = entryNote;                  // microLinn: the midi note and channel sent, not the edostep
+        signed char midiChannel = entryChannel;
+        convertMicroLinnMappedNote(split, midiNote, midiChannel, entry.getCol(), entry.getRow());
+        midiSendNoteOffWithVelocity(split, midiNote, entry_cell->velocity, midiChannel);
       }
       noteOff(entryNote, entryChannel);
     }

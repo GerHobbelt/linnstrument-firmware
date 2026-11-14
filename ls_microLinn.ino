@@ -1996,6 +1996,22 @@ void keepMicroLinnHeldNotesOn() {
   }
 }
 
+// noteTouchMapping keeps each note as its touch's note, which with an edo set is the edostep. When the mapping itself
+// ends notes (Legato and Latch letting go of latched notes, the alternate-split switch ending every note), this turns
+// one of its notes into the midi note and channel sent: from the cell, if it still holds the note, otherwise from the
+// tuning tables. Without an edo, and in drum pad mode, the note is the midi note already.
+// called by midiSendNoteOffForAllTouches() in ls_midi.ino and NoteTouchMapping::releaseLatched() in
+// ls_noteTouchMapping.ino
+void convertMicroLinnMappedNote(byte side, signed char& note, signed char& channel, byte col, byte row) {
+  TouchInfo& c = touchInfo[col][row];
+  boolean held = c.note == note && c.channel == channel;
+  if (!isMicroLinnOn() || Global.microLinn.drumPadMode > 0) return;
+  byte group = c.microLinnGroup;
+  signed char midiNote = held ? getMicroLinnCellMidiNote(side, c) : getMicroLinnMidiNote(side, note, group);
+  channel = rechannelMicroLinnGroup(side, channel, group);
+  note = midiNote;
+}
+
 // called by scalePitch() in ls_midi.ino
 float getMicroLinnSemitonesPerPad(byte side, int pitchValue) {
   if (Split[side].microLinn.condensedBendPerPad != 1) return microLinnSemitonesPerPad[side];

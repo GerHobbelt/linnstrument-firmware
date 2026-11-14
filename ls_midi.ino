@@ -2918,8 +2918,13 @@ void midiSendNoteOffForAllTouches(byte split) {
   signed char channel = noteTouchMapping[split].firstChannel;
 
   while (note != -1) {
-    midiSendNoteOff(split, note, channel);
     NoteEntry* entry = noteTouchMapping[split].getNoteEntry(note, channel);
+    signed char midiNote = note;                           // microLinn: the midi note and channel sent, not the edostep
+    signed char midiChannel = channel;
+    if (entry != NULL) {
+      convertMicroLinnMappedNote(split, midiNote, midiChannel, entry->getCol(), entry->getRow());
+    }
+    midiSendNoteOff(split, midiNote, midiChannel);
     if (entry == NULL) {
       note = -1;
     }
