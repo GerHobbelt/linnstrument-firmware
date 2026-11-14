@@ -2022,6 +2022,76 @@ void checkMicroLinnVoices() {
   if (microLinnFingerlessVoices == 0) return;
 }
 
+// Pitches, to match a new press with a voice already sounding, compare in cents above midi note 0: a pad's from its
+// midi note and tuning bend (getMicroLinnPadNote(), getMicroLinnBendCents()), a voice's from getMicroLinnVoiceCents().
+// The voice's level and bend are those last sent on its channel, kept in ls_midi.ino:
+extern int lastValueMidiPB[16];
+extern byte lastValueMidiAT[16];
+extern byte lastValueMidiCC[16][128];
+extern byte lastValueMidiPP[16][128];
+
+boolean microLinnVoiceSounds(byte i) {                                   // i = channel - 1
+  return microLinnVoice[i].owner != 0 || (microLinnFingerlessVoices & (1 << i));
+}
+
+// the cents a pitch bend value (zero-centred) bends by on the split, at its bend range
+short getMicroLinnBendCents(byte side, int bend) {
+  return microLinnRoundedDivide((int32_t)bend * getBendRange(side) * 100, 8192);
+}
+
+// what a press on the pad sends now: its midi note and tuning bend, worked out as handleXYZupdate() and sendNewNote() in
+// ls_handleTouches.ino do (with an edo set, the tuning tables hold the transposition); false if the pad sounds no note,
+// and in drum pad mode and an edo's tuning table outputs, whose pitches don't compare this way. Auto Octave's change at
+// the moment of a press isn't included
+boolean getMicroLinnPadNote(byte side, byte col, byte row, signed char& midiNote, short& tuningBend) {
+  if (col < 1 || col >= NUMCOLS || row >= NUMROWS || Global.microLinn.drumPadMode > 0) return false;
+  short note = transposedNote(side, col, row);
+  if (isMicroLinnOn()) {
+    if (Split[side].microLinn.tuningTable > 0 || note < 0) return false;
+    byte group = note >> 7;
+    note &= 127;
+    midiNote = getMicroLinnMidiNote(side, note, group);
+    tuningBend = getMicroLinnTuningBend(side, note, group);
+    return midiNote >= 0;
+  }
+  if (note < 0 || note > 127) return false;
+  midiNote = note;
+  tuningBend = 0;
+  return true;
+}
+
+// the pitch the channel's voice sounds: its midi note, bent by the pitch bend last sent on the channel (which holds its
+// tuning bend and the finger's bend, Column Slide Divisions' included), as the synth has it; false if no voice sounds
+// on the channel
+boolean getMicroLinnVoiceCents(byte channel, short& cents) {
+  if (channel < 1 || channel > 16 || !microLinnVoiceSounds(channel - 1)) return false;
+  MicroLinnVoice& v = microLinnVoice[channel - 1];
+  int sent = lastValueMidiPB[channel - 1];
+  cents = v.note * 100 + getMicroLinnBendCents(v.split, sent == 0x7FFF ? 0 : sent - 0x2000);
+  return true;
+}
+
+// the pressure level last sent for the channel's voice, 0-127, in the message its split sends pressure with (channel
+// pressure, poly pressure on its note, or a CC, whose most significant 7 bits with the 14-bit option), after the split's
+// pressure limits; 0 if no voice sounds on the channel or nothing has been sent since the channel was reset
+byte getMicroLinnVoiceLevel(byte channel) {
+  if (channel < 1 || channel > 16 || !microLinnVoiceSounds(channel - 1)) return 0;
+  MicroLinnVoice& v = microLinnVoice[channel - 1];
+  byte level;
+  switch (Split[v.split].expressionForZ) {
+    case loudnessPolyPressure:
+      level = v.note >= 0 ? lastValueMidiPP[channel - 1][v.note] : 0xFF;
+      break;
+    case loudnessChannelPressure:
+      level = lastValueMidiAT[channel - 1];
+      break;
+    default:
+      level = lastValueMidiCC[channel - 1][Split[v.split].customCCForZ & 0x7F];
+      break;
+  }
+  return level == 0xFF ? 0 : level;
+}
+
 // called by sendReleasedNote() in ls_handleTouches.ino
 void sendMicroLinnVoiceNoteOff(byte side, byte note, byte velocity, byte channel) {
   signed char v = microLinnCellVoice(*sensorCell);
