@@ -2011,6 +2011,9 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 // - with Quantize Hold on, for a moment after the strike (the landing) the offset keeps the note on the struck note
 //   while the finger settles into its pad; a finger moving quickly, as in a slide, is followed at once, except that a
 //   note whose finger was already moving when it started stays on its note until the finger reaches the pad's centre
+// - after a strike off its pad's middle, the strike's offset is used up as the finger comes in towards the middle (its
+//   fast average, so not by a vibrato's swings): the struck note doesn't move, and from the middle on the note follows
+//   the finger, so that a slide to the next pad or a groove lands where the finger is
 // - the offset fades once the centre of the finger's movement (its slow average, so a slide, not the swing of a
 //   vibrato) reaches the middle of another pad than the one it belongs to (the struck pad, or the one under the finger
 //   when home was last chosen after a slide or the pitch last settled); that pad then sounds its own note. While the
@@ -2295,6 +2298,16 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     if (closing && v.home != MICROLINN_HOME_PENDING && abs(fingerX - v.offset - v.home * 64) < MICROLINN_SETTLE_LANDED * 64) {
       v.strike = constrain(microLinnRoundedDivide(v.offset, 64), -127, 127);
     }
+  }
+
+  // after a strike off its pad's middle, the strike's offset is used up as the finger comes in towards the middle (its
+  // fast average, so that a vibrato's swings towards the middle don't count): the struck note doesn't move, and from
+  // the middle on the note follows the finger. The strike's offset only shrinks here; a lean outwards is the settling's
+  if (v.strike != 0 && (v.home == 0 || v.home == MICROLINN_HOME_PENDING)) {
+    if (v.strike > 0 && v.offset > 0) v.offset = constrain(fast, 0, v.offset);
+    else if (v.strike < 0 && v.offset < 0) v.offset = constrain(fast, v.offset, 0);
+    int32_t left = microLinnRoundedDivide(v.offset, 64);
+    if (abs(left) < abs(v.strike)) v.strike = left;
   }
 
   // the pad whose centre the slow average is nearest to, pads are FXD_CALX_FULL_UNIT apart, and whether it's within a
