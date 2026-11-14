@@ -2034,7 +2034,9 @@ const short MICROLINN_SETTLE_FAST_MS = 60;                      // the fast aver
 const short MICROLINN_SETTLE_SLOW_MS = 150;                     // the slow average: the centre of a vibrato, which tells a slide from it; it
                                                                 // trails the fast one by at most two bands
 const byte MICROLINN_SETTLE_BAND = 6;                           // the slow average leaving a band this wide (each way) around an anchor is travelling
-const byte MICROLINN_SETTLE_REST_MS = 50;                       // travelling until the anchor has moved less than a third of the band for this long
+const byte MICROLINN_SETTLE_REST_MS[4] = {50, 50, 20, 50};      // travelling until the anchor has moved less than a third of the band for this
+                                                                // long, at Quantize Hold's speeds (Off, Medium, Fast, Slow): shorter at
+                                                                // Fast, so that a finger counts as stopped sooner there
 const byte MICROLINN_SETTLE_HOME_RANGE = 75;                    // % of a division: a finger this near the note it was on comes back to it
 const byte MICROLINN_SETTLE_PAD_ZONE = 65;                      // % of a division: after a slide, a finger this near a pad's note settles on it
 const byte MICROLINN_SETTLE_LANDING_MS = 250;                   // after the strike, this long settles on the struck note, the finger's
@@ -2060,7 +2062,7 @@ const byte MICROLINN_SETTLE_PAD_CLEAR = 63;                     // after a slide
 // the pace at Quantize Hold's speeds, indexed by pitchCorrectHold (Off, Medium, Fast, Slow): the time constant of the
 // correction, and its top speed, as the time to correct half a division (50 cents with column offset 2 and 2 divisions)
 const byte MICROLINN_SETTLE_TAU_MS[4] = {0, 40, 12, 100};
-const short MICROLINN_SETTLE_HALF_DIVISION_MS[4] = {0, 400, 170, 1000};
+const short MICROLINN_SETTLE_HALF_DIVISION_MS[4] = {0, 480, 170, 1000};
 const short MICROLINN_HOME_PENDING = -32768;                    // home is chosen where the finger stops after a slide
 const byte MICROLINN_REBASE_STRIKE = 1;                         // the voice's rebase: not settled since the strike
 const byte MICROLINN_REBASE_SLIDE = 2;                          // not settled since home was chosen where the finger stopped
@@ -2240,7 +2242,7 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     v.home = v.cell == 0 && locked ? 0 : microLinnSlideDivision(fingerX - v.offset);
     v.fast = v.slow = position;
     v.anchor = v.drift = 0;
-    v.still = MICROLINN_SETTLE_REST_MS;
+    v.still = MICROLINN_SETTLE_REST_MS[Split[sensorSplit].pitchCorrectHold];
     v.age = 0;
     v.last = now;
     v.cell = sensorCol + 32 * sensorRow;
@@ -2270,7 +2272,7 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   }
   v.drift = drift;
   v.anchor = moved - v.slow;
-  boolean travelling = v.still < MICROLINN_SETTLE_REST_MS;
+  boolean travelling = v.still < MICROLINN_SETTLE_REST_MS[Split[sensorSplit].pitchCorrectHold];
   int32_t fast = v.fast * 8 + toPitch, slow = v.slow * 8 + toPitch;    // the averages as pitch, in 64ths of a unit
   int32_t division = 1365 * 8 / Global.microLinn.columnSlideDivisions();
   int32_t range = division * MICROLINN_SETTLE_HOME_RANGE / 100;
