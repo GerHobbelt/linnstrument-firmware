@@ -116,6 +116,36 @@ public:
     taken_[channel-1]++;
   }
 
+  // microLinn: a note still held when the channels are set up again counts its channel as taken once more, so
+  // that no new note is given it and its release finds it counted; a free channel goes to the bottom of the taken
+  // section, as take() leaves the channel it hands out
+  void retake(byte channel) {
+    if (channel < 1 || channel > 16 || -1 == top_ || -1 == next_[channel-1]) return;
+
+    channel -= 1;
+    if (taken_[channel]++ > 0) return;
+
+    if (channel == top_) {
+      top_ = next_[channel];
+    }
+    else {
+      if (channel == bottomReleased_) {
+        bottomReleased_ = previous_[channel];
+      }
+      extract(channel);
+      int bottom = previous_[top_];
+      previous_[channel] = bottom;
+      next_[bottom] = channel;
+      next_[channel] = top_;
+      previous_[top_] = channel;
+      return;
+    }
+
+    if (channel == bottomReleased_) {
+      bottomReleased_ = -1;
+    }
+  }
+
   void release(byte channel) {
     // we can't release a MIDI channel that exceeds 16, nor can we work with an empty bucket
     // we expect this channel to also be already in the bucket
@@ -123,6 +153,9 @@ public:
 
     // offset the channel for a 0-based array
     channel -= 1;
+
+    // microLinn: a channel no note counts as taken isn't released again, so its count can't wrap around
+    if (taken_[channel] == 0) return;
 
     // indicate that the channel was taken one less time
     taken_[channel]--;

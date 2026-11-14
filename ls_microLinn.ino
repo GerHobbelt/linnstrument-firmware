@@ -1957,6 +1957,22 @@ short getMicroLinnCellTuningBend(byte side, TouchInfo& cell) {
   return getMicroLinnTuningBend(side, cell.note, cell.microLinnGroup);
 }
 
+// Loading a memory, the MIDI mode and channel NRPNs and the MPE Configuration Message set a split's channels up again
+// (updateSplitMidiChannels() in ls_settings.ino) while notes may be held. Each held touch with a note, muted
+// hammer-ons included, releases its channel when it ends, in the split its column is in then, so each counts its
+// channel taken again there: no new note is given a channel a held note sounds on, and no count goes below zero.
+// called by updateSplitMidiChannels() in ls_settings.ino, after the split's channels are added again
+void takeMicroLinnHeldChannels(byte side) {
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if ((c.touched == touchedCell || c.touched == ignoredCell) && c.hasNote() && getSplitOf(col) == side) {
+        splitChannels[side].retake(c.channel);
+      }
+    }
+  }
+}
+
 // called by scalePitch() in ls_midi.ino
 float getMicroLinnSemitonesPerPad(byte side, int pitchValue) {
   if (Split[side].microLinn.condensedBendPerPad != 1) return microLinnSemitonesPerPad[side];

@@ -1113,6 +1113,7 @@ void updateSplitMidiChannels(byte sp) {
           splitChannels[sp].add(ch+1);
         }
       }
+      takeMicroLinnHeldChannels(sp);                      // microLinn: notes still held keep their channels
       break;
     }
 
