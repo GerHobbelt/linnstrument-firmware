@@ -2012,6 +2012,42 @@ void convertMicroLinnMappedNote(byte side, signed char& note, signed char& chann
   note = midiNote;
 }
 
+// The alternate split switch ends every held note (resetAllTouches() sends their note-offs), then changes the split a
+// single split's touches play in, so a touch still held is released in the other split. So each held touch's channel
+// is released here in the split it was taken from, and counted taken in the other one when that one is channel per
+// note, so that its release frees it there: no count is left behind in either split, and no new note is given a
+// channel such a touch still sends its pressure and pitch on. With two splits every touch keeps its split, except
+// when the split switched to shows its sequencer: every column then belongs to it, and its release frees no channel,
+// so with one split or two each held touch's channel is released here in the split it was played in, and counted in
+// the sequencer's split only for a muted hammer-on, whose own release frees it there.
+// called by performAltSplitAssignment() in ls_switches.ino, after resetAllTouches() and before the split changes
+void moveMicroLinnHeldChannels() {
+  byte from = Global.currentPerSplit;
+  byte to = otherSplit(from);
+  boolean toSequencer = Split[to].sequencer;            // every column then belongs to it, and its release frees no channel
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if ((c.touched != touchedCell && c.touched != ignoredCell) || !c.hasNote()) continue;
+      if (Global.splitActive) continue;
+      releaseChannel(from, c.channel);
+      if (toSequencer && c.touched != ignoredCell) continue;   // a muted hammer-on's own release still frees it there
+      if (Split[to].midiMode == channelPerNote) splitChannels[to].retake(c.channel);
+    }
+  }
+  // with two splits too, a split showing its sequencer takes every column: each held touch's channel is released here,
+  // in the split it was played in
+  if (!Global.splitActive || !toSequencer) return;
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if ((c.touched != touchedCell && c.touched != ignoredCell) || !c.hasNote()) continue;
+      releaseChannel(getSplitOf(col), c.channel);
+      if (c.touched == ignoredCell && Split[to].midiMode == channelPerNote) splitChannels[to].retake(c.channel);
+    }
+  }
+}
+
 // called by scalePitch() in ls_midi.ino
 float getMicroLinnSemitonesPerPad(byte side, int pitchValue) {
   if (Split[side].microLinn.condensedBendPerPad != 1) return microLinnSemitonesPerPad[side];

@@ -438,6 +438,7 @@ void performReverseSendXToggle(byte side) {
 
 void performAltSplitAssignment() {
   resetAllTouches();
+  moveMicroLinnHeldChannels();                      // microLinn: the touches still held keep their channels counted right
   Global.currentPerSplit = otherSplit(Global.currentPerSplit);
   updateDisplay();
 }
