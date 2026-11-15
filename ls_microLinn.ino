@@ -2835,6 +2835,23 @@ void releaseMicroLinnMutedNote() {
   }
 }
 
+// User firmware mode releases a touch without the note path (handleTouchRelease() in ls_handleTouches.ino), so a note
+// held when it's switched on got a note-off for its edostep with an edo set, and kept sounding, and its channel was
+// never released. So the notes held end here: their note-offs go out with the midi note and channel sent
+// (resetAllTouches()), and each held touch's channel is released in its split; a muted hammer-on's is released by its
+// own release, as before. Lifted in user firmware mode, the touches have nothing left to end.
+// called by changeUserFirmwareMode() in ls_settings.ino, as user firmware mode is switched on
+void endMicroLinnHeldNotes() {
+  resetAllTouches();
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if (c.touched != touchedCell || !c.hasNote()) continue;
+      releaseChannel(getSplitOf(col), c.channel);
+    }
+  }
+}
+
 // called by prepareMicroLinnHammerOn() to unlight a muted note and by sendMicroLinnPullOff() to light a pulled-off one
 // as for any note, Played = Cell lights only its pad, Same and Blink every pad that plays the note
 void microLinnLightHammeredNote(byte side, byte col, byte row, short note, boolean on) {
