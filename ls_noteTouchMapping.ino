@@ -263,7 +263,7 @@ void NoteTouchMapping::noteOff(signed char noteNum, signed char noteChannel) {
   // offset the channel for a 0-based arrays
   signed char channel = noteChannel - 1;
 
-  musicalTouchCount[channel] -= 1;
+  if (musicalTouchCount[channel] > 0) musicalTouchCount[channel] -= 1;   // microLinn: not below 0 for a touch a reset no longer counts
 
   if (hasTouch(noteNum, noteChannel)) {
     noteCount--;
