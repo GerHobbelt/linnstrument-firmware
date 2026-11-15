@@ -1406,7 +1406,7 @@ void sendReleasedNote() {
       while (colsInRowTouched) {
         byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
         byte touchedNote = cell(touchedCol, row).note;
-        if (isMicroLinnOn()) touchedNote = getMicroLinnCellMidiNote(sensorSplit, cell(touchedCol, row));
+        if (isMicroLinnOn()) touchedNote = getMicroLinnCellMidiNote(getSplitOf(touchedCol), cell(touchedCol, row));   // microLinn: in its own split
         
         if (cell(touchedCol, row).touched == touchedCell &&
             touchedNote == sensorNote &&                                         // compare actual midi notes, not edosteps
