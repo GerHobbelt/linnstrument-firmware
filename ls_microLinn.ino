@@ -2048,6 +2048,21 @@ void moveMicroLinnHeldChannels() {
   }
 }
 
+// The notes the alternate-split switch ends stop showing as played there: each held touch's played lights go off with
+// the settings of the split it was played in, as its release turns them off. Its release now comes after the split
+// has changed, with the other split's settings, which left the pads of Played Same or Blink lit.
+// called by performAltSplitAssignment() in ls_switches.ino, before the split changes
+void unlightMicroLinnHeldNotes() {
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if ((c.touched != touchedCell && c.touched != ignoredCell) || !c.hasNote()) continue;
+      byte side = getSplitOf(col);
+      microLinnLightHammeredNote(side, col, row, c.note + Split[side].transposeOctave - c.octaveOffset, false);
+    }
+  }
+}
+
 // called by scalePitch() in ls_midi.ino
 float getMicroLinnSemitonesPerPad(byte side, int pitchValue) {
   if (Split[side].microLinn.condensedBendPerPad != 1) return microLinnSemitonesPerPad[side];
@@ -2888,7 +2903,8 @@ void endMicroLinnHeldNotes() {
   }
 }
 
-// called by prepareMicroLinnHammerOn() to unlight a muted note and by sendMicroLinnPullOff() to light a pulled-off one
+// called by prepareMicroLinnHammerOn() to unlight a muted note, by sendMicroLinnPullOff() to light a pulled-off one and by
+// unlightMicroLinnHeldNotes() to unlight the notes the alternate-split switch ends
 // as for any note, Played = Cell lights only its pad, Same and Blink every pad that plays the note
 void microLinnLightHammeredNote(byte side, byte col, byte row, short note, boolean on) {
   if (!Split[side].colorPlayed) return;

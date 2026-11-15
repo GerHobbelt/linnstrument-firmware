@@ -439,6 +439,7 @@ void performReverseSendXToggle(byte side) {
 void performAltSplitAssignment() {
   resetAllTouches();
   moveMicroLinnHeldChannels();                      // microLinn: the touches still held keep their channels counted right
+  unlightMicroLinnHeldNotes();                      // microLinn: and their played lights go off with their notes
   Global.currentPerSplit = otherSplit(Global.currentPerSplit);
   updateDisplay();
 }
