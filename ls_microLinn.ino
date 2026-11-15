@@ -2002,6 +2002,7 @@ void keepMicroLinnHeldNotesOn() {
 // tuning tables. Without an edo, and in drum pad mode, the note is the midi note already.
 // called by midiSendNoteOffForAllTouches() in ls_midi.ino and NoteTouchMapping::releaseLatched() in
 // ls_noteTouchMapping.ino
+// also called by handleLowRowRestrike() and handleLowRowStrum() in ls_lowRow.ino, with the note the touch holds
 void convertMicroLinnMappedNote(byte side, signed char& note, signed char& channel, byte col, byte row) {
   TouchInfo& c = touchInfo[col][row];
   boolean held = c.note == note && c.channel == channel;
