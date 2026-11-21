@@ -29,10 +29,29 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 =====================================================================================================================*/
 
 /*
+
+On the Arduino Due, the Native USB port connects directly to the SAM3X8E microcontroller's 
+USB interface, while the Programming USB port connects through an ATmega16U2 USB-to-serial 
+bridge to the SAM3X8E's UART pins.
+
+Arduino Due: Programming USB Port (Via ATmega16U2 Bridge)
+
+• PA8 (URXD / Pin 0): Receives serial data from the ATmega16U2 bridge (rather than connecting directly to the USB data lines).
+• PA9 (UTXD / Pin 1): Transmits serial data to the ATmega16U2 bridge.
+
+Arduino Due: Native USB Port (Direct SAM3X8E Connection)
+
+Dedicated USB OTG pins: The SAM3X8E's high-speed USB OTG controller (UOTGHS) connects to 
+the Native USB port via its USB data (UDM / UDP) and VBUS pins on the MCU.
+  
+• PB10 (VBOF): Mapped to USB in the SAM3X-Arduino Pin Mapping table for VBus power control.
+• PB11 (ID): Mapped to USB in the SAM3X-Arduino Pin Mapping table for USB OTG ID detection.
+
+
  * DUE Board pin   |  PORT  | Label
  * ----------------+--------+-------
- *   0             |  PA8   | "RX0"
- *   1             |  PA9   | "TX0"
+ *   0             |  PA8   | "RX0" --> to USB or DIN connectors or to USB via the ATmega16U2 Bridge/Programming Interface Chip
+ *   1             |  PA9   | "TX0" --> to USB or DIN connectors or to USB via the ATmega16U2 Bridge/Programming Interface Chip
  *   2       TIOA0 |  PB25  |
  *   3       TIOA7 |  PC28  |
  *   4       NPCS1 |  PA29  | SPI_SENSOR : touch sensor control over SPI
@@ -118,6 +137,397 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
  *  ID             |  PB11
  *  VBOF           |  PB10
  *
+
+# SAM3X-Arduino Pin Mapping
+
+a table showing the correspondence between the pins on an Arduino board and those of the SAM3X microcontroller.
+
+**Arduino Due pin mapping table**
+
+| Due Pin Number | SAM3X Pin Name                  | SAM3X Pin Number | Mapped Pin Name                | Max Output Current (mA) | Max Current Sink (mA) |
+| -------------- | ------------------------------- | ---------------- | ------------------------------ | ----------------------- | --------------------- |
+| 0              | PA8                             | 27               | RX0                            | 3                       | 6                     |
+| 1              | PA9                             | 2                | TX0                            | 15                      | 9                     |
+| 2              | PB25                            | 144              | Digital Pin 2                  | 3                       | 6                     |
+| 3              | PC28                            | 139              | Digital Pin 3                  | 15                      | 9                     |
+| 4              | connected to both PA29 and PC26 | 112 / 137        | Digital Pin 4                  | 15                      | 9                     |
+| 5              | PC25                            | 136              | Digital Pin 5                  | 15                      | 9                     |
+| 6              | PC24                            | 135              | Digital Pin 6                  | 15                      | 9                     |
+| 7              | PC23                            | 134              | Digital Pin 7                  | 15                      | 9                     |
+| 8              | PC22                            | 133              | Digital Pin 8                  | 15                      | 9                     |
+| 9              | PC21                            | 132              | Digital Pin 9                  | 15                      | 9                     |
+| 10             | connected to both PA28 and PC29 | 111 / 102        | Digital Pin 10                 | 15                      | 9                     |
+| 11             | PD7                             | 20               | Digital Pin 11                 | 15                      | 9                     |
+| 12             | PD8                             | 21               | Digital Pin 12                 | 15                      | 9                     |
+| 13             | PB27                            | 68               | Digital Pin 13 / Amber LED "L" | 3                       | 6                     |
+| 14             | PD4                             | 17               | TX3                            | 15                      | 9                     |
+| 15             | PD5                             | 18               | RX3                            | 15                      | 9                     |
+| 16             | PA13                            | 6                | TX2                            | 3                       | 6                     |
+| 17             | PA12                            | 5                | RX2                            | 3                       | 6                     |
+| 18             | PA11                            | 4                | TX1                            | 3                       | 6                     |
+| 19             | PA10                            | 3                | RX1                            | 3                       | 6                     |
+| 20             | PB12                            | 86               | SDA                            | 3                       | 6                     |
+| 21             | PB13                            | 87               | SCL                            | 3                       | 6                     |
+| 22             | PB26                            | 1                | Digital Pin 22                 | 3                       | 6                     |
+| 23             | PA14                            | PA14             | Digital Pin 23                 | 15                      | 9                     |
+| 24             | PA15                            | PA15             | Digital Pin 24                 | 15                      | 9                     |
+| 25             | PD0                             | PD0              | Digital Pin 25                 | 15                      | 9                     |
+| 26             | PD1                             | PD1              | Digital pin 26                 | 15                      | 9                     |
+| 27             | PD2                             | PD2              | Digital Pin 27                 | 15                      | 9                     |
+| 28             | PD3                             | PD3              | Digital Pin 28                 | 15                      | 9                     |
+| 29             | PD6                             | PD6              | Digital Pin 29                 | 15                      | 9                     |
+| 30             | PD9                             | PD9              | Digital Pin 30                 | 15                      | 9                     |
+| 31             | PA7                             | PA7              | Digital Pin 31                 | 15                      | 9                     |
+| 32             | PD10                            | PD10             | Digital Pin 32                 | 15                      | 9                     |
+| 33             | PC1                             | PC1              | Digital Pin 33                 | 15                      | 9                     |
+| 34             | PC2                             | PC2              | Digital Pin 34                 | 15                      | 9                     |
+| 35             | PC3                             | PC3              | Digital Pin 35                 | 15                      | 9                     |
+| 36             | PC4                             | PC4              | Digital Pin 36                 | 15                      | 9                     |
+| 37             | PC5                             | PC5              | Digital Pin 37                 | 15                      | 9                     |
+| 38             | PC6                             | PC6              | Digital Pin 38                 | 15                      | 9                     |
+| 39             | PC7                             | PC7              | Digital Pin 39                 | 15                      | 9                     |
+| 40             | PC8                             | PC8              | Digital Pin 40                 | 15                      | 9                     |
+| 41             | PC9                             | PC9              | Digital Pin 41                 | 15                      | 9                     |
+| 42             | PA19                            | PA19             | Digital Pin 42                 | 15                      | 9                     |
+| 43             | PA20                            | PA20             | Digital Pin 43                 | 3                       | 6                     |
+| 44             | PC19                            | PC19             | Digital Pin 44                 | 15                      | 9                     |
+| 45             | PC18                            | PC18             | Digital Pin 45                 | 15                      | 9                     |
+| 46             | PC17                            | PC17             | Digital Pin 46                 | 15                      | 9                     |
+| 47             | PC16                            | PC16             | Digital Pin 47                 | 15                      | 9                     |
+| 48             | PC15                            | PC15             | Digital Pin 48                 | 15                      | 9                     |
+| 49             | PC14                            | PC14             | Digital Pin 49                 | 15                      | 9                     |
+| 50             | PC13                            | PC13             | Digital Pin 50                 | 15                      | 9                     |
+| 51             | PC12                            | PC12             | Digital Pin 51                 | 15                      | 9                     |
+| 52             | PB21                            | PB21             | Digital Pin 52                 | 3                       | 6                     |
+| 53             | PB14                            | PB14             | Digital Pin 53                 | 15                      | 9                     |
+| 54             | PA16                            | PA16             | Analog In 0                    | 3                       | 6                     |
+| 55             | PA24                            | PA24             | Analog In 1                    | 3                       | 6                     |
+| 56             | PA23                            | PA23             | Analog In 2                    | 3                       | 6                     |
+| 57             | PA22                            | PA22             | Analog In 3                    | 3                       | 6                     |
+| 58             | PA6                             | PA6              | Analog In 4                    | 3                       | 6                     |
+| 59             | PA4                             | PA4              | Analog In 5                    | 3                       | 6                     |
+| 60             | PA3                             | PA3              | Analog In 6                    | 3                       | 6                     |
+| 61             | PA2                             | PA2              | Analog In 7                    | 3                       | 6                     |
+| 62             | PB17                            | PB17             | Analog In 8                    | 3                       | 6                     |
+| 63             | PB18                            | PB18             | Analog In 9                    | 3                       | 6                     |
+| 64             | PB19                            | PB19             | Analog In 10                   | 3                       | 6                     |
+| 65             | PB20                            | PB20             | Analog In 11                   | 3                       | 6                     |
+| 66             | PB15                            | PB15             | DAC0                           | 3                       | 6                     |
+| 67             | PB16                            | PB16             | DAC1                           | 3                       | 6                     |
+| 68             | PA1                             | PA1              | CANRX                          | 3                       | 6                     |
+| 69             | PA0                             | PA0              | CANTX                          | 15                      | 9                     |
+| 70             | PA17                            | PA17             | SDA1                           | 3                       | 6                     |
+| 71             | PA18                            | PA18             | SCL2                           | 15                      | 9                     |
+| 72             | PC30                            | PC30             | LED "RX"                       | 15                      | 9                     |
+| 73             | PA21                            | PA21             | LED "TX"                       | 3                       | 6                     |
+| 74             | PA25                            | PA25             | (MISO)                         | 15                      | 9                     |
+| 75             | PA26                            | PA26             | (MOSI)                         | 15                      | 9                     |
+| 76             | PA27                            | PA27             | (SCLK)                         | 15                      | 9                     |
+| 77             | PA28                            | PA28             | (NPCS0)                        | 15                      | 9                     |
+| 78             | PB23                            | PB23             | (unconnected)                  | 15                      | 9                     |
+| USB            | PB11                            | PB11             | ID                             | 15                      | 9                     |
+| USB            | PB10                            | PB10             | VBOF                           | 15                      | 9                     |
+
+
+
+
+from the datasheet:
+
+## section 4.2.3 : 144-lead LQFP Pinout
+### Table 4-3. 144-lead LQFP SAM3X4/8E Pinout
+
+pin/name:
+
+1
+PB26
+37
+DHSDP
+73
+VDDANA
+109
+PA26
+2
+PA9
+38
+DHSDM
+74
+GNDANA
+110
+PA27
+3
+PA10
+39
+VBUS
+75
+ADVREF
+111
+PA28
+4
+PA11
+40
+VBG
+76
+PB15
+112
+PA29
+5
+PA12
+41
+VDDUTMI
+77
+PB16
+113
+PB0
+6
+PA13
+42
+DFSDP
+78
+PA16
+114
+PB1
+7
+PA14
+43
+DFSDM
+79
+PA24
+115
+PB2
+8
+PA15
+44
+GNDUTMI
+80
+PA23
+116
+PC4
+9
+PA17
+45
+VDDCORE
+81
+PA22
+117
+PC10
+10
+VDDCORE
+46
+JTAGSEL
+82
+PA6
+118
+PB3
+11
+VDDIO
+47
+NRSTB
+83
+PA4
+119
+PB4
+12
+GND
+48
+XIN32
+84
+PA3
+120
+PB5
+13
+PD0
+49
+XOUT32
+85
+PA2
+121
+PB6
+14
+PD1
+50
+SHDN
+86
+PB12
+122
+PB7
+15
+PD2
+51
+TST
+87
+PB13
+123
+PB8
+16
+PD3
+52
+VDDBU
+88
+PB17
+124
+VDDCORE
+17
+PD4
+53
+FWUP
+89
+PB18
+125
+VDDIO
+18
+PD5
+54
+GNDBU
+90
+PB19
+126
+GND
+19
+PD6
+55
+PC1
+91
+PB20
+127
+PB9
+20
+PD7
+56
+VDDOUT
+92
+PB21
+128
+PB10
+21
+PD8
+57
+VDDIN
+93
+PC11
+129
+PB11
+22
+PD9
+58
+GND
+94
+PC12
+130
+PC0
+23
+PA0
+59
+PC2
+95
+PC13
+131
+PC20
+24
+PA1
+60
+PC3
+96
+PC14
+132
+PC21
+25
+PA5
+61
+VDDCORE
+97
+PC15
+133
+PC22
+26
+PA7
+62
+VDDIO
+98
+PC16
+134
+PC23
+27
+PA8
+63
+PC5
+99
+PC17
+135
+PC24
+28
+PB28
+64
+PC6
+100
+PC18
+136
+PC25
+29
+PB29
+65
+PC7
+101
+PC19
+137
+PC26
+30
+PB30
+66
+PC8
+102
+PC29
+138
+PC27
+31
+PB31
+67
+PC9
+103
+PC30
+139
+PC28
+32
+PD10
+68
+PB27
+104
+VDDCORE
+140
+PB14
+33
+GNDPLL
+69
+NRST
+105
+VDDIO
+141
+PB22
+34
+VDDPLL
+70
+PA18
+106
+GND
+142
+PB23
+35
+XOUT
+71
+PA19
+107
+PA21
+143
+PB24
+36
+XIN
+72
+PA20
+108
+PA25
+144
+PB25
+
+
  */
 
 #include "ls_compiler_tweaks.h"
