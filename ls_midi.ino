@@ -78,11 +78,15 @@ signed char lastMidiIO = 0;
 // MIDI and the debug channel share a single `Serial` buffer, unfortunately...
 //
 //                           There can be only one!
+//
+// Note: this function will always return a POSITIVE, NON-ZERO value. This is important
+// so its first use will trigger the 'modeChange' logic at bootup, when `lastMidiIO`
+// was initialized as 0(zero/unknown).
 signed char getMidiSerialMode() {
   if (Device.serialMode) {
     return 3;
   }
-  return isMidiUsingDIN() + 1;
+  return isMidiUsingDIN() + 1;    // output: 1 (no) or 2 (yes)
 }
 
 void applyMidiIo() {

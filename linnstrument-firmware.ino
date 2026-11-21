@@ -2019,10 +2019,11 @@ void setup() {
 
     // Disable serial mode
     Device.serialMode = false;
-    applySerialMode();
 
     // Set the MIDI I/O to DIN
     Global.midiIO = 0;
+    
+    applySerialMode();  // implies calling applyMidiIo() when the need was there.
     applyMidiIo();
     return;
   }
