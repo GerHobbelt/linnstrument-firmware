@@ -86,6 +86,9 @@ public:
   }
   // a finger takes about 50 ms to leave, and its pressure drops faster towards the end
   static constexpr double liftMillis = 50;
+  // the longest a press waits for the firmware to let go of the cell first, the sixteen scans a
+  // cell takes while the sequencer is edited with time to spare
+  static constexpr double liftWaitMillis = 150;
   void setFootSwitch(int which, bool down);
 
   // the running model's column count, readable from any thread
@@ -94,6 +97,9 @@ public:
   // MIDI into the firmware as if it came in on the virtual port, and the MIDI it sent since the
   // last call (the newest keptMessages are kept), for a driver without a MIDI port of its own
   void sendMidi(const uint8_t* data, size_t length);
+  // a change to make in the firmware, made on its own thread between two of its loops, in the order
+  // asked, as its own touch handlers would make it; from any thread
+  void onFirmware(std::function<void(firmware::Instance&)> change);
   std::vector<std::vector<uint8_t>> takeMidiOut();
   static constexpr size_t keptMessages = 4096;
   // every message the firmware sends, on the firmware's thread; set it before start()
@@ -102,6 +108,28 @@ public:
   std::function<void()> onFreshFlash;
   // where each model's flash is saved, the app's data folder unless set before start()
   juce::File flashFolder;
+  // where the app keeps what it remembers between runs
+  static juce::File appFolder();
+  // an engine whose MIDI and settings the program that made it carries has no virtual port and no
+  // flash file: set before start(), it then boots with bootFlash, a fresh flash when that's
+  // empty, and keeps the flash there when it stops
+  bool virtualPorts = true;
+  bool flashInFile = true;
+  // a flash file saved with the settings the firmware plays with, stored or not, not only those it
+  // stored, which it doesn't while a sequencer plays; set before start()
+  bool saveLive = false;
+  // the flash file saved now, from any thread, as it is when the engine stops
+  void saveNow();
+  std::vector<uint8_t> bootFlash;
+  // the size and the place of the settings in bootFlash when a firmware with another layout saved
+  // it, or 0 for this one's; only its settings are then taken, converted
+  size_t bootSettingsSize = 0, bootSettingsOffset = 0;
+  // the same, from a thread other than the one that asks for currentFlash()
+  void setBootFlash(const std::vector<uint8_t>& image, size_t settingsSize = 0, size_t settingsOffset = 0);
+  // the flash a later boot would start from, from any thread, taken between two of the firmware's
+  // loops while it runs; without a file, with the settings the firmware plays with whether it
+  // stored them or not, and empty while a fresh flash has only its starting settings
+  std::vector<uint8_t> currentFlash();
 
   juce::String portName() const { return "Virtual LinnStrument"; }
   // the ports this engine plays out of and listens on, as the lists of MIDI inputs and outputs name
@@ -133,7 +161,7 @@ private:
     int z;
     float xFraction, yFraction;
     bool ownPressure;   // pressed with an explicit Z, which a move without Z keeps
-    bool liftFirst;     // replaced a touch the firmware has not yet seen lifted
+    bool liftFirst;     // pressed where the firmware may not yet have let go of a touch before
     int releaseIn;      // scans until it lets go, when it's the cell a slide is leaving
     int shared = 0;     // the pressure a slide moves from one cell to the next
     int sharedIn = 0;   // scans until the cell a slide is entering has it all
@@ -144,6 +172,8 @@ private:
     bool settled = false;
     double lifted = -1; // how many milliseconds it's been letting go, or -1 while it's held
     int liftedFrom = 0;
+    double liftWaited = 0; // how long a press has waited for the firmware to let go of the cell
+    bool releaseSeen = false; // let go of while it waited, so it lets go once the firmware has it
   };
 
   void run() override;
@@ -175,6 +205,19 @@ private:
   juce::CriticalSection outLock;
   std::deque<std::vector<uint8_t>> midiOut;
   std::vector<uint8_t> lastSavedFlash;
+  std::atomic<bool> saveWanted { false };
+  juce::WaitableEvent saved;
+  bool booted = false;
+  std::vector<uint8_t> bootedFrom;
+  std::vector<uint8_t> keptFlash();
+  // a fresh flash with its starting settings
+  std::vector<uint8_t> freshLive;
+  std::atomic<bool> flashWanted { false };
+  juce::CriticalSection flashLock;
+  juce::CriticalSection changesLock;
+  std::vector<std::function<void(firmware::Instance&)>> changes;
+  juce::WaitableEvent flashTaken;
+  std::vector<uint8_t> takenFlash;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Engine)
 };
