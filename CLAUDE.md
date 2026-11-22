@@ -172,13 +172,14 @@ so a session that cannot see the screen still can. `--script FILE` (or `-` for
 stdin) reads text commands instead, the way to drive it from a terminal:
 `press COL ROW [X Y [Z]]`, `move`, `release`, `slide COL ROW TOCOL [Y]` (a
 held touch into the next cell of its row, as a finger slides), `tap`, `foot`,
-`leds` (the lights as `ROW: c c c ...` lines from the top row down, 0 off, 7
-black), `view` (what part of the instrument the window shows),
-`status`, `send BYTES` (MIDI into the firmware, in hex), `received [SECONDS]`
-(the MIDI it sent since the last call), `screenshot FILE [SCALE]`, `model`,
-`sleep SECONDS`, `quit`. Each answers with its output and `ok`. Touches made
-this way go through the real firmware, so they produce the same MIDI an
-instrument would. The simplest way in from a session is the MCP server:
+`headings [on|off]` (the front panel's printed headings), `leds` (the lights
+as `ROW: c c c ...` lines from the top row down, 0 off, 7 black), `view` (what
+part of the instrument the window shows), `status`, `send BYTES` (MIDI into
+the firmware, in hex), `received [SECONDS]` (the MIDI it sent since the last
+call), `screenshot FILE [SCALE]`, `model`, `sleep SECONDS`, `quit`. Each
+answers with its output and `ok`. Touches made this way go through the real
+firmware, so they produce the same MIDI an instrument would. The simplest way
+in from a session is the MCP server:
 `go run ./tools/linnstrument mcp` serves the app over stdio with those
 commands as tools and screenshots as images, and `.mcp.json` registers it as
 `virtual-linnstrument`, so the tools are there in Claude Code once the app is
@@ -518,9 +519,9 @@ for the left split, 134 for the right).
 * `MAX_TOUCHES_IN_COLUMN` is 3 and is load-bearing. Measured on hardware: with
   4 or more fingers held in one column, cross talk pulls X readings far enough
   that real touches in neighbouring columns are rejected as phantoms. Do not
-  raise or remove it as a "fix". Desktop builds can lift it, with the other guards against the
-  sensor, through `sensorLimitsLifted` for the touch app's screen, and in the
-  Due build that's the constant false.
+  raise or remove it as a "fix". Desktop builds can lift it, with the other
+  guards against the sensor, through `sensorLimitsLifted`, and in the Due build
+  that's the constant false.
 * `Z_BIAS` and the other sensitivity tables in `ls_sensor.ino` are rows first,
   columns second, unlike every other array. The comment there says why.
 * The `/*!!*/` markers in `setup()` flag hardware-specific sequencing. Do not
