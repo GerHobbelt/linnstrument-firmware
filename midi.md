@@ -117,7 +117,7 @@ words, and the named values are written as `n: label` pairs in parentheses.
 | 36   | 0-10  | Split Left Octave (0: -5, 1: -4, 2: -3, 3: -2, 4: -1, 5: 0, 6: +1, 7: +2, 8: +3, 9: +4, 10: +5)
 | 37   | 0-14  | Split Left Transpose Pitch (0-6: -7 to -1, 7: 0, 8-14: +1 to +7)
 | 38   | 0-14  | Split Left Transpose Lights (0-6: -7 to -1, 7: 0, 8-14: +1 to +7)
-| 39   | 0-2   | Split Left MIDI Expression For Y (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #25) 
+| 39   | 0-2   | Split Left MIDI Expression For Y (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #25; a query answers 3 for it unless that CC is 1) 
 | 40   | 0-128 | Split Left MIDI CC For Fader 1 (0-127: CC, 128: Channel Aftertouch) 
 | 41   | 0-128 | Split Left MIDI CC For Fader 2 (0-127: CC, 128: Channel Aftertouch) 
 | 42   | 0-128 | Split Left MIDI CC For Fader 3 (0-127: CC, 128: Channel Aftertouch) 
@@ -185,7 +185,7 @@ words, and the named values are written as `n: label` pairs in parentheses.
 | 136  | 0-10  | Split Right Octave (0: -5, 1: -4, 2: -3, 3: -2, 4: -1, 5: 0, 6: +1, 7: +2, 8: +3, 9: +4, 10: +5)
 | 137  | 0-14  | Split Right Transpose Pitch (0-6: -7 to -1, 7: 0, 8-14: +1 to +7)
 | 138  | 0-14  | Split Right Transpose Lights (0-6: -7 to -1, 7: 0, 8-14: +1 to +7)
-| 139  | 0-2   | Split Right MIDI Expression For Y (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #125) 
+| 139  | 0-2   | Split Right MIDI Expression For Y (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #125; a query answers 3 for it unless that CC is 1) 
 | 140  | 0-128 | Split Right MIDI CC For Fader 1 (0-127: CC, 128: Channel Aftertouch) 
 | 141  | 0-128 | Split Right MIDI CC For Fader 2 (0-127: CC, 128: Channel Aftertouch) 
 | 142  | 0-128 | Split Right MIDI CC For Fader 3 (0-127: CC, 128: Channel Aftertouch) 
@@ -242,10 +242,10 @@ words, and the named values are written as `n: label` pairs in parentheses.
 | 225  | 0-1   | Global Accent Note Light A# (0: Off, 1: On)
 | 226  | 0-1   | Global Accent Note Light B (0: Off, 1: On)
 | 227  | 0-13  | Global Row Offset (only supports, 0: No overlap, 3 4 5 6 7 12: Intervals, 13: Guitar, 127: 0 offset)
-| 228  | 0-17  | Global Switch 1 Assignment, see the switch assignment values below
-| 229  | 0-17  | Global Switch 2 Assignment, see the switch assignment values below
-| 230  | 0-17  | Global Foot Left Assignment, see the switch assignment values below
-| 231  | 0-17  | Global Foot Right Assignment, see the switch assignment values below
+| 228  | 0-19  | Global Switch 1 Assignment, see the switch assignment values below
+| 229  | 0-19  | Global Switch 2 Assignment, see the switch assignment values below
+| 230  | 0-19  | Global Foot Left Assignment, see the switch assignment values below
+| 231  | 0-19  | Global Foot Right Assignment, see the switch assignment values below
 | 232  | 0-3   | Global Velocity Sensitivity (0: Low, 1: Medium, 2: High, 3: Fixed)
 | 233  | 0-2   | Global Pressure Sensitivity (0: Low, 1: Medium, 2: High)
 | 234  | 0-1   | Device MIDI I/O (0: MIDI Jacks, 1: USB)
@@ -432,4 +432,6 @@ Switch Assignment Values
 | 15    | Sequencer Next
 | 16    | Send MIDI Clock
 | 17    | Sequencer Mute
+| 18    | Transpose Down
+| 19    | Transpose Up
 

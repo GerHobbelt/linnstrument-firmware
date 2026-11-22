@@ -19,12 +19,18 @@ limitations under the License.
 
 #include <JuceHeader.h>
 
+#include <vector>
+
 #include <functional>
 #include <map>
 #include <set>
 
 #include "Engine.h"
 #include "TouchTracker.h"
+
+namespace firmware {
+struct Led;
+}
 
 class Surface : public juce::Component,
                 private juce::Timer {
@@ -35,6 +41,48 @@ public:
   // the name alone, as the plate prints it, for a toolbar
   static juce::Image name(int model);
   static inline const juce::Colour nameplateGrey { 0xffcecec9 };
+  // an unlit pad's grey plastic
+  static inline const juce::Colour padGrey { 0xffc4c4c0 };
+  // the dark material: the face inside the plate's rim, an unlit pad's dark silicone top and foot,
+  // and a cell with no function, a recess with no pad
+  static inline const juce::Colour darkFace { 0xff121211 }, darkPadTop { 0xff2e2d2b }, darkPadFoot { 0xff222120 }, darkRecess { 0xff0b0b0a };
+  // the pads and the switches in one dark silicone, the LEDs glowing through it, inside the plate's
+  // rim; or the instrument's grey plastic, as it is
+  void setDarkMaterial(bool dark);
+  // what the surface shows that changes with the firmware and the touches, which a timer tick
+  // repaints for only when it changed, since a full repaint of an idle surface costs dearly
+  std::vector<uint32_t> shownState() const;
+  // a timer tick: a repaint where that changed, and where that was, empty for nowhere
+  juce::RectangleList<int> repaintIfChanged();
+  // where the surface changed between two of those states: the columns of pads with a light or a
+  // touch that changed, the switches with a light or a label that did, or everything for anything else
+  juce::RectangleList<int> changedArea(const std::vector<uint32_t>& before, const std::vector<uint32_t>& now) const;
+  bool darkMaterial() const { return dark; }
+  // the headings the front panel prints, not the names of single cells under them: the per-split
+  // settings' above the pads and Global Settings' below them over columns 1 to 16 on both models,
+  // and on a 200 the sequencer's above columns 20 to 25 and sideways right of the bottom four rows
+  enum class Place { above, below, right };
+  struct Heading {
+    const char* text;
+    int from, to;   // columns above and below, rows right and left
+    Place place;
+    int model = 0;  // 200 or 128 where only that model prints it
+  };
+  static const std::vector<Heading>& headings();
+  // the ones the shown model prints
+  std::vector<Heading> headingsPrinted() const;
+  // where the nameplate goes, beside the headings while they show
+  juce::Rectangle<float> brandArea() const;
+  // where the nameplate is drawn, sideways in that
+  juce::Rectangle<float> nameplateArea() const;
+  void setHeadingsShown(bool shown);
+  bool headingsShown() const { return headingsOn; }
+  // where a heading's words go: between its rule and the steel's edge, or in its lane beside the rows
+  juce::Rectangle<float> headingArea(const Heading& heading) const;
+  // a pad of the dark material, lit by a colour where it isn't transparent
+  static void paintDarkPad(juce::Graphics& g, juce::Rectangle<float> pad, float rounding, juce::Colour lit);
+  // the cells something drawn over the surface covers, whose pads it then leaves undrawn
+  std::function<bool(int col, int row)> hidden;
   explicit Surface(Engine& engine);
   ~Surface() override;
 
@@ -64,6 +112,8 @@ public:
 
   // the colour a firmware LED colour number lights a pad with
   static juce::Colour ledColourFor(int color);
+  // the ink of a label printed on a switch, dark enough to read on its light in every colour
+  static juce::Colour switchInk();
 
   using Cell = TouchTracker::Cell;
   // the cell under a point, column 0 for the control switches, invalid outside them all
@@ -71,6 +121,11 @@ public:
   // where a pad, or in column 0 a control switch, is drawn; empty where the surface hides it
   virtual juce::Rectangle<float> padBounds(int col, int row) const;
   bool showsFocusRing() const { return hasKeyboardFocus(false) && keyboardNavigating; }
+
+  // the rounding of a pad's corners, and of the control switches', the pads' own unless they are drawn
+  // apart from them
+  float padCorner() const { return padSize * 0.09f; }
+  virtual float switchCorner() const { return padCorner(); }
 
 protected:
   // The whole instrument, drawn to fit: case, panel, pads and name. Another way of showing the
@@ -84,11 +139,18 @@ protected:
   virtual void paintBehind(juce::Graphics& g);
   virtual void paintInFront(juce::Graphics& g);
   virtual void focusMoved(const Cell&) {}
+  // a pad nothing would show a change of, which a change then leaves unrepainted
+  virtual bool outOfSight(int col, int row) const { return hidden && hidden(col, row); }
+  // the light a pad or switch is painted with, the firmware's own unless a subclass keeps another
+  virtual firmware::Led ledShown(int col, int row) const;
   // the label printed for a control switch, row 0 at the bottom
   static const char* controlLabel(int row);
   // what a control switch is labelled with now, its printed label unless a subclass names what
   // the switch does on the screen shown
   virtual juce::String switchLabel(int row) const { return controlLabel(row); }
+  // a setting a switch shows under its label, such as what it's assigned, in a quieter type; none
+  // where it has none
+  virtual juce::String switchValue(int) const { return {}; }
 
   Engine& engine;
   int columns = 26;
@@ -98,19 +160,24 @@ protected:
   juce::Rectangle<float> panel;
   juce::Rectangle<float> steel;
 
+
 private:
   void timerCallback() override;
+  std::vector<uint32_t> lastShown;
   void toggleFocusedCell();
   void moveFocus(int dCol, int dRow);
   juce::Colour ledColour(int color) const { return ledColourFor(color); }
   void paintCase(juce::Graphics& g);
   void paintPads(juce::Graphics& g);
   void paintBrand(juce::Graphics& g);
+  void paintHeadings(juce::Graphics& g);
 
   TouchTracker touches;
   Cell focusCell;
   // the focus ring shows only while the keyboard moves it, never after a touch or a click
   bool keyboardNavigating = false;
+  bool dark = false;
+  bool headingsOn = false;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Surface)
 };

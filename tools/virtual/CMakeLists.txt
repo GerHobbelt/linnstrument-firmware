@@ -33,7 +33,7 @@ endif()
 
 set(REPO ${CMAKE_CURRENT_SOURCE_DIR}/../..)
 # how many engines can run the firmware at once, each with a copy of its own (Firmware.cmake);
-# one until an AUv3 needs eight
+# one unless more are asked for
 set(LINN_FIRMWARE_COPIES 1 CACHE STRING "Copies of the firmware compiled into the app")
 include(Firmware.cmake)
 linn_firmware(${REPO} ${LINN_FIRMWARE_COPIES})
@@ -65,6 +65,7 @@ juce_add_binary_data(VirtualLinnStrumentData SOURCES
 
 target_sources(VirtualLinnStrument PRIVATE
   Source/Main.cpp
+  Source/Choices.cpp
   Source/MainComponent.cpp
   Source/Surface.cpp
   Source/TouchTracker.cpp
@@ -98,6 +99,7 @@ juce_generate_juce_header(VirtualTests)
 add_dependencies(VirtualTests MergedSketch BuildInfo)
 target_sources(VirtualTests PRIVATE
   Tests/VirtualTests.cpp
+  Source/Choices.cpp
   Source/Surface.cpp
   Source/TouchTracker.cpp
   Source/Engine.cpp
