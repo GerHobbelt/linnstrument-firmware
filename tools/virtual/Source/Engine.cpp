@@ -35,22 +35,45 @@ void Engine::start(int wantedModel) {
   stop();
   model = wantedModel;
 
-  output = juce::MidiOutput::createNewDevice(portName());
-  input = juce::MidiInput::createNewDevice(portName(), this);
-  if (input != nullptr) input->start();
+  if (virtualPorts) {
+    output = juce::MidiOutput::createNewDevice(portName());
+    input = juce::MidiInput::createNewDevice(portName(), this);
+    if (input != nullptr) input->start();
+  }
 
-  std::vector<uint8_t> image;
+  // the flash is read and kept under the lock currentFlash() takes, which another thread may call
+  const juce::ScopedLock flashGuard(flashLock);
+  std::vector<uint8_t> image, settings;
   juce::File file = flashFile(model);
-  if (file.existsAsFile() && (size_t) file.getSize() == firmware::flashSize()) {
+  if (!flashInFile) {
+    size_t size = bootSettingsSize, offset = bootSettingsOffset;
+    if (bootFlash.size() != firmware::flashSize()) {}
+    else if ((size == 0 || size == instance->settingsSize()) && (offset == 0 || offset == instance->settingsOffset())) image = bootFlash;
+    else if (size > 0 && offset + sizeof(unsigned long) + 2 * size <= bootFlash.size()) {
+      // the newer of its two copies, as loadSettings() picks it
+      auto from = bootFlash.begin() + (long) (offset + sizeof(unsigned long) + (bootFlash[offset] == 0 ? 0 : size));
+      settings.assign(from, from + (long) size);
+    }
+  }
+  else if (file.existsAsFile() && (size_t) file.getSize() == firmware::flashSize()) {
     juce::MemoryBlock block;
     file.loadFileAsData(block);
     image.assign((const uint8_t*) block.getData(), (const uint8_t*) block.getData() + block.getSize());
   }
   instance->boot(model, image, [this](const uint8_t* data, size_t length) { serialSink(data, length); });
   columns = instance->columns();
+  booted = true;
+  bootedFrom = image;
   lastSavedFlash = instance->flashImage();
+  bool upgraded = !settings.empty() && instance->upgradeSettings(settings);
   // after the boot's image is taken, so that the stop saves these settings
-  if (image.empty() && onFreshFlash) onFreshFlash();
+  if (image.empty() && !upgraded && onFreshFlash) onFreshFlash();
+  // read before anything else can come in, so that a fresh flash is one with only these
+  freshLive.clear();
+  if (image.empty() && !upgraded && !flashInFile) {
+    for (int i = 0; i < 100000 && instance->midiInPending(); ++i) instance->loopOnce();
+    freshLive = instance->liveFlashImage();
+  }
   // here, not in run(), which a stop right after this start could otherwise undo
   finishing = false;
   startThread(juce::Thread::Priority::high);
@@ -66,6 +89,11 @@ void Engine::stop() {
     waitForThreadToExit(2000);
   }
   saveFlash();
+  if (!flashInFile) {
+    const juce::ScopedLock flashGuard(flashLock);
+    bootFlash = keptFlash();
+    bootSettingsSize = bootSettingsOffset = 0;
+  }
   if (input != nullptr) input->stop();
   input.reset();
   output.reset();
@@ -73,6 +101,11 @@ void Engine::stop() {
   touches.clear();
   const juce::ScopedLock outGuard(outLock);
   midiOut.clear();
+}
+
+void Engine::onFirmware(std::function<void(firmware::Instance&)> change) {
+  const juce::ScopedLock lock(changesLock);
+  changes.push_back(std::move(change));
 }
 
 // The scan in slices with a pause after each, so that the firmware's continuous tasks, its MIDI
@@ -99,9 +132,19 @@ void Engine::run() {
     }
     start += std::chrono::microseconds((long long) length);
     held = advanceTouches(length / 1000.0);
-    if (++scansRun % 2000 == 0) {
-      saveFlash();
+    std::vector<std::function<void(firmware::Instance&)>> due;
+    {
+      const juce::ScopedLock lock(changesLock);
+      due.swap(changes);
     }
+    for (auto& change : due) change(*instance);
+    if (flashWanted.exchange(false)) {
+      takenFlash = flashInFile ? instance->flashImage() : keptFlash();
+      flashTaken.signal();
+    }
+    bool wanted = saveWanted.exchange(false);
+    if (++scansRun % 2000 == 0 || wanted) saveFlash();
+    if (wanted) saved.signal();
   }
 }
 
@@ -132,12 +175,27 @@ int Engine::advanceTouches(double millis) {
       ++it;
       continue;
     }
-    // a press that replaced a lifting touch within one scan: the lift goes out first
+    // a new press on a cell the firmware still holds, lifting or lifted: the lift goes out first,
+    // for as long as the firmware takes to let go of the cell, or a quick second tap would only
+    // carry on the first
     if (t.liftFirst) {
-      instance->setSensor(t.col, t.row, 0, 0, 0);
+      if (instance->cellHeld(t.col, t.row) && t.liftWaited <= liftWaitMillis) {
+        instance->setSensor(t.col, t.row, 0, 0, 0);
+        t.liftWaited += millis;
+        ++it;
+        continue;
+      }
       t.liftFirst = false;
-      ++it;
-      continue;
+    }
+    // a tap quicker than the firmware takes to let go of the one before still reaches it
+    if (t.releaseSeen) {
+      t.liftWaited += millis;
+      if (instance->cellHeld(t.col, t.row) || t.liftWaited > 2 * liftWaitMillis) {
+        t.releaseSeen = false;
+        t.targetZ = 0;
+        ++it;
+        continue;
+      }
     }
     if (t.releaseIn > 0 && --t.releaseIn == 0) {
       t.targetZ = 0;
@@ -187,15 +245,17 @@ void Engine::press(int col, int row, float xFraction, float yFraction, int rawZ)
   Touch t { col, row, instance->rawX(col, xFraction), instance->rawY(row, yFraction), rawZ > 0 ? rawZ : pressure, 0, xFraction, yFraction, rawZ > 0, false, 0 };
   t.strike = strike;
   t.landing = strikeLevel(strike);
+  t.liftFirst = true;
   auto it = touches.find(touchKey(col, row));
   if (it != touches.end()) {
-    if (it->second.targetZ > 0) {
+    if (it->second.liftFirst) t.liftWaited = it->second.liftWaited;
+    else if (it->second.targetZ > 0) {
+      t.liftFirst = false;
       t.z = it->second.z;
       t.rising = it->second.rising;
       t.landedScans = it->second.landedScans;
       t.settled = it->second.settled;
     }
-    else t.liftFirst = true;
   }
   touches[touchKey(col, row)] = t;
 }
@@ -235,6 +295,7 @@ bool Engine::slide(int fromCol, int row, int toCol, float yFraction) {
   to.y = instance->rawY(row, yFraction);
   // as a press does, a cell still lifting is let go of first, so that its note ends
   to.liftFirst = existing != touches.end();
+  to.liftWaited = 0;
   to.releaseIn = 0;
   to.shared = from.shared = juce::roundToInt(from.rising);
   to.sharedIn = slideScans;
@@ -256,15 +317,16 @@ void Engine::setPressure(int rawZ) {
 bool Engine::release(int col, int row) {
   const juce::ScopedLock lock(touchLock);
   auto it = touches.find(touchKey(col, row));
-  if (it == touches.end() || it->second.targetZ == 0) return false;
-  it->second.targetZ = 0;
+  if (it == touches.end() || it->second.targetZ == 0 || it->second.releaseSeen) return false;
+  if (it->second.liftFirst) it->second.releaseSeen = true;
+  else it->second.targetZ = 0;
   return true;
 }
 
 bool Engine::isTouched(int col, int row) const {
   const juce::ScopedLock lock(touchLock);
   auto it = touches.find(touchKey(col, row));
-  return it != touches.end() && it->second.targetZ > 0;
+  return it != touches.end() && it->second.targetZ > 0 && !it->second.releaseSeen;
 }
 
 bool Engine::touchAt(int col, int row, TouchView& view) const {
@@ -284,7 +346,9 @@ void Engine::setFootSwitch(int which, bool down) {
 juce::String Engine::status() const {
   if (!isThreadRunning()) return "Stopped";
   juce::String text = "LinnStrument " + juce::String(instance->model()) + ", firmware " + instance->version() + ", commit " + VIRTUAL_COMMIT;
-  text += hasVirtualPorts() ? ", MIDI port \"" + portName() + "\"" : ", no virtual MIDI port on this platform";
+  // without virtual ports, its MIDI is carried by the program that made it, which needs no saying
+  if (hasVirtualPorts()) text += ", MIDI port \"" + portName() + "\"";
+  else if (virtualPorts) text += ", no virtual MIDI port on this platform";
   if (instance->userFirmwareMode()) text += ", user firmware mode";
   if (instance->serialMode()) text += ", serial mode (no MIDI until OS Update is tapped again)";
   return text;
@@ -317,20 +381,62 @@ std::vector<std::vector<uint8_t>> Engine::takeMidiOut() {
   return taken;
 }
 
-juce::File Engine::flashFile(int forModel) const {
-  juce::File dir = flashFolder;
-  if (dir == juce::File()) {
-    dir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory);
+juce::File Engine::appFolder() {
+  auto dir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory);
 #if JUCE_MAC
-    dir = dir.getChildFile("Application Support");
+  dir = dir.getChildFile("Application Support");
 #endif
-    dir = dir.getChildFile("Virtual LinnStrument");
-  }
+  return dir.getChildFile("Virtual LinnStrument");
+}
+
+juce::File Engine::flashFile(int forModel) const {
+  juce::File dir = flashFolder == juce::File() ? appFolder() : flashFolder;
   return dir.getChildFile("flash-" + juce::String(forModel) + ".bin");
 }
 
+void Engine::setBootFlash(const std::vector<uint8_t>& image, size_t settingsSize, size_t settingsOffset) {
+  const juce::ScopedLock lock(flashLock);
+  bootFlash = image;
+  bootSettingsSize = settingsSize;
+  bootSettingsOffset = settingsOffset;
+}
+
+std::vector<uint8_t> Engine::currentFlash() {
+  const juce::ScopedLock lock(flashLock);
+  if (isThreadRunning()) {
+    flashTaken.reset();
+    flashWanted = true;
+    // a thread that ends meanwhile, being stopped, leaves the flash to be read here, at once
+    for (int waited = 0; waited < 1000 && isThreadRunning(); waited += 5)
+      if (flashTaken.wait(5)) return takenFlash;
+    flashWanted = false;
+  }
+  // stopped, the copy holds what it last had, bootFlash only once stop() has kept it
+  if (!booted) return flashInFile ? std::vector<uint8_t>() : bootFlash;
+  return flashInFile ? instance->flashImage() : keptFlash();
+}
+
+// the settings the firmware plays with, stored or not, but none for a fresh flash with only its
+// starting settings, which then stays fresh
+std::vector<uint8_t> Engine::keptFlash() {
+  std::vector<uint8_t> live = instance->liveFlashImage();
+  return bootedFrom.empty() && live == freshLive ? std::vector<uint8_t>() : live;
+}
+
+void Engine::saveNow() {
+  if (isThreadRunning()) {
+    saved.reset();
+    saveWanted = true;
+    for (int waited = 0; waited < 1000 && isThreadRunning(); waited += 5)
+      if (saved.wait(5)) return;
+    saveWanted = false;
+  }
+  if (booted && !isThreadRunning()) saveFlash();
+}
+
 void Engine::saveFlash() {
-  std::vector<uint8_t> image = instance->flashImage();
+  if (!flashInFile) return;
+  std::vector<uint8_t> image = saveLive ? instance->liveFlashImage() : instance->flashImage();
   if (image == lastSavedFlash) return;
   juce::File file = flashFile(model);
   file.getParentDirectory().createDirectory();
