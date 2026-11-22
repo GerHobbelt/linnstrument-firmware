@@ -2379,9 +2379,9 @@ void copyConfigurationV16(void* target, const void* source) {
 
 /*************************************************************************************************/
 
-void copySplitSettingsV8(void* target, void* source) {
+void copySplitSettingsV8(void* target, const void* source) {
   SplitSettings* t = (SplitSettings*)target;
-  SplitSettingsV8* s = (SplitSettingsV8*)source;
+  const SplitSettingsV8* s = (const SplitSettingsV8*)source;
 
   t->midiMode = s->midiMode;
   t->midiChanMain = s->midiChanMain;
@@ -2437,9 +2437,9 @@ void copySplitSettingsV8(void* target, void* source) {
   t->sequencerView = s->sequencerView;
 }
 
-void copyPresetSettingsV12(void* target, void* source) {
+void copyPresetSettingsV12(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
-  PresetSettingsV12* s = (PresetSettingsV12*)source;
+  const PresetSettingsV12* s = (const PresetSettingsV12*)source;
 
   memcpy(&t->global, &s->global, sizeof(GlobalSettings));
 
@@ -2447,9 +2447,9 @@ void copyPresetSettingsV12(void* target, void* source) {
   copySplitSettingsV8(&t->split[RIGHT], &s->split[RIGHT]);
 }
 
-void copyConfigurationV17(void* target, void* source) {
+void copyConfigurationV17(void* target, const void* source) {
   Configuration* t = (Configuration*)target;
-  ConfigurationV17* s = (ConfigurationV17*)source;
+  const ConfigurationV17* s = (const ConfigurationV17*)source;
 
   memcpy(&t->device, &s->device, sizeof(DeviceSettings));
 
