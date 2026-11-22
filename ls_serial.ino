@@ -294,13 +294,19 @@ void serialRestoreSettings() {
     if (crc == -1)      return;
     else if (crc == 0)  continue;
 
+#if 0
     dueFlashStorage.write(projectOffset, buff2, actual);
+#endif
 
     remaining -= actual;
     projectOffset += actual;
   }
 
+#if 0
   boolean settingsApplied = upgradeConfigurationSettings(settingsSize, dueFlashStorage.readAddress(SETTINGS_OFFSET));
+#else
+  boolean settingsApplied = false;
+#endif
 
   // activate the retrieved settings
   if (settingsApplied) {
@@ -371,6 +377,7 @@ int32_t serialSendProjectSize() {
 }
 
 void serialSendProjectRaw(int32_t projectSize, byte projectNumber) {
+#if 0
   byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
 
   // send the actual settings
@@ -394,6 +401,7 @@ void serialSendProjectRaw(int32_t projectSize, byte projectNumber) {
     remaining -= actual;
     src += actual;
   }
+#endif
 }
 
 void serialSendSingleProject() {
@@ -472,6 +480,7 @@ void serialRestoreProject() {
   uint8_t p = Serial.read();
   Serial.write(ackCode);
 
+#if 0
   // write the actual project
   byte marker = dueFlashStorage.read(PROJECTS_OFFSET);
   byte prjIndex = dueFlashStorage.read(PROJECT_INDEX_OFFSET(marker, p));
@@ -498,6 +507,7 @@ void serialRestoreProject() {
     remaining -= actual;
     projectOffset += actual;
   }
+#endif
 
   // finished
   Serial.write(ackCode);

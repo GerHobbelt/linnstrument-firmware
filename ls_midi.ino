@@ -334,6 +334,7 @@ void handleMidiInput(unsigned long nowMicros) {
           break;
         }
         // purposely fall-through in case of velocity 0
+        [[fallthrough]];
       }
 
       case MIDINoteOff:
