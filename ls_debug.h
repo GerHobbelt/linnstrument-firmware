@@ -30,7 +30,7 @@ currently debugging. After debugging something, either remove them or move them 
 #ifndef LS_DEBUG_H
 #define LS_DEBUG_H
 
-#define DEBUG_ENABLED
+// #define DEBUG_ENABLED
 
 #ifdef DEBUG_ENABLED
 

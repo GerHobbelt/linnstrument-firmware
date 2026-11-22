@@ -68,7 +68,7 @@ constexpr const int32_t PENDING_RELEASE_RATE_X = FXD_FROM_INT(5);
 
 boolean potentialSlideTransferCandidate(byte col) {
   if (controlModeActive) return false;
-  if (col < 1) return false;
+  if (col < 1 || col >= NUMCOLS) return false;
   if (userFirmwareActive) {
     if (!userFirmwareSlideMode[sensorRow]) return false;
   }
@@ -126,6 +126,7 @@ void transferFromSameRowCell(byte col) {
   sensorCell->note = fromCell->note;
   sensorCell->microLinnGroup = fromCell->microLinnGroup;
   moveMicroLinnSoundingNote(*fromCell, *sensorCell);
+  moveMicroLinnHammeredNote(col, sensorCol);
   sensorCell->channel = fromCell->channel;
   sensorCell->octaveOffset = fromCell->octaveOffset;
   sensorCell->fxdPrevPressure = fromCell->fxdPrevPressure;
@@ -179,6 +180,7 @@ void transferToSameRowCell(byte col) {
   toCell->note = sensorCell->note;
   toCell->microLinnGroup = sensorCell->microLinnGroup;
   moveMicroLinnSoundingNote(*sensorCell, *toCell);
+  moveMicroLinnHammeredNote(sensorCol, col);
   toCell->channel = sensorCell->channel;
   toCell->octaveOffset = sensorCell->octaveOffset;
   toCell->fxdPrevPressure = sensorCell->fxdPrevPressure;
@@ -569,7 +571,10 @@ byte takeChannel(byte split, byte row) {
     {
       if (isMicroLinnHammeringOn()) {
         signed char channel = prepareMicroLinnHammerOn(split, row);
-        if (channel > -1) return channel;
+        if (channel > -1) {
+          splitChannels[split].share(channel);         // microLinn: the hammer-on's note shares the muted note's channel
+          return channel;
+        }
       }
       return splitChannels[split].take();
     }
@@ -1385,8 +1390,8 @@ void sendNewNote() {
 
     // if the same channel and note is already active, send a note off first
     // so that the new touch properly triggers a new note
-    if (hasActiveMidiNote(sensorSplit, sensorCell->note, sensorCell->channel)) {
-      midiSendNoteOff(sensorSplit, note, channel);                 // read from old note & channel, send to new note & channel
+    if (hasActiveMidiNote(sensorSplit, note, channel)) {           // microLinn: the midi note and channel sent, not the edostep
+      midiSendNoteOff(sensorSplit, note, channel);
     }
 
     // send row & column in CC 14 and 15
@@ -1400,7 +1405,7 @@ void sendNewNote() {
 
 void sendReleasedNote() {
   if (!isArpeggiatorEnabled(sensorSplit) && !isSwitchLegatoPressed(sensorSplit)) {
-    if (isMicroLinnHammeringOn()) {
+    if (isMicroLinnHammeringOn() && isFocusedCell()) {     // microLinn: an unfocused note shares its channel with a later one
       sendMicroLinnPullOff();
       return;
     }
@@ -1432,7 +1437,7 @@ void sendReleasedNote() {
             cell(touchedCol, row).channel == sensorCell->channel) {
           // if there is another touch active with the same exact note and channel,
           // don't send the note off for the released note
-          if (isMicroLinnXfixOn()) {
+          if (isMicroLinnXfixOn() && !isMicroLinnHammeringOn()) {          // microLinn: a hammer-on release never retriggers here
             // but if in mono mode with X-data fixes, send a note-on for the old note, to retrigger the envelope, using the noteOff velocity
             signed char channel = sensorCell->channel;
             if (isMicroLinnOn()) {
@@ -1495,7 +1500,7 @@ unsigned short handleZExpression() {
   if (cell(sensorCol - 1, sensorRow).currentRawZ && !cell(sensorCol - 1, sensorRow).hasNote()) {
     adjacentZ = cell(sensorCol - 1, sensorRow).currentRawZ;
   }
-  else if (cell(sensorCol + 1, sensorRow).currentRawZ && !cell(sensorCol + 1, sensorRow).hasNote()) {
+  else if (sensorCol + 1 < NUMCOLS && cell(sensorCol + 1, sensorRow).currentRawZ && !cell(sensorCol + 1, sensorRow).hasNote()) {
     adjacentZ = cell(sensorCol + 1, sensorRow).currentRawZ;
   }
   // the adjacent Z value is added the active cell's pressure to make
@@ -1542,7 +1547,7 @@ short handleXExpression() {
   if (cell(sensorCol - 1, sensorRow).touched == transferCell) {
     transferCol = sensorCol - 1;
   }
-  else if (cell(sensorCol + 1, sensorRow).touched == transferCell) {
+  else if (sensorCol + 1 < NUMCOLS && cell(sensorCol + 1, sensorRow).touched == transferCell) {
     transferCol = sensorCol + 1;
   }
 
@@ -1860,6 +1865,7 @@ void handleTouchRelease() {
 
   if (wasIgnored ||
       displayMode == displaySleep) {
+    if (wasIgnored) releaseMicroLinnMutedNote();       // microLinn: a hammer-on may have muted this touch
     postTouchRelease();
     return;
   }

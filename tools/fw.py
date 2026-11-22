@@ -11,6 +11,10 @@
   python3 tools/fw.py desktop  [--ref REF] [--run [--settings EXPORT] [--calibration as-exported|stand-in]
                                [--seconds S] [--midi-log FILE]] [--harness FILE]
   python3 tools/fw.py layout   [--ref REF]        struct layouts: desktop build vs instrument build
+  python3 tools/fw.py replay   [--ref REF] [--against BASE | --baseline DIR | --no-compare] --recordings DIR
+                               [--config NAME]... [--recording NAME]... [--repeat] [--sanitize] [--save DIR]
+                               [--allow-contained]
+                                                  replay sensor recordings through the firmware, compare MIDI
 
 Without --ref, commands work on the working tree, uncommitted changes included. BASE defaults to
 the merge-base of HEAD with fork/main, which is the build the current branch started from.
@@ -24,10 +28,11 @@ import sys
 sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from fwlib import arduino, desktop, layout, sketch, stack, warnings  # noqa: E402
+from fwlib import arduino, desktop, layout, replay, sketch, stack, warnings  # noqa: E402
 
 REPO = sketch.repo_root(os.path.dirname(os.path.abspath(__file__)))
 STACK_BUILD_PREFS = ('compiler.cpp.extra_flags=-fstack-usage', 'compiler.c.extra_flags=-fstack-usage')
+MIN_MARGIN = 256          # bytes of RAM that must be left after the stack without re-entry
 
 
 def log(msg):
@@ -293,8 +298,9 @@ def cmd_report(args):
         failures.append('new warnings')
     if ra['flash_free'] < 0:
         failures.append('the program overlaps the settings at 0xC0000')
-    if ra['ram_free'] - sa['total'] < 0:
-        failures.append('the stack without re-entry no longer fits in RAM')
+    if ra['ram_free'] - sa['total'] < MIN_MARGIN:
+        failures.append('the RAM left after the stack without re-entry is %d bytes, under the %d required'
+                        % (ra['ram_free'] - sa['total'], MIN_MARGIN))
     if args.ram_budget is not None and ra['static_ram'] - rb['static_ram'] > args.ram_budget:
         failures.append('static RAM grew by %d bytes, over the budget of %d'
                         % (ra['static_ram'] - rb['static_ram'], args.ram_budget))
@@ -317,6 +323,8 @@ def cmd_desktop(args):
     log('  32-bit long rewrites: %s' % ', '.join('%s %s' % (f, c) for f, c in changed.items()))
     log('  busy-waits whose clock reads take one pass each: %s'
         % ', '.join('%s (%d reads)' % (f, n) for f, n in result['busy_waits'].items()))
+    log('  known firmware memory errors contained (fwlib/memfix.py): %s%s' % (', '.join(result['contained']) or 'none',
+        '; not in this version of the sketch: ' + ', '.join(result['not_contained']) if result['not_contained'] else ''))
     if args.run:
         provision, run = desktop.boot_and_run(result['exe'], out, settings=args.settings, seconds=args.seconds,
                                               midi_log=os.path.abspath(args.midi_log) if args.midi_log else None,
@@ -355,6 +363,149 @@ def cmd_layout(args):
         log('  MISSING from one build: %s' % name)
     return 1 if r['differ'] or r['missing'] else 0
 
+
+def cmd_replay(args):
+    tc = arduino.Toolchain(args.toolchain).check()
+    recordings = replay.find_recordings(args.recordings, args.recording)
+    calibration_from = args.calibration_from or os.path.join(args.recordings, 'linnstrument_settings.bin')
+    plan = replay.Plan(recordings, calibration_from, configs=args.config, events_dir=os.path.abspath(args.events_dir),
+                       timing=args.timing)
+    target = sketch.Target(REPO, args.ref)
+    log('recordings: %s (%s), with their sensor settings: %s'
+        % (os.path.abspath(args.recordings), ', '.join(r.name for r in recordings), ', '.join('%s %s' % s for s in plan.sensor)))
+    log('configurations: %s (%s)' % (os.path.relpath(plan.configurations_file), ', '.join(c.name for c in plan.configs)))
+    log('calibration from: %s' % plan.calibration_from)
+    log('scripted events: %s' % (', '.join(sorted(set(os.path.relpath(ev) for _, _, ev, _ in plan.runs() if ev)))
+                                 or 'none'))
+    fresh = args.fresh or args.repeat
+    results = replay.replay(tc, target, plan, jobs=args.jobs, log=log, fresh=fresh)
+
+    compared = None
+    if args.baseline:
+        compared = 'the logs saved in %s' % args.baseline
+        base_logs = {(r.config.name, r.name): os.path.join(args.baseline, r.config.name, r.name, 'midi.txt') for r in results}
+    elif not args.no_compare:
+        base = base_target(args)
+        compared = base.describe()
+        base_results = replay.replay(tc, base, plan, jobs=args.jobs, log=log, fresh=args.fresh)
+        base_logs = {(r.config.name, r.name): r.midi for r in base_results}
+
+    log('')
+    log('replayed: %s' % target.describe())
+    contained = replay.contained(target)
+    log('memory errors contained (fwlib/memfix.py): %s' % (', '.join(contained) or 'none'))
+    if contained and not args.allow_contained:
+        log('MEMORY ERROR: the build under test has the code of known memory errors, which the desktop build '
+            'contains: %s. The firmware has fixed them, so this is a memory bug that the replay and the sanitizer '
+            'would not otherwise see. (--allow-contained replays an old firmware that has them, such as v0.1.0.)'
+            % ', '.join(contained))
+    if compared and not args.baseline and replay.contained(base) != contained:
+        log('NOTE: %s had different ones contained: %s; a difference in runs that reach them can come from that'
+            % (base.describe(), ', '.join(replay.contained(base)) or 'none'))
+    if compared:
+        log('compared with: %s (midi.txt, byte for byte)' % compared)
+    log('')
+    log('%-22s %-14s %6s %9s %8s  %s' % ('configuration', 'run', 'notes', 'messages', 'served', 'midi.txt' if compared else ''))
+    reports, different, overflows, left_sounding, doubling, channels_left, lit = [], 0, 0, 0, 0, 0, 0
+    list_contained = 'microLinnHammerOns overflow' in contained
+    for r in results:
+        notes, messages, served, overflow, sounding, doubled, counts_left, lights = r.summary_values()
+        overflows += overflow
+        left_sounding += sounding > 0
+        doubling += doubled > 0
+        channels_left += counts_left
+        lit += lights > 0
+        verdict = ''
+        if compared:
+            diff = replay.compare_files(base_logs[(r.config.name, r.name)], r.midi)
+            if diff is None:
+                verdict = 'identical'
+            else:
+                different += 1
+                verdict = 'DIFFERENT from line %d' % diff[0]
+                reports.append(['%s, %s:' % (r.config.name, r.name)] + diff[1])
+        log('%-22s %-14s %6d %9d %8s  %s%s%s%s%s%s' % (r.config.name, r.name, notes, messages, served, verdict,
+                                                     '  (hammer-on list overflow%s)' % (', contained' if list_contained else '')
+                                                     if overflow else '',
+                                                     '  (%d notes left sounding)' % sounding if sounding else '',
+                                                     '  (%d doubled note-ons)' % doubled if doubled else '',
+                                                     '  (channels left in use)' if counts_left else '',
+                                                     '  (%d played lights left on)' % lights if lights else ''))
+    for report in reports:
+        log('')
+        for line in report:
+            log(line)
+    log('')
+    log('logs: %s/<configuration>/<run>/' % os.path.relpath(os.path.join(target.work_dir(), 'replay')))
+    if overflows:
+        log('%d runs overflow microLinn\'s hammer-on list, a memory bug%s' % (overflows,
+            '; the desktop build contains it (tools/fwlib/memfix.py)' if list_contained else ''))
+        if not args.allow_contained:
+            log('MEMORY ERROR: microLinn\'s hammer-on list overflows in the firmware under test (%d runs), writing '
+                'past its end. (--allow-contained replays an old firmware that has this bug, such as v0.1.0.)'
+                % overflows)
+    if lit:
+        log('%d runs end with played lights on untouched pads (run.txt, "firmware check: played lights")' % lit)
+    if channels_left:
+        log('%d runs end with the channel bucket still counting channels in use, with no note held (run.txt, '
+            '"firmware check: channel counts")' % channels_left)
+    if left_sounding:
+        log('%d runs leave notes sounding: a note-on with no note-off after it on its channel, by the end of the '
+            'run (run.txt, "midi check", which also gives the longest note)' % left_sounding)
+    if doubling:
+        log('%d runs send doubled note-ons: a note-on for a note already sounding on its channel (run.txt, '
+            '"midi check")' % doubling)
+    failed = []
+    if not args.allow_contained:
+        if contained:
+            failed.append('the build under test has contained memory errors: %s' % ', '.join(contained))
+        if overflows:
+            failed.append('microLinn\'s hammer-on list overflowed in %d runs' % overflows)
+    if compared:
+        log('midi.txt: %s' % ('identical in all %d runs' % len(results) if not different else
+                              '%d of %d runs differ' % (different, len(results))))
+        if different:
+            failed.append('the MIDI differs')
+
+    if args.repeat:
+        checks = replay.repeat_check(tc, target, plan, results, jobs=args.jobs, log=log)
+        bad = [(name, what) for name, what in checks if what]
+        for name, what in bad:
+            log('NOT REPEATABLE: %s: %s differs' % (name, what))
+        log('second build, provisioning and replay: %s' % (
+            'identical flash images and files (settings.txt, provision.txt, midi.txt, touches.txt, run.txt) in all %d runs' % len(checks)
+            if not bad else '%d of %d runs differ' % (len(bad), len(checks))))
+        if bad:
+            failed.append('a second replay differs')
+
+    if args.sanitize:
+        checks = replay.sanitize_check(tc, target, plan, results, jobs=args.jobs, log=log)
+        bad = [(name, what) for name, what in checks if what]
+        for name, what in bad:
+            log('SANITIZER: %s: %s' % (name, what))
+        log('AddressSanitizer build: %s' % (
+            'no memory error, and midi.txt and touches.txt identical to the normal build\'s in all %d runs' % len(checks)
+            if not bad else '%d of %d runs failed (their logs are in %s)'
+            % (len(bad), len(checks), os.path.relpath(os.path.join(target.work_dir(), 'replay', 'sanitize')))))
+        if bad:
+            failed.append('the sanitizer check failed')
+
+    if args.save:
+        head = sketch.git(REPO, 'rev-parse', 'HEAD')
+        description = ('Replay logs of %s, made by tools/fw.py replay with the tools at HEAD %s.\n'
+                       'recordings: %s, with their sensor settings: %s\n'
+                       'calibration from: %s\nconfigurations (%s):\n%s\n'
+                       'midi.txt and touches.txt are gzipped; SHA256SUMS lists them uncompressed.\n'
+                       % (target.describe(), head, ', '.join(r.name for r in recordings),
+                          ', '.join('%s %s' % s for s in plan.sensor), os.path.basename(plan.calibration_from),
+                          os.path.relpath(plan.configurations_file, REPO),
+                          '\n'.join('  %s: %s' % (c.name, c.description) for c in plan.configs)))
+        replay.save(results, args.save, description, log=log)
+
+    if failed:
+        log('FAILED: %s' % '; '.join(failed))
+        return 1
+    return 0
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -403,6 +554,34 @@ def main():
     s.add_argument('--ref')
     s.add_argument('-v', '--verbose', action='store_true')
     s.set_defaults(func=cmd_layout)
+
+    s = sub.add_parser('replay', help='replay sensor recordings through the firmware and compare the MIDI')
+    s.add_argument('--ref', help='the firmware to replay (default: the working tree)')
+    s.add_argument('--against', help='compare with this firmware (default: merge-base of HEAD with fork/main)')
+    s.add_argument('--baseline', help='compare with the logs saved in this folder (--save) instead')
+    s.add_argument('--no-compare', action='store_true', help='just replay')
+    s.add_argument('--recordings', default=os.environ.get('LINNSTRUMENT_RECORDINGS'),
+                   help='folder with the recordings (NAME_samples.csv, NAME_settings.csv) and, by default, the '
+                        'settings export (default: $LINNSTRUMENT_RECORDINGS)')
+    s.add_argument('--calibration-from', help='settings export the runs take their calibration from, and nothing '
+                                              'else (default: RECORDINGS/linnstrument_settings.bin)')
+    s.add_argument('--recording', action='append', help='replay only this recording (repeatable)')
+    s.add_argument('--config', action='append', help='replay only this configuration (repeatable; see '
+                                                     'tools/replay/configurations.txt)')
+    s.add_argument('--events-dir', default=replay.EVENTS_DIR,
+                   help='folder with the scripted events, NAME.events (default: tools/replay)')
+    s.add_argument('--timing', help='the clock model\'s costs, ADC_NS,PASS_NS (see desktop/hal.h)')
+    s.add_argument('--repeat', action='store_true',
+                   help='build, provision and replay everything a second time and check it is identical')
+    s.add_argument('--sanitize', action='store_true',
+                   help='also run everything with AddressSanitizer: no memory error, and the same logs')
+    s.add_argument('--save', help='copy the logs to this folder, gzipped, with SHA256SUMS')
+    s.add_argument('--fresh', action='store_true', help='ignore cached results')
+    s.add_argument('--allow-contained', action='store_true',
+                   help='the firmware replayed is an old one with known memory errors, such as v0.1.0: contain them '
+                        '(fwlib/memfix.py) instead of failing')
+    s.add_argument('--jobs', type=int, help='runs in parallel (default: the number of CPUs)')
+    s.set_defaults(func=cmd_replay)
 
     args = p.parse_args()
     try:

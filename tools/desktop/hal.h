@@ -1,7 +1,8 @@
 // Desktop hardware model for the LinnStrument firmware (the "HAL"). It stands in for the SAM3X8E and
 // the instrument's electronics below the Arduino API: the clock, the touch sensor (reached over SPI),
 // the LEDs (SPI), the UART that carries MIDI, the digital pins and the flash bank that holds settings.
-// The firmware itself is compiled unchanged, apart from the rewrites in tools/fwlib/longfix.py.
+// The firmware itself is compiled unchanged, apart from the rewrites in tools/fwlib/longfix.py and
+// tools/fwlib/memfix.py.
 //
 // Everything is deterministic: the same firmware, inputs and harness always give the same output.
 // This header is the model's API; tools/README.md explains how to build and run it.
@@ -47,6 +48,10 @@ enum SensorAxis { SENSOR_X = 0, SENSOR_Y = 1, SENSOR_Z = 2 };
 typedef uint16_t (*SensorModel)(uint8_t col, uint8_t row, SensorAxis axis, uint64_t tNs, void* user);
 void setSensorModel(SensorModel model, void* user);
 uint16_t untouchedSurface(uint8_t col, uint8_t row, SensorAxis axis, uint64_t tNs, void* user);
+// Counts the firmware's cell and axis selections. The ADC reads that follow one selection share its
+// number, so a sensor model can tell a second read within one selection (readZ()'s settling read)
+// from a new read of the same cell.
+uint64_t sensorSelection();
 
 // ---- UART
 // One UART carries MIDI (DIN at 31250 baud, USB at 115200 through the USB-MIDI chip) and serial mode.
