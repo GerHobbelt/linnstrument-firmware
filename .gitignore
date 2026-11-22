@@ -7,3 +7,4 @@ stino.settings
 .DS_Store
 
 /Arduino.Core.1.6.12/
+tools/**/__pycache__/
