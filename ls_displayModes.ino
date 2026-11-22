@@ -56,6 +56,7 @@ displaySleepConfig            : sleep mode configuration
 displayRowOffset              : custom row offset selection
 displayGuitarTuning           : guitar tuning configuration
 displayMIDIThrough            : MIDI through configuration
+displayMidiClockSource        : MIDI clock source, INT or EXT (microLinn)
 displaySequencerProjects      : sequencer projects
 displaySequencerDrum0107      : sequencer first 7 drum notes
 displaySequencerDrum0814      : sequencer second 7 drum notes
@@ -237,6 +238,9 @@ void updateDisplay() {
       break;
     case displayMIDIThrough:
       paintMIDIThrough();
+      break;
+    case displayMidiClockSource:                           // microLinn
+      paintMidiClockSource();
       break;
     case displaySequencerProjects:
       paintSequencerProjects();
@@ -1628,6 +1632,14 @@ void paintMIDIThrough() {
   }
 }
 
+// microLinn: INT ignores incoming MIDI clock and transport, EXT follows them
+void paintMidiClockSource() {
+  DEBUGPRINT_FUNCNAME_L5();
+
+  clearDisplay();
+  adaptfont_draw_string(0, 0, Device.ignoreMidiClock ? "INT" : "EXT", globalColor, true);
+}
+
 void paintMinUSBMIDIIntervalDisplay() {
   DEBUGPRINT_FUNCNAME_L5();
 
@@ -1699,7 +1711,7 @@ void paintNumericDataDisplay(byte color, short value, short offset, boolean cond
     pos = 0;
   }
 
-  snprintf(str, sizeof(str), format, value);
+  sniprintf(str, sizeof(str), format, value);                 // microLinn: integer-only printf, links no float formatting
   byte row = (displayMode == displayMicroLinnConfig ? 1 : 0);  // avoid the low row buttons
   if (condensed) {
     condfont_draw_string(pos+offset, row, str, color, false);
@@ -1729,7 +1741,7 @@ void paintNoteDataDisplay(byte color, short noteNumber, short offset) {
     default: format = "%d"; break;
   }
 
-  snprintf(str, sizeof(str), format, int(noteNumber / 12) - 2);
+  sniprintf(str, sizeof(str), format, int(noteNumber/12) - 2);  // microLinn: integer-only printf
   byte row = (displayMode == displayMicroLinnConfig ? 1 : 0);    // avoid the low row buttons
   condfont_draw_string(offset, row, str, color, false);
 }
@@ -2180,7 +2192,7 @@ void paintGlobalSettingsDisplay() {
   if (displayMode == displayGlobalWithTempo) {
     byte color = Split[LEFT].colorMain;
     char str[12];
-    snprintf(str, sizeof(str), "%3d", FXD4_TO_INT(fxd4CurrentTempo));
+    sniprintf(str, sizeof(str), "%3d", FXD4_TO_INT(fxd4CurrentTempo));   // microLinn: integer-only printf
     tinyfont_draw_string(0, 4, str, color);
   }
 

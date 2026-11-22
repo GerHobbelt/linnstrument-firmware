@@ -2424,6 +2424,7 @@ void initMicroLinnData() {
 
   config.device.microLinn.MLversion = MICROLINN_MLVERSION;
   config.device.microLinn.uninstall = false;
+  config.device.ignoreMidiClock = false;                       // microLinn: EXT, follow incoming MIDI clock
 }
 
 void copyGlobalSettingsVLatest(void* target, const void* source) {           // copies V15, V16 or V17 global settings to microLinn

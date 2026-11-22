@@ -35,6 +35,7 @@ surface.
 // relocate MAP slots and RAM consumption in our final product:
 //
 
+// microLinn: every font is const, so it stays in flash instead of taking 2.6 KB of RAM
 struct LS_PACKED Character {
   byte width;
   const char* data;
