@@ -2470,6 +2470,8 @@ void initializeLastMidiTracking() {
       performContinuousTasks();
     }
   }
+
+  keepMicroLinnHeldNotesOn();                              // microLinn: but the notes still held stay on
 }
 
 inline void queueMidiMessage(MIDIStatus type, byte param1, byte param2, byte channel) {
@@ -2509,12 +2511,6 @@ void microLinnQueueMidiValue(MIDIStatus type, byte param1, byte param2, byte cha
   midiOutQueue.push((byte)type);
   midiOutQueue.push(param1 & 0x7F);
   midiOutQueue.push(param2 & 0x7F);
-}
-
-// microLinn: whether the pitch bend last queued on this channel (1-16) may still be waiting to go out: the messages
-// waiting now would take longer to send, at the pacing's interval, than the time since it was queued
-boolean isMicroLinnPitchBendQueued(byte channel) {
-  return (unsigned long)(midiOutQueue.size() / 4) * midiMinimumInterval * 3 > calcTimeDelta(micros(), lastMomentMidiPB[channel - 1]);
 }
 
 void handlePendingMidi(unsigned long now) {
@@ -3023,8 +3019,13 @@ void midiSendNoteOffForAllTouches(byte split) {
   signed char channel = noteTouchMapping[split].firstChannel;
 
   while (note != -1) {
-    midiSendNoteOff(split, note, channel);
     NoteEntry* entry = noteTouchMapping[split].getNoteEntry(note, channel);
+    signed char midiNote = note;                           // microLinn: the midi note and channel sent, not the edostep
+    signed char midiChannel = channel;
+    if (entry != NULL) {
+      convertMicroLinnMappedNote(split, midiNote, midiChannel, entry->getCol(), entry->getRow());
+    }
+    midiSendNoteOff(split, midiNote, midiChannel);
     if (entry == NULL) {
       note = -1;
     }

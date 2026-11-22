@@ -1162,6 +1162,7 @@ void updateSplitMidiChannels(byte sp) {
             splitChannels[sp].add(ch + 1);
           }
         }
+        takeMicroLinnHeldChannels(sp);                      // microLinn: notes still held keep their channels
         break;
       }
 
@@ -2769,6 +2770,7 @@ void handleTempoNewTouch() {
 void changeUserFirmwareMode(boolean active) {
   if (userFirmwareActive == active) return;
 
+  if (active) endMicroLinnHeldNotes();                    // microLinn: the notes held end here, not at their lifts
   userFirmwareActive = active;
 
   initializeLedsLayer(LED_LAYER_CUSTOM2);

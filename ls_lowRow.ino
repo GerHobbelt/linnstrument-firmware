@@ -353,8 +353,12 @@ void handleLowRowRestrike() {
     sensorCell->velocity = cell(0, 0).velocity;
 
     // retrigger the MIDI note
-    midiSendNoteOff(sensorSplit, sensorCell->note, sensorCell->channel);
-    midiSendNoteOn(sensorSplit, sensorCell->note, sensorCell->velocity, sensorCell->channel);
+    signed char note = sensorCell->note;                   // microLinn: the midi note and channel sent, not the edostep
+    signed char channel = sensorCell->channel;
+    convertMicroLinnMappedNote(sensorSplit, note, channel, sensorCol, sensorRow);
+    if (note == -1 || channel == -1) return;
+    midiSendNoteOff(sensorSplit, note, channel);
+    midiSendNoteOn(sensorSplit, note, sensorCell->velocity, channel);
   }
 }
 
@@ -366,8 +370,12 @@ void handleLowRowStrum() {
     sensorCell->velocity = cell(sensorCol, 0).velocity;
 
     // retrigger the MIDI note
-    midiSendNoteOff(sensorSplit, sensorCell->note, sensorCell->channel);
-    midiSendNoteOn(sensorSplit, sensorCell->note, sensorCell->velocity, sensorCell->channel);
+    signed char note = sensorCell->note;                   // microLinn: the midi note and channel sent, not the edostep
+    signed char channel = sensorCell->channel;
+    convertMicroLinnMappedNote(sensorSplit, note, channel, sensorCol, sensorRow);
+    if (note == -1 || channel == -1) return;
+    midiSendNoteOff(sensorSplit, note, channel);
+    midiSendNoteOn(sensorSplit, note, sensorCell->velocity, channel);
   }
 }
 

@@ -1439,7 +1439,9 @@ struct MicroLinnSlideVoice {                                    // Column Slide 
   byte age;                                                     // milliseconds since the note started, up to 255
   byte cell;                                                    // the cell it belongs to, column + 32 x row, 0 for none
   byte pad;                                                     // the pad the strike's offset belongs to
-  boolean rebase;                                               // until the pitch first settles on home after a strike or a slide
+  byte rebase;                                                  // until the pitch first settles on home: MICROLINN_REBASE_STRIKE after
+                                                                // a strike, MICROLINN_REBASE_MOVING after a strike whose finger was
+                                                                // already moving, MICROLINN_REBASE_SLIDE after a slide; then 0
   short reading;                                                // where the finger was at the last scan, in calibrated X units from the note's pad
 };
 MicroLinnSlideVoice microLinnSlideVoice[16];
@@ -1447,6 +1449,15 @@ byte microLinnWaitingCell[16];                                  // per channel, 
 byte microLinnWaitedFor = 0;                                    // the channel whose note the cell handleNewTouch() is handling was waiting for, 0 for none
 byte microLinnLeftCell[16];                                     // per channel, the cell its note was last handed on from in a slide, column + 32 x row, 0 for none
 byte microLinnSilentEdge[16];                                   // per channel, a cell its note left that was then refused another finger's lifted note, 0 for none
+struct MicroLinnVoice {                                         // per channel, the note sounding on it when it's a voice, see startMicroLinnVoice()
+  signed char note;                                             // the midi note its note-on sent
+  byte split;                                                   // the split whose channels it took its channel from
+  short tuningBend;                                             // the tuning bend sent with it
+  byte owner;                                                   // the cell playing it, index into touchInfo plus 1 (see microLinnCellPlusOne()), 0 for none
+  byte releaseVelocity;                                         // the note-off velocity, from the touch's release
+};
+MicroLinnVoice microLinnVoice[16];                              // a voice sounds while it has an owner, or its bit below
+unsigned short microLinnFingerlessVoices = 0;                   // per channel, bit 0 for channel 1: a voice sounding with no finger on it
 
 // not yet used
 //struct MicroLinnPull {boolean sharp, flat;};                    // used to sweeten 41edo
@@ -1910,8 +1921,195 @@ signed char microLinnFindSoundingNote(byte cellPlusOne) {                // retu
   return -1;
 }
 
-// called by sendNewNote() in ls_handleTouches.ino and sendMicroLinnPullOff()
+// A note on the channel-per-note path is a voice: one per midi channel, which keeps the midi note and tuning bend its
+// note-on sent and the touch playing it (its owner), instead of the list above. Notes on every other path stay in
+// the list. Which path a note takes is settled as its note-on goes out, by the settings then, and holds for the note's
+// life: its voice is found from its touch whatever the settings later. So the functions below look in the cell's voice
+// first.
+
+// a note starting now on this split is a voice: channel per note, outside the modes that handle note lifetime, channels
+// or pressure themselves (hammer-ons, mono and Z-max, the arpeggiator, strumming, the sequencer, drum pads, Legato,
+// and an edo's tuning table outputs)
+boolean microLinnStartsVoice(byte side) {
+  return Split[side].midiMode == channelPerNote && !userFirmwareActive && !isMicroLinnHammeringOn() &&
+         Split[side].microLinn.monoFixes == 0 && !isArpeggiatorEnabled(side) && !isStrummingSplit(side) &&
+         !isStrummedSplit(side) && !Split[side].sequencer && Global.microLinn.drumPadMode == 0 &&
+         !isSwitchLegatoPressed(side) && !(isMicroLinnOn() && Split[side].microLinn.tuningTable > 0);
+}
+
+// the voice the cell plays, as its index in microLinnVoice (channel - 1), or -1 if it plays none
+signed char microLinnCellVoice(TouchInfo& cell) {
+  if (cell.channel < 1 || cell.channel > 16) return -1;
+  byte i = cell.channel - 1;
+  return microLinnVoice[i].owner == microLinnCellPlusOne(cell) ? i : -1;
+}
+
+// called by moveMicroLinnHeldChannels() and endMicroLinnHeldNotes() for a held touch whose note-off a switch has just
+// sent while its finger stays down: its voice ends with the note, and with an edo set the touch goes on with its note
+// and tuning bend in the list until it's lifted, as a touch displaced from its channel does
+void endMicroLinnCellVoice(TouchInfo& c) {
+  signed char v = microLinnCellVoice(c);
+  if (v == -1) return;
+  microLinnVoice[v].owner = 0;
+  if (isMicroLinnOn()) setMicroLinnSoundingNote(c, microLinnVoice[v].note, microLinnVoice[v].tuningBend);
+}
+
+// called by sendNewNote() in ls_handleTouches.ino for the sensor cell, once its note's midi note, channel and tuning
+// bend are known, just before its note-on: on the channel-per-note path the note becomes its channel's voice;
+// otherwise, with an edo set and outside drum pad mode, the list keeps it as before. When every channel is taken and
+// a note shares a channel with another touch's voice, it takes the voice, and the other touch goes on with its note
+// and tuning bend in the list, until it's released
+void startMicroLinnVoice(signed char note, signed char channel, short tuningBend) {
+  if (microLinnStartsVoice(sensorSplit) && channel >= 1 && channel <= 16) {
+    MicroLinnVoice& v = microLinnVoice[channel - 1];
+    byte owner = v.owner;
+    v.owner = 0;
+    if (owner != 0 && owner != microLinnCellPlusOne(*sensorCell) && isMicroLinnOn()) {
+      setMicroLinnSoundingNote((&touchInfo[0][0])[owner - 1], v.note, v.tuningBend);
+    }
+    v.note = note;
+    v.split = sensorSplit;
+    v.tuningBend = tuningBend;
+    v.owner = microLinnCellPlusOne(*sensorCell);
+    v.releaseVelocity = 0;
+    microLinnFingerlessVoices &= ~(1 << (channel - 1));
+    return;
+  }
+  if (Global.microLinn.drumPadMode == 0 && isMicroLinnOn()) setMicroLinnSoundingNote(*sensorCell, note, tuningBend);
+}
+
+// called by handleTouchRelease() in ls_handleTouches.ino where a touch's note ends: a voice ends with the note, and
+// releases its channel
+void releaseMicroLinnVoiceChannel(byte side, byte channel) {
+  signed char v = microLinnCellVoice(*sensorCell);
+  if (v != -1) microLinnVoice[v].owner = 0;
+  releaseChannel(side, channel);
+}
+
+// The sensor cell's pitch bend, Y, pressure and note-off go out through these, in place of the calls they end in.
+// For a note that is a voice, the voice gives the tuning bend its note-on sent (pitch bend) and its midi note (poly
+// pressure and the note-off), and keeps the note-off velocity; every other note's message goes out as it came.
+// called by handleXYZupdate(), sendNewNote() and handleTouchRelease() in ls_handleTouches.ino
+void preSendMicroLinnVoicePitchBend(byte side, int pitchValue, byte channel, short tuningBend) {
+  signed char v = microLinnCellVoice(*sensorCell);
+  if (v != -1) tuningBend = microLinnVoice[v].tuningBend;
+  preSendPitchBend(side, pitchValue, channel, tuningBend);
+}
+
+// called by handleXYZupdate() in ls_handleTouches.ino
+void preSendMicroLinnVoiceTimbre(byte side, byte yValue, byte note, byte channel) {
+  signed char v = microLinnCellVoice(*sensorCell);
+  if (v != -1) note = microLinnVoice[v].note;
+  preSendTimbre(side, yValue, note, channel);
+}
+
+// called by handleXYZupdate(), sendNewNote() and handleTouchRelease() in ls_handleTouches.ino
+void preSendMicroLinnVoiceLoudness(byte side, byte pressureValueLo, short pressureValueHi, byte note, byte channel) {
+  signed char v = microLinnCellVoice(*sensorCell);
+  if (v != -1) note = microLinnVoice[v].note;
+  preSendLoudness(side, pressureValueLo, pressureValueHi, note, channel);
+}
+
+// called by takeChannel() in ls_handleTouches.ino: the channels whose voice sounds with no finger on it, which
+// ChannelBucket::take() hands out only when every channel is one
+unsigned short getMicroLinnFingerlessVoices() {
+  return microLinnFingerlessVoices;
+}
+
+// called by performContinuousTasks() in ls_rtos.ino, which never runs it inside itself (it has its own flag there):
+// the periodic update of voices that sound with no finger on them; no voice does yet, so it returns at once
+void checkMicroLinnVoices() {
+  if (microLinnFingerlessVoices == 0) return;
+}
+
+// Pitches, to match a new press with a voice already sounding, compare in cents above midi note 0: a pad's from its
+// midi note and tuning bend (getMicroLinnPadNote(), getMicroLinnBendCents()), a voice's from getMicroLinnVoiceCents().
+// The voice's level and bend are those last sent on its channel, kept in ls_midi.ino:
+extern int lastValueMidiPB[16];
+extern byte lastValueMidiAT[16];
+extern byte lastValueMidiCC[16][128];
+extern byte lastValueMidiPP[16][128];
+
+boolean microLinnVoiceSounds(byte i) {                                   // i = channel - 1
+  return microLinnVoice[i].owner != 0 || (microLinnFingerlessVoices & (1 << i));
+}
+
+// the cents a pitch bend value (zero-centred) bends by on the split, at its bend range
+short getMicroLinnBendCents(byte side, int bend) {
+  return microLinnRoundedDivide((int32_t)bend * getBendRange(side) * 100, 8192);
+}
+
+// what a press on the pad sends now: its midi note and tuning bend, worked out as handleXYZupdate() and sendNewNote() in
+// ls_handleTouches.ino do (with an edo set, the tuning tables hold the transposition); false if the pad sounds no note,
+// and in drum pad mode and an edo's tuning table outputs, whose pitches don't compare this way. Auto Octave's change at
+// the moment of a press isn't included
+boolean getMicroLinnPadNote(byte side, byte col, byte row, signed char& midiNote, short& tuningBend) {
+  if (col < 1 || col >= NUMCOLS || row >= NUMROWS || Global.microLinn.drumPadMode > 0) return false;
+  short note = transposedNote(side, col, row);
+  if (isMicroLinnOn()) {
+    if (Split[side].microLinn.tuningTable > 0 || note < 0) return false;
+    byte group = note >> 7;
+    note &= 127;
+    midiNote = getMicroLinnMidiNote(side, note, group);
+    tuningBend = getMicroLinnTuningBend(side, note, group);
+    return midiNote >= 0;
+  }
+  if (note < 0 || note > 127) return false;
+  midiNote = note;
+  tuningBend = 0;
+  return true;
+}
+
+// the pitch the channel's voice sounds: its midi note, bent by the pitch bend last sent on the channel (which holds its
+// tuning bend and the finger's bend, Column Slide Divisions' included), as the synth has it; false if no voice sounds
+// on the channel
+boolean getMicroLinnVoiceCents(byte channel, short& cents) {
+  if (channel < 1 || channel > 16 || !microLinnVoiceSounds(channel - 1)) return false;
+  MicroLinnVoice& v = microLinnVoice[channel - 1];
+  int sent = lastValueMidiPB[channel - 1];
+  cents = v.note * 100 + getMicroLinnBendCents(v.split, sent == 0x7FFF ? 0 : sent - 0x2000);
+  return true;
+}
+
+// the pressure level last sent for the channel's voice, 0-127, in the message its split sends pressure with (channel
+// pressure, poly pressure on its note, or a CC, whose most significant 7 bits with the 14-bit option), after the split's
+// pressure limits; 0 if no voice sounds on the channel or nothing has been sent since the channel was reset
+byte getMicroLinnVoiceLevel(byte channel) {
+  if (channel < 1 || channel > 16 || !microLinnVoiceSounds(channel - 1)) return 0;
+  MicroLinnVoice& v = microLinnVoice[channel - 1];
+  byte level;
+  switch (Split[v.split].expressionForZ) {
+    case loudnessPolyPressure:
+      level = v.note >= 0 ? lastValueMidiPP[channel - 1][v.note] : 0xFF;
+      break;
+    case loudnessChannelPressure:
+      level = lastValueMidiAT[channel - 1];
+      break;
+    default:
+      level = lastValueMidiCC[channel - 1][Split[v.split].customCCForZ & 0x7F];
+      break;
+  }
+  return level == 0xFF ? 0 : level;
+}
+
+// called by sendReleasedNote() in ls_handleTouches.ino
+void sendMicroLinnVoiceNoteOff(byte side, byte note, byte velocity, byte channel) {
+  signed char v = microLinnCellVoice(*sensorCell);
+  if (v != -1) {
+    microLinnVoice[v].releaseVelocity = velocity;
+    note = microLinnVoice[v].note;
+  }
+  midiSendNoteOffWithVelocity(side, note, velocity, channel);
+}
+
+// called by startMicroLinnVoice() and sendMicroLinnPullOff()
 void setMicroLinnSoundingNote(TouchInfo& cell, signed char midiNote, short tuningBend) {
+  signed char v = microLinnCellVoice(cell);
+  if (v != -1) {
+    microLinnVoice[v].note = midiNote;
+    microLinnVoice[v].tuningBend = tuningBend;
+    return;
+  }
   signed char i = microLinnFindSoundingNote(microLinnCellPlusOne(cell));
   for (byte j = 0; i == -1 && j < MICROLINN_MAX_SOUNDING_NOTES; ++j) {
     byte c = microLinnSoundingNotes[j].cellPlusOne;
@@ -1923,8 +2121,13 @@ void setMicroLinnSoundingNote(TouchInfo& cell, signed char midiNote, short tunin
   microLinnSoundingNotes[i].tuningBend = tuningBend;
 }
 
-// called by prepareNewNote() in ls_handleTouches.ino and TouchInfo::clearMusicalData() in ls_touchInfo.ino
+// called by prepareNewNote() in ls_handleTouches.ino, before the cell's new channel is set, and by
+// TouchInfo::clearMusicalData() in ls_touchInfo.ino, before the cell's note and channel are cleared: a voice the cell
+// still plays on its channel ends with its note, whatever ends the note (a release has ended it already, see
+// releaseMicroLinnVoiceChannel())
 void clearMicroLinnSoundingNote(TouchInfo& cell) {
+  signed char v = microLinnCellVoice(cell);
+  if (v != -1) microLinnVoice[v].owner = 0;
   signed char i = microLinnFindSoundingNote(microLinnCellPlusOne(cell));
   if (i != -1) microLinnSoundingNotes[i].cellPlusOne = 0;
 }
@@ -1932,17 +2135,24 @@ void clearMicroLinnSoundingNote(TouchInfo& cell) {
 // called by initializeTouchInfo() in ls_touchInfo.ino
 void clearAllMicroLinnSoundingNotes() {
   memset(microLinnSoundingNotes, 0, sizeof(microLinnSoundingNotes));
+  memset(microLinnVoice, 0, sizeof(microLinnVoice));
+  microLinnFingerlessVoices = 0;
 }
 
-// called by transferFromSameRowCell() and transferToSameRowCell() in ls_handleTouches.ino, when a touch slides to another cell
+// called by transferFromSameRowCell() and transferToSameRowCell() in ls_handleTouches.ino, when a touch slides to
+// another cell: a voice goes with its note to the cell taking it over, and no voice starts
 void moveMicroLinnSoundingNote(TouchInfo& from, TouchInfo& to) {
   clearMicroLinnSoundingNote(to);
+  signed char v = microLinnCellVoice(from);
+  if (v != -1) microLinnVoice[v].owner = microLinnCellPlusOne(to);
   signed char i = microLinnFindSoundingNote(microLinnCellPlusOne(from));
   if (i != -1) microLinnSoundingNotes[i].cellPlusOne = microLinnCellPlusOne(to);
 }
 
 // called by handleXYZupdate(), sendReleasedNote() and handleTouchRelease() in ls_handleTouches.ino
 signed char getMicroLinnCellMidiNote(byte side, TouchInfo& cell) {
+  signed char v = microLinnCellVoice(cell);
+  if (v != -1) return microLinnVoice[v].note;
   signed char i = microLinnFindSoundingNote(microLinnCellPlusOne(cell));
   if (i != -1) return microLinnSoundingNotes[i].midiNote;
   return getMicroLinnMidiNote(side, cell.note, cell.microLinnGroup);
@@ -1950,9 +2160,138 @@ signed char getMicroLinnCellMidiNote(byte side, TouchInfo& cell) {
 
 // called by handleXYZupdate() and handleTouchRelease() in ls_handleTouches.ino
 short getMicroLinnCellTuningBend(byte side, TouchInfo& cell) {
+  signed char v = microLinnCellVoice(cell);
+  if (v != -1) return microLinnVoice[v].tuningBend;
   signed char i = microLinnFindSoundingNote(microLinnCellPlusOne(cell));
   if (i != -1) return microLinnSoundingNotes[i].tuningBend;
   return getMicroLinnTuningBend(side, cell.note, cell.microLinnGroup);
+}
+
+// Loading a memory, the MIDI mode and channel NRPNs and the MPE Configuration Message set a split's channels up again
+// (updateSplitMidiChannels() in ls_settings.ino) while notes may be held. Each held touch with a note, muted
+// hammer-ons included, releases its channel when it ends, in the split its column is in then, so each counts its
+// channel taken again there: no new note is given a channel a held note sounds on, and no count goes below zero.
+// called by updateSplitMidiChannels() in ls_settings.ino, after the split's channels are added again
+void takeMicroLinnHeldChannels(byte side) {
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if ((c.touched == touchedCell || c.touched == ignoredCell) && c.hasNote() && getSplitOf(col) == side) {
+        splitChannels[side].retake(c.channel);
+      }
+    }
+  }
+  for (byte ch = 0; ch < 16; ++ch) {                                     // and so do voices with no finger on them
+    if ((microLinnFingerlessVoices & (1 << ch)) && microLinnVoice[ch].split == side) splitChannels[side].retake(ch + 1);
+  }
+}
+
+// Setting a split's channels up again also forgets which notes are on (initializeLastMidiTracking() in ls_midi.ino),
+// and a note-off goes out only for a note that is on. So each held touch whose note sounds (a muted hammer-on's
+// doesn't) marks it on again, as the note and channel its release sends, in the split its column is in, and the
+// note ends when the finger lifts.
+// called by initializeLastMidiTracking() in ls_midi.ino, after it has set every note off
+void keepMicroLinnHeldNotesOn() {
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if (c.touched != touchedCell || !c.hasNote()) continue;
+      byte side = getSplitOf(col);
+      signed char note = c.note;
+      signed char channel = c.channel;
+      signed char v = microLinnCellVoice(c);
+      if (v != -1) {
+        note = microLinnVoice[v].note;                                   // a voice's release names its own note
+      }
+      else if (Global.microLinn.drumPadMode == 0 && isMicroLinnOn()) {
+        note = getMicroLinnCellMidiNote(side, c);
+        channel = rechannelMicroLinnGroup(side, channel, c.microLinnGroup);
+      }
+      if (note < 0 || channel < 1) continue;
+      lastValueMidiNotesOn[side][note][channel - 1] = 1;
+    }
+  }
+  for (byte ch = 0; ch < 16; ++ch) {                                     // and voices with no finger on them sound on
+    MicroLinnVoice& v = microLinnVoice[ch];
+    if ((microLinnFingerlessVoices & (1 << ch)) && v.note >= 0) lastValueMidiNotesOn[v.split][v.note][ch] = 1;
+  }
+}
+
+// noteTouchMapping keeps each note as its touch's note, which with an edo set is the edostep. When the mapping itself
+// ends notes (Legato and Latch letting go of latched notes, the alternate-split switch ending every note), this turns
+// one of its notes into the midi note and channel sent: from the cell, if it still holds the note (its voice's note,
+// if it plays one), otherwise from the tuning tables. Without an edo, and in drum pad mode, the note is the midi note
+// already.
+// called by midiSendNoteOffForAllTouches() in ls_midi.ino and NoteTouchMapping::releaseLatched() in
+// ls_noteTouchMapping.ino
+// also called by handleLowRowRestrike() and handleLowRowStrum() in ls_lowRow.ino, with the note the touch holds
+void convertMicroLinnMappedNote(byte side, signed char& note, signed char& channel, byte col, byte row) {
+  TouchInfo& c = touchInfo[col][row];
+  boolean held = c.note == note && c.channel == channel;
+  signed char v = held ? microLinnCellVoice(c) : -1;
+  if (v != -1) {
+    note = microLinnVoice[v].note;
+    return;
+  }
+  if (!isMicroLinnOn() || Global.microLinn.drumPadMode > 0) return;
+  byte group = c.microLinnGroup;
+  signed char midiNote = held ? getMicroLinnCellMidiNote(side, c) : getMicroLinnMidiNote(side, note, group);
+  channel = rechannelMicroLinnGroup(side, channel, group);
+  note = midiNote;
+}
+
+// The alternate split switch ends every held note (resetAllTouches() sends their note-offs), then changes the split a
+// single split's touches play in, so a touch still held is released in the other split. So each held touch's channel
+// is released here in the split it was taken from, and counted taken in the other one when that one is channel per
+// note, so that its release frees it there: no count is left behind in either split, and no new note is given a
+// channel such a touch still sends its pressure and pitch on. With two splits every touch keeps its split, except
+// when the split switched to shows its sequencer: every column then belongs to it, and its release frees no channel,
+// so with one split or two each held touch's channel is released here in the split it was played in, and counted in
+// the sequencer's split only for a muted hammer-on, whose own release frees it there. In every case a voice ends with
+// the note-off just sent: the touch goes on without it until it's lifted, with its note and tuning bend in the list
+// (with an edo set), as a touch displaced from its channel does.
+// called by performAltSplitAssignment() in ls_switches.ino, after resetAllTouches() and before the split changes
+void moveMicroLinnHeldChannels() {
+  byte from = Global.currentPerSplit;
+  byte to = otherSplit(from);
+  boolean toSequencer = Split[to].sequencer;            // every column then belongs to it, and its release frees no channel
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if ((c.touched != touchedCell && c.touched != ignoredCell) || !c.hasNote()) continue;
+      endMicroLinnCellVoice(c);
+      if (Global.splitActive) continue;
+      releaseChannel(from, c.channel);
+      if (toSequencer && c.touched != ignoredCell) continue;   // a muted hammer-on's own release still frees it there
+      if (Split[to].midiMode == channelPerNote) splitChannels[to].retake(c.channel);
+    }
+  }
+  // with two splits too, a split showing its sequencer takes every column: each held touch's channel is released here,
+  // in the split it was played in
+  if (!Global.splitActive || !toSequencer) return;
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if ((c.touched != touchedCell && c.touched != ignoredCell) || !c.hasNote()) continue;
+      releaseChannel(getSplitOf(col), c.channel);
+      if (c.touched == ignoredCell && Split[to].midiMode == channelPerNote) splitChannels[to].retake(c.channel);
+    }
+  }
+}
+
+// The notes the alternate-split switch ends stop showing as played there: each held touch's played lights go off with
+// the settings of the split it was played in, as its release turns them off. Its release now comes after the split
+// has changed, with the other split's settings, which left the pads of Played Same or Blink lit.
+// called by performAltSplitAssignment() in ls_switches.ino, before the split changes
+void unlightMicroLinnHeldNotes() {
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if ((c.touched != touchedCell && c.touched != ignoredCell) || !c.hasNote()) continue;
+      byte side = getSplitOf(col);
+      microLinnLightHammeredNote(side, col, row, c.note + Split[side].transposeOctave - c.octaveOffset, false);
+    }
+  }
 }
 
 // called by scalePitch() in ls_midi.ino
@@ -2010,6 +2349,10 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 // - with Quantize Hold on, for a moment after the strike (the landing) the offset keeps the note on the struck note
 //   while the finger settles into its pad; a finger moving quickly, as in a slide, is followed at once, except that a
 //   note whose finger was already moving when it started stays on its note until the finger reaches the pad's centre
+// - with Quantize Hold on, after a strike off its pad's middle at rest, the strike's offset is used up as the finger
+//   comes in towards the middle (its fast average, which takes in part of each of a vibrato's swings): the struck note
+//   doesn't move, and from the middle on the note follows the finger, so that a slide to the next pad or a groove lands
+//   where the finger is. A vibrato played where it struck sits off the note, on the side it struck, while it lasts
 // - the offset fades once the centre of the finger's movement (its slow average, so a slide, not the swing of a
 //   vibrato) reaches the middle of another pad than the one it belongs to (the struck pad, or the one under the finger
 //   when home was last chosen after a slide or the pitch last settled); that pad then sounds its own note. While the
@@ -2018,11 +2361,9 @@ float getMicroLinnSemitonesPerPad_OLD (byte side, int pitchValue) {
 //   during a vibrato as at rest, and never while the finger travels (slides or bends: its slow average moving beyond
 //   a small band). The divisions are the pads' own notes and the points that split each pad's interval into Column
 //   Slide Divisions equal steps. The division is the note it was on, unless the finger has strayed further than
-//   MICROLINN_SETTLE_HOME_RANGE from where it first settled on it; after a slide, the one where the finger stops: a
-//   pad's note within MICROLINN_SETTLE_PAD_ZONE of it, otherwise the nearest division. Quantize Hold's speed sets
-//   the pace.
-// - when the MIDI output is backed up (many fingers, Y sent too), a voice's new pitch waits until the last one queued
-//   on its channel has gone out, then the newest goes; otherwise nothing waits
+//   MICROLINN_SETTLE_HOME_RANGE from where it struck, or, once the note has settled after a slide, from that division's
+//   own place; after a slide, or once it has strayed, the one under the finger, wherever it struck: a pad's note within
+//   MICROLINN_SETTLE_PAD_ZONE of it, otherwise the nearest division. Quantize Hold's speed sets the pace.
 // Only the result changes: the X movement, its rate and Quantize Hold's own state (quantizationOffsetX, lastMovedX,
 // fxdRateX, fxdRateCountX) stay as they are without it, since they also drive pressure, Y, releases and handovers.
 // The state is kept per channel, the voice, since one channel sounds one pitch bend, and only the channel's focused
@@ -2035,7 +2376,10 @@ const short MICROLINN_SETTLE_FAST_MS = 60;                      // the fast aver
 const short MICROLINN_SETTLE_SLOW_MS = 150;                     // the slow average: the centre of a vibrato, which tells a slide from it; it
                                                                 // trails the fast one by at most two bands
 const byte MICROLINN_SETTLE_BAND = 6;                           // the slow average leaving a band this wide (each way) around an anchor is travelling
-const byte MICROLINN_SETTLE_REST_MS = 50;                       // travelling until the anchor has moved less than a third of the band for this long
+const byte MICROLINN_SETTLE_REST_MS[4] = {50, 50, 50, 50};      // travelling until the anchor has moved less than a third of the band for this
+                                                                // long, at Quantize Hold's speeds (Off, Medium, Fast, Slow): shorter, a
+                                                                // finger counts as stopped sooner, but a slow slide then counts as
+                                                                // stopping too and the pitch trails it
 const byte MICROLINN_SETTLE_HOME_RANGE = 75;                    // % of a division: a finger this near the note it was on comes back to it
 const byte MICROLINN_SETTLE_PAD_ZONE = 65;                      // % of a division: after a slide, a finger this near a pad's note settles on it
 const byte MICROLINN_SETTLE_LANDING_MS = 250;                   // after the strike, this long settles on the struck note, the finger's
@@ -2061,8 +2405,11 @@ const byte MICROLINN_SETTLE_PAD_CLEAR = 63;                     // after a slide
 // the pace at Quantize Hold's speeds, indexed by pitchCorrectHold (Off, Medium, Fast, Slow): the time constant of the
 // correction, and its top speed, as the time to correct half a division (50 cents with column offset 2 and 2 divisions)
 const byte MICROLINN_SETTLE_TAU_MS[4] = {0, 40, 12, 100};
-const short MICROLINN_SETTLE_HALF_DIVISION_MS[4] = {0, 400, 170, 1000};
+const short MICROLINN_SETTLE_HALF_DIVISION_MS[4] = {0, 480, 170, 1000};
 const short MICROLINN_HOME_PENDING = -32768;                    // home is chosen where the finger stops after a slide
+const byte MICROLINN_REBASE_STRIKE = 1;                         // the voice's rebase: not settled since the strike
+const byte MICROLINN_REBASE_SLIDE = 2;                          // not settled since home was chosen where the finger stopped
+const byte MICROLINN_REBASE_MOVING = 3;                         // not settled since a strike whose finger was already moving
 // The straightening: the X reading at each tenth of a pad from its left groove, against how far across the pad the
 // finger is, in thousandths. Measured on a LinnStrument 200, from fingers sliding steadily across its pads in both
 // directions (averaged): the tenths of the reading next to the grooves take 2.5 times as long to cross as the middle two
@@ -2239,12 +2586,12 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     v.home = v.cell == 0 && locked ? 0 : microLinnSlideDivision(fingerX - v.offset);
     v.fast = v.slow = position;
     v.anchor = v.drift = 0;
-    v.still = MICROLINN_SETTLE_REST_MS;
+    v.still = MICROLINN_SETTLE_REST_MS[Split[sensorSplit].pitchCorrectHold];
     v.age = 0;
     v.last = now;
     v.cell = sensorCol + 32 * sensorRow;
     v.pad = sensorCol;
-    v.rebase = true;
+    v.rebase = MICROLINN_REBASE_STRIKE;
     v.reading = microLinnRoundedDivide(fingerX, 64);
   }
   int32_t dt = (unsigned short)(now - v.last);                       // milliseconds since the last scan, at most 50
@@ -2269,7 +2616,7 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   }
   v.drift = drift;
   v.anchor = moved - v.slow;
-  boolean travelling = v.still < MICROLINN_SETTLE_REST_MS;
+  boolean travelling = v.still < MICROLINN_SETTLE_REST_MS[Split[sensorSplit].pitchCorrectHold];
   int32_t fast = v.fast * 8 + toPitch, slow = v.slow * 8 + toPitch;    // the averages as pitch, in 64ths of a unit
   int32_t division = 1365 * 8 / Global.microLinn.columnSlideDivisions();
   int32_t range = division * MICROLINN_SETTLE_HOME_RANGE / 100;
@@ -2292,6 +2639,32 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     if (closing && v.home != MICROLINN_HOME_PENDING && abs(fingerX - v.offset - v.home * 64) < MICROLINN_SETTLE_LANDED * 64) {
       v.strike = constrain(microLinnRoundedDivide(v.offset, 64), -127, 127);
     }
+  }
+  else if (v.age < MICROLINN_SETTLE_MOVING_MS) v.rebase = MICROLINN_REBASE_MOVING;   // its finger was already moving
+
+  // with Quantize Hold on, after a strike off its pad's middle at rest, the strike's offset is used up as the finger
+  // comes in towards the middle: the struck note doesn't move, and from the middle on the note follows the finger. In the
+  // landing, while the finger moves in quickly (when the landing waits), as the finger's reading comes in; after it, as
+  // its fast average comes in, which takes in part of each swing of a vibrato towards the middle: a vibrato played
+  // where it struck uses up some of the offset and sits off the note, on the side it struck, while it lasts. The
+  // strike's offset only shrinks here (a lean outwards is the settling's), and a note whose finger was already moving
+  // when it started keeps its own hold
+  boolean young = v.age < MICROLINN_SETTLE_LANDING_MS;
+  if (v.strike != 0 && (v.home == 0 || v.home == MICROLINN_HOME_PENDING) && v.rebase != MICROLINN_REBASE_MOVING &&
+      doQuantizeHold() && (!young || (quick && inwards))) {
+    int32_t in = young ? fingerX : fast;
+    if (v.strike > 0 && v.offset > 0) v.offset = constrain(in, 0, v.offset);
+    else if (v.strike < 0 && v.offset < 0) v.offset = constrain(in, v.offset, 0);
+    int32_t left = microLinnRoundedDivide(v.offset, 64);
+    // this rule leaves the strike alone in the landing; after it, the strike takes what is left of the offset once
+    // that is smaller (and changes sign when the landing has pulled the offset across zero). In the landing the strike
+    // bounds the landing's stretch (inPad above): kept where the finger struck, a quick roll in just past the middle
+    // stays within the stretch from either side. Shrunk there, the stretch would end a band beyond the finger's
+    // reading, short of its fast average, and a strike used up entirely would take the stretch of a strike right of
+    // the middle, which reaches a quarter pad past the middle to the left and only a band to the right. The slide test
+    // can still clear the strike in the landing once the offset is used up, and the fade shrinks it near another pad's
+    // centre
+    if (abs(left) < abs(v.strike) && !young) v.strike = left;
   }
 
   // the pad whose centre the slow average is nearest to, pads are FXD_CALX_FULL_UNIT apart, and whether it's within a
@@ -2317,7 +2690,6 @@ short handleMicroLinnColumnSlide(int calibratedX) {
   }
   else {
     // while the strike's finger settles into its pad the pitch stays on the struck note, travelling or not
-    boolean young = v.age < MICROLINN_SETTLE_LANDING_MS;
     boolean landing = young && v.home != MICROLINN_HOME_PENDING && inPad;
     if (travelling && !landing) {
       // a quick movement, or one that strays from home, is a slide: home is chosen again where it stops
@@ -2329,8 +2701,12 @@ short handleMicroLinnColumnSlide(int calibratedX) {
     else if (doQuantizeHold()) {
       int32_t own = fast - v.strike * 64;                               // the finger's own pitch, without the strike's offset
       if (v.home == MICROLINN_HOME_PENDING) {
-        v.home = microLinnSlideDivision(own);
-        v.rebase = true;
+        // the division under the finger, wherever it struck; but a finger within HOME_RANGE of where it struck, as after a
+        // wide vibrato or a quick tilt there, settles on the note it struck and keeps the strike's offset, as a slow tilt
+        // that never counted as moving on does
+        boolean struck = abs(own) <= range;
+        v.home = struck ? 0 : microLinnSlideDivision(fast);
+        v.rebase = struck ? MICROLINN_REBASE_STRIKE : MICROLINN_REBASE_SLIDE;
         // the pad under the finger owns the correction, if the finger is clearly on it (more than an eighth of a pad
         // from its groove): from the groove, the centre of a wide vibrato swings back into the middle of the pad it's on
         if (fromCentre <= MICROLINN_SETTLE_PAD_CLEAR) v.pad = nearestCol;
@@ -2345,12 +2721,17 @@ short handleMicroLinnColumnSlide(int calibratedX) {
         v.home = 0;
         v.age = MICROLINN_SETTLE_MOVING_MS;
       }
-      int32_t target = young || abs(own - v.home * 64) <= range ? v.home * 64 : microLinnSlideDivision(own) * 64;
+      int32_t target = young || abs(own - v.home * 64) <= range ? v.home * 64 : microLinnSlideDivision(fast) * 64;
       int32_t centre = (young ? fingerX : fast) - v.offset;             // the pitch of the fast average, or of the finger while landing
       byte speed = Split[sensorSplit].pitchCorrectHold;
       int32_t most = young ? 64 * division : dt * division / 2 / MICROLINN_SETTLE_HALF_DIVISION_MS[speed];
       int32_t step = microLinnRoundedDivide((target - centre) * dt, (young ? MICROLINN_SETTLE_LANDING_TAU_MS : MICROLINN_SETTLE_TAU_MS[speed]) + dt);
-      if (young && quick) step = 0;                                     // the landing waits while the finger moves quickly
+      // the landing waits while the finger moves quickly, and while the stretch, which its fast average decides, holds
+      // a finger whose reading is already past the stretch's far end: the average trails a quick roll, and a finger
+      // that has stopped beyond the stretch would otherwise be pulled towards the struck note until the average caught
+      // up, and keep that pull as an offset once it counted as moving on
+      if (young && (quick || (inPad && (v.strike >= 0 ? fingerX < -MICROLINN_SETTLE_LANDING_REACH * 64
+                                                      : fingerX > MICROLINN_SETTLE_LANDING_REACH * 64)))) step = 0;
       // the correction stays within HOME_RANGE of the finger's own pitch, or of its place on the pad without an offset
       v.offset = constrain(v.offset - constrain(step, -most, most), min(v.strike, 0) * 64 - range, max(v.strike, 0) * 64 + range);
       // a note whose finger was already moving when it started: while the finger comes in towards the pad's centre from
@@ -2363,22 +2744,17 @@ short handleMicroLinnColumnSlide(int calibratedX) {
       }
       if (!young && abs(target - centre) < 64) {
         // the first time it settles on home with the finger at rest (255 ms), where the finger is becomes the note's: a
-        // strike's first reading, taken at a light pressure, can be a quarter pad further out than where it settles
+        // strike's first reading, taken at a light pressure, can be a quarter pad further out than where it settles.
+        // After a slide no strike's offset is left: from then on the finger strays from the division's own place
         if (v.rebase && target == v.home * 64 && v.still == 255) {
-          v.strike = constrain(microLinnRoundedDivide(v.offset, 64), -127, 127);
-          v.rebase = false;
+          v.strike = v.rebase == MICROLINN_REBASE_SLIDE ? 0 : constrain(microLinnRoundedDivide(v.offset, 64), -127, 127);
+          v.rebase = 0;
         }
         v.pad = nearestCol;                                             // settled: the pad under the finger owns the offset
       }
     }
   }
 
-  // when the MIDI output is backed up, a new pitch waits until the last one queued on this voice's channel has gone out,
-  // and then the newest goes: the queue never holds two of a voice's pitches, which would only make every message after
-  // them, new notes too, wait longer
-  if (sensorCell->lastValueX != INVALID_DATA && isMicroLinnPitchBendQueued(sensorCell->channel)) {
-    return isLeftHandedSplit(sensorSplit) ? -sensorCell->lastValueX : sensorCell->lastValueX;
-  }
   return microLinnRoundedDivide(fingerX - v.offset, 64);
 }
 
@@ -2733,7 +3109,7 @@ void releaseMicroLinnMutedNote() {
   if (i == -1) return;
   microLinnDeleteHammeredNote(i);
   noteTouchMapping[sensorSplit].noteOff(sensorCell->note, sensorCell->channel);
-  releaseChannel(sensorSplit, sensorCell->channel);
+  releaseMicroLinnVoiceChannel(sensorSplit, sensorCell->channel);   // a voice the muted note still is ends here, as at any release
   sensorCell->clearMusicalData();
   // a muted pad that slid was lit on its new pad (handleSlideTransferCandidate() in ls_handleTouches.ino)
   if (Split[sensorSplit].colorPlayed && Split[sensorSplit].playedTouchMode == playedCell) {
@@ -2741,7 +3117,26 @@ void releaseMicroLinnMutedNote() {
   }
 }
 
-// called by prepareMicroLinnHammerOn() to unlight a muted note and by sendMicroLinnPullOff() to light a pulled-off one
+// User firmware mode releases a touch without the note path (handleTouchRelease() in ls_handleTouches.ino), so a note
+// held when it's switched on got a note-off for its edostep with an edo set, and kept sounding, and its channel was
+// never released. So the notes held end here: their note-offs go out with the midi note and channel sent
+// (resetAllTouches()), and each held touch's channel is released in its split; a muted hammer-on's is released by its
+// own release, as before. Lifted in user firmware mode, the touches have nothing left to end. Their voices end here too.
+// called by changeUserFirmwareMode() in ls_settings.ino, as user firmware mode is switched on
+void endMicroLinnHeldNotes() {
+  resetAllTouches();
+  for (byte col = 1; col < NUMCOLS; ++col) {
+    for (byte row = 0; row < NUMROWS; ++row) {
+      TouchInfo& c = touchInfo[col][row];
+      if (c.touched != touchedCell || !c.hasNote()) continue;
+      endMicroLinnCellVoice(c);
+      releaseChannel(getSplitOf(col), c.channel);
+    }
+  }
+}
+
+// called by prepareMicroLinnHammerOn() to unlight a muted note, by sendMicroLinnPullOff() to light a pulled-off one and by
+// unlightMicroLinnHeldNotes() to unlight the notes the alternate-split switch ends
 // as for any note, Played = Cell lights only its pad, Same and Blink every pad that plays the note
 void microLinnLightHammeredNote(byte side, byte col, byte row, short note, boolean on) {
   if (!Split[side].colorPlayed) return;
