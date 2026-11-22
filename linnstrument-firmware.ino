@@ -34,9 +34,9 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 /*************************************** INCLUDED LIBRARIES **************************************/
 #include <SPI.h>
 #include <limits.h>
-#include <DueFlashStorage.h>
-#include <efc.h>
-#include <flash_efc.h>
+#include "libraries/DueFlashStorage/src/DueFlashStorage.h"
+#include "libraries/DueFlashStorage/src/efc.h"
+#include "libraries/DueFlashStorage/src/flash_efc.h"
 
 #include "ls_debug.h"
 #include "ls_channelbucket.h"
@@ -996,7 +996,9 @@ const int32_t FXD_CALY_FULL_UNIT = FXD_FROM_INT(127);     // range of 7-bit CC
 
 /*************************************** OTHER RUNTIME STATE *************************************/
 
+#if 0
 DueFlashStorage dueFlashStorage;                    // access to the persistent flash storage
+#endif
 
 boolean setupDone = false;                          // indicates whether the setup routine is finished
 
@@ -1295,7 +1297,9 @@ void setup() {
   /*!!*/    // if the global settings and switch 2 buttons are pressed at startup, the LinnStrument will do a global reset
   /*!!*/    if (switchPressAtStartup(2)) {
   /*!!*/      globalReset = true;
+#if 0
   /*!!*/      dueFlashStorage.write(0, 254);
+#endif
   /*!!*/    }
   /*!!*/    // if only the global settings button is pressed at startup, activate firmware upgrade mode
   /*!!*/    else {
