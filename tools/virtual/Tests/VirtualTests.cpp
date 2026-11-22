@@ -30,6 +30,7 @@ limitations under the License.
 #include <thread>
 #include <vector>
 
+#include "Choices.h"
 #include "Engine.h"
 #include "Firmware/FirmwareBridge.h"
 #include "LinnLookAndFeel.h"
@@ -189,8 +190,11 @@ void the_keyboard_toggles_a_cell() {
 // the instrument, booted once as a 128 for every test that needs one
 
 // its flash in a folder of its own, so that the app's saved settings never reach the tests
+// one of its own for each run of the tests, so that shares run side by side never store into the
+// flash file another is reading
 juce::File testFlash() {
-  return juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("VirtualTestsFlash");
+  static const juce::String run = juce::String::toHexString(juce::Random::getSystemRandom().nextInt64());
+  return juce::File::getSpecialLocation(juce::File::tempDirectory).getChildFile("VirtualTestsFlash-" + run);
 }
 
 // stopped before the program ends, so that its thread never runs into the shutdown
@@ -230,6 +234,186 @@ void the_bridge_reports_a_settings_screen() {
   std::this_thread::sleep_for(std::chrono::milliseconds(300));
   tap();
   CHECK(waitFor([] { return !engine().firmware().showingSettings(); }));
+}
+
+void nrpn(Engine& e, int parameter, int value);
+
+// the split a screen shows, a program sent in, the volume slid on its screen, and the small font
+void the_bridge_reads_a_screens_values_and_the_small_font() {
+  auto& e = engine();
+  auto tap = [&e](int col, int row) {
+    e.press(col, row, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    e.release(col, row);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  };
+  auto channels = e.firmware().noteChannels(0);
+  CHECK(!channels.empty());
+  const uint8_t change[] = { (uint8_t) (0xc0 | (channels[0] - 1)), 41 };
+  e.sendMidi(change, sizeof(change));
+  CHECK(waitFor([&e] { return e.firmware().program(0) == 42; }));
+  tap(0, 5);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::volumeScreen; }));
+  tap(16, 7);
+  CHECK(waitFor([&e] { return e.firmware().shownSplit() == 1; }));
+  tap(15, 7);
+  CHECK(waitFor([&e] { return e.firmware().shownSplit() == 0; }));
+  for (int col : { 1, e.firmware().columns() - 1 }) {
+    tap(col, 3);
+    CHECK(waitFor([&e, col] { return col == 1 ? e.firmware().volume(0) < 10 : e.firmware().volume(0) > 117; }));
+  }
+  tap(0, 5);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::noScreen; }));
+  auto one = e.firmware().smallGlyph('1');
+  CHECK(one.width == 2 && one.rows.size() == 8);
+  const std::vector<std::string> drawn { "  ", " 0", "00", " 0", " 0", " 0", " 0", "  " };
+  CHECK(one.rows == drawn);
+  CHECK(e.firmware().smallGlyph('A').width > 0);
+  CHECK(e.firmware().smallGlyph('\x01').rows.empty());
+  // the colours a split and the global screens draw in, which the firmware sets over NRPN for a split
+  nrpn(e, 30, 9);
+  CHECK(waitFor([&e] { return e.firmware().mainColor(0) == 9; }));
+  nrpn(e, 30, 3);
+  CHECK(waitFor([&e] { return e.firmware().mainColor(0) == 3; }));
+  CHECK(e.firmware().settingsColor() == 5);
+}
+
+// each split's special feature read back as it was set: the arpeggiator, CC faders, strum, the
+// sequencer and none
+void the_bridge_reads_each_splits_special_feature() {
+  auto& e = engine();
+  auto& f = e.firmware();
+  for (int parameter : { 35, 135 }) {
+    int before = f.nrpn(parameter);
+    for (int value : { 1, 2, 3, 4, 0 }) {
+      nrpn(e, parameter, value);
+      CHECK(waitFor([&f, parameter, value] { return f.nrpn(parameter) == value; }));
+    }
+    nrpn(e, parameter, before);
+  }
+}
+
+// all notes off sent for both splits, whichever shows: their last note let go on every one of their
+// channels, as midiSendAllNotesOff() ends
+void the_bridge_lets_go_of_every_note_of_both_splits() {
+  auto& e = engine();
+  auto& f = e.firmware();
+  e.takeMidiOut();
+  std::set<int> wanted, heard;
+  for (int split : { 0, 1 })
+    for (int c : f.splitMidi(split).channels()) wanted.insert(c);
+  e.onFirmware([](firmware::Instance& i) { i.allNotesOff(); });
+  CHECK(waitFor([&] {
+    for (auto& m : e.takeMidiOut())
+      if (m.size() == 3 && (m[0] & 0xf0) == 0x80 && m[1] == 127) heard.insert((m[0] & 0x0f) + 1);
+    return std::includes(heard.begin(), heard.end(), wanted.begin(), wanted.end());
+  }));
+  CHECK(wanted.size() >= 2);
+}
+
+// Notes view's chosen step's notes lit in the played colour, and only its: a step chosen after another
+// leaves the other's pads as the playing surface lights them, as the instrument's own choosing does
+void the_bridge_lights_only_the_chosen_steps_notes_in_notes_view() {
+  auto& e = engine();
+  auto& f = e.firmware();
+  int special = f.nrpn(35);
+  nrpn(e, 35, 4);
+  CHECK(waitFor([&f] { return f.screen() == firmware::sequencerScreen; }));
+  int s = f.sequencerShown(), p = f.sequencerState(s).pattern;
+  e.onFirmware([s, p](firmware::Instance& i) {
+    i.playSequencer(s, false);
+    i.clearSequencerPattern(s, p);
+    i.setSequencerView(s, 1);
+    i.addSequencerNote(s, 0, 60, 3, 100, 64);
+    i.addSequencerNote(s, 3, 67, 5, 100, 64);
+    i.setSequencerView(s, 0);
+    i.selectSequencerNote(s, 0, 0);
+  });
+  CHECK(waitFor([&f, s] { auto st = f.sequencerState(s); return st.view == 0 && st.selectedStep == 0; }));
+  auto played = f.sequencerColours(s).played;
+  auto litFor = [&f, s, played](int note) {
+    std::vector<std::pair<int, int>> lit;
+    for (int col = 1; col < f.columns(); ++col)
+      for (int row = 1; row < 8; ++row)
+        if (f.padNote(s, col, row) == note && f.led(col, row).color == played) lit.push_back({ col, row });
+    return lit;
+  };
+  CHECK(waitFor([&] { return !litFor(60).empty(); }));
+  auto first = litFor(60);
+  e.onFirmware([s](firmware::Instance& i) { i.selectSequencerNote(s, 3, 0); });
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).selectedStep == 3; }));
+  CHECK(waitFor([&] { return !litFor(67).empty(); }));
+  for (auto [col, row] : first) CHECK(f.led(col, row).color != played);
+  e.onFirmware([s, p](firmware::Instance& i) { i.clearSequencerPattern(s, p); i.setSequencerView(s, 1); i.selectSequencerNote(s, -1, -1); });
+  nrpn(e, 35, special == firmware::Instance::nrpnUnknown ? 0 : special);
+  CHECK(waitFor([&f] { return f.screen() != firmware::sequencerScreen; }));
+}
+
+// Global Settings' Scale Select view as the firmware keeps it: its View cell touched, then Main again
+void the_bridge_reads_whether_scale_select_shows() {
+  auto& e = engine();
+  auto tap = [&e](int col, int row) {
+    e.press(col, row, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    e.release(col, row);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  };
+  tap(0, 0);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::globalScreen; }));
+  // from the lights the tests before left, and back to them
+  bool before = e.firmware().scaleSelectShown();
+  tap(1, 0);
+  CHECK(waitFor([&e] { return !e.firmware().scaleSelectShown(); }));
+  tap(1, 2);
+  CHECK(waitFor([&e] { return e.firmware().scaleSelectShown(); }));
+  tap(1, 0);
+  CHECK(waitFor([&e] { return !e.firmware().scaleSelectShown(); }));
+  if (before) tap(1, 2);
+  tap(0, 0);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::noScreen; }));
+}
+
+// a split's CC faders as the firmware keeps them: shown while it's set to play them, the columns
+// they span, and each row's value as a CC to it sets it
+void the_bridge_reads_a_splits_cc_faders() {
+  auto& e = engine();
+  CHECK(!e.firmware().ccFaders(0).shown);
+  nrpn(e, 35, 2);
+  CHECK(waitFor([&e] { return e.firmware().ccFaders(0).shown; }));
+  auto faders = e.firmware().ccFaders(0);
+  CHECK(faders.left == 1 && faders.length == (e.firmware().nrpn(200) == 1 ? e.firmware().nrpn(202) - 2 : e.firmware().columns() - 2));
+  const uint8_t cc[] = { 0xB0, 2, 77 };
+  e.sendMidi(cc, sizeof(cc));
+  CHECK(waitFor([&e] { return e.firmware().ccFaders(0).values[1] == 77; }));
+  nrpn(e, 35, 0);
+  CHECK(waitFor([&e] { return !e.firmware().ccFaders(0).shown; }));
+}
+
+// a settings cell held times its hold as the firmware's handlers do, and stops when it acts: a
+// second on Per-Split Settings' MIDI MODE opens nothing but resets the split's MIDI settings
+void the_bridge_times_a_hold_as_the_firmware_does() {
+  auto& e = engine();
+  using Hold = firmware::Instance::Hold;
+  CHECK(e.firmware().holdDelay(Hold::sensor) == 300 && e.firmware().holdDelay(Hold::controlSwitch) == 500);
+  CHECK(e.firmware().holdDelay(Hold::confirm) == 800 && e.firmware().holdDelay(Hold::edit) == 1000);
+  auto tap = [&e](int col, int row) {
+    e.press(col, row, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    e.release(col, row);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  };
+  CHECK(e.firmware().heldMillis(1, 7) == -1);
+  tap(0, 7);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::perSplitScreen; }));
+  e.press(1, 7, 0.5f, 0.5f);
+  CHECK(waitFor([&e] { return e.firmware().heldMillis(1, 7) >= 200; }));
+  int early = e.firmware().heldMillis(1, 7);
+  CHECK(early < 900);
+  CHECK(waitFor([&e] { return e.firmware().heldMillis(1, 7) == -1; }));
+  e.release(1, 7);
+  std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  tap(0, 7);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::noScreen; }));
 }
 
 std::vector<std::vector<uint8_t>> drained(Engine& e) {
@@ -289,6 +473,250 @@ void configureMpe(Engine& e) {
     uint8_t m[] = { status, 101, 0, status, 100, 6, status, 6, 7, status, 38, 0, status, 101, 127, status, 100, 127 };
     e.sendMidi(m, sizeof(m));
   }
+}
+
+// a change made on the firmware's thread sets the bend range as the firmware's own screen does,
+// telling MPE synths of it, and holding ±24 for a second opens that screen
+void the_engine_sets_the_bend_range_as_its_screen_does() {
+  auto& e = engine();
+  configureMpe(e);
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  int before = e.firmware().bendRangeOf(0);
+  e.takeMidiOut();
+  e.onFirmware([](firmware::Instance& f) { f.setBendRange(0, 36); });
+  CHECK(waitFor([&e] { return e.firmware().bendRangeOf(0) == 36; }));
+  bool announced = false;
+  CHECK(waitFor([&] {
+    for (auto& m : e.takeMidiOut()) announced = announced || (m.size() == 3 && (m[0] & 0xf0) == 0xb0 && m[1] == 6 && m[2] == 36);
+    return announced;
+  }));
+  e.onFirmware([](firmware::Instance& f) { f.setBendRange(0, 97); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  CHECK(e.firmware().bendRangeOf(0) == 36);
+  auto tap = [&e](int col, int row, int millis) {
+    e.press(col, row, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(millis));
+    e.release(col, row);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  };
+  CHECK(e.firmware().valueScreen() == firmware::Instance::ValueScreen::none);
+  tap(0, 7, 150);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::perSplitScreen; }));
+  tap(7, 4, 1300);
+  CHECK(waitFor([&e] { return e.firmware().valueScreen() == firmware::Instance::ValueScreen::bendRange; }));
+  // back to the grid as on the instrument: the split shown tapped again
+  tap(15 + e.firmware().shownSplit(), 7, 150);
+  CHECK(waitFor([&e] { return e.firmware().valueScreen() == firmware::Instance::ValueScreen::none && e.firmware().screen() == firmware::perSplitScreen; }));
+  tap(0, 7, 150);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::noScreen; }));
+  e.onFirmware([before](firmware::Instance& f) { f.setBendRange(0, before); });
+  CHECK(waitFor([&e, before] { return e.firmware().bendRangeOf(0) == before; }));
+}
+
+// what the firmware answers an NRPN query (299) with, on the output of the engine
+int askNrpn(Engine& e, int parameter) {
+  e.takeMidiOut();
+  nrpn(e, 299, parameter);
+  int value = firmware::Instance::nrpnUnknown, at = -1, msb = 0;
+  waitFor([&] {
+    for (auto& m : e.takeMidiOut()) {
+      if (m.size() != 3 || (m[0] & 0xf0) != 0xb0) continue;
+      if (m[1] == 99) at = m[2] << 7;
+      else if (m[1] == 98 && at >= 0) at |= m[2];
+      else if (m[1] == 6) msb = m[2];
+      else if (m[1] == 38 && at == parameter) value = (msb << 7) | m[2];
+    }
+    return value != firmware::Instance::nrpnUnknown;
+  });
+  return value;
+}
+
+// a driver reads every setting as the firmware reports it and sets it as an NRPN does
+void the_bridge_reads_and_sets_the_panels_settings_as_nrpns_do() {
+  auto& e = engine();
+  const int parameters[] = { 19, 20, 24, 25, 26, 27, 28, 29, 39, 54, 55, 56, 57, 58, 59, 119, 125, 120, 139, 154, 158, 159,
+                             227, 228, 229, 230, 231, 232, 239, 240, 241, 242, 249, 250, 251, 253,
+                             255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270 };
+  // away from the defaults, so that a read of the wrong field shows
+  const int changes[][2] = { { 25, 11 }, { 54, 7 }, { 158, 1 }, { 55, 99 }, { 59, 33 }, { 125, 2 }, { 154, 21 }, { 228, 9 }, { 230, 13 },
+                             { 229, 10 }, { 231, 12 }, { 239, 1 }, { 242, 1 }, { 255, 60 }, { 256, 61 }, { 257, 62 }, { 258, 63 },
+                             { 249, 5 }, { 250, 120 }, { 251, 77 }, { 253, 20 }, { 259, 66 }, { 262, 67 }, { 263, 31 }, { 120, 0 }, { 270, 70 } };
+  std::vector<int> before;
+  for (auto& c : changes) before.push_back(e.firmware().nrpn(c[0]));
+  for (auto& c : changes) {
+    int p = c[0], v = c[1];
+    e.onFirmware([p, v](firmware::Instance& f) { f.setNrpn(p, v); });
+  }
+  CHECK(waitFor([&e] { return e.firmware().nrpn(270) == 70; }));
+  for (auto& c : changes) CHECK(e.firmware().nrpn(c[0]) == c[1]);
+  for (int p : parameters) {
+    int asked = askNrpn(e, p), read = e.firmware().nrpn(p);
+    CHECK(asked == read);
+    if (asked != read) std::cout << "NRPN " << p << ": the firmware answers " << asked << ", the bridge reads " << read << std::endl;
+  }
+  // out of range, as the firmware's checks have it, nothing changes
+  e.onFirmware([](firmware::Instance& f) { f.setNrpn(54, 128); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  CHECK(e.firmware().nrpn(54) == 7);
+  CHECK(e.firmware().nrpn(1000) == firmware::Instance::nrpnUnknown && e.firmware().nrpn(327) == firmware::Instance::nrpnUnknown);
+  for (size_t i = 0; i < before.size(); ++i) {
+    int p = changes[i][0], v = before[i];
+    e.onFirmware([p, v](firmware::Instance& f) { f.setNrpn(p, v); });
+  }
+  CHECK(waitFor([&] { return e.firmware().nrpn(270) == before.back(); }));
+  // Per-Split Settings' CC1 cell makes Y CC 1 while its stored CC stays 74, which a query answers as 1
+  auto tap = [&e](int col, int row) {
+    e.press(col, row, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    e.release(col, row);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  };
+  tap(0, 7);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::perSplitScreen; }));
+  int split = e.firmware().shownSplit(), ccForY = split == 0 ? 25 : 125;
+  tap(9, 6);
+  CHECK(askNrpn(e, ccForY) == 1 && e.firmware().nrpn(ccForY) == 1);
+  tap(9, 5);
+  CHECK(waitFor([&] { return e.firmware().nrpn(ccForY) == 74; }));
+  tap(0, 7);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::noScreen; }));
+  // Global Settings' SELECT SW, column 7, a row for each switch
+  tap(0, 0);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::globalScreen; }));
+  for (int row : { 3, 1 }) {
+    tap(7, row);
+    CHECK(waitFor([&e, row] { return e.firmware().selectedSwitch() == row; }));
+  }
+  tap(7, 0);
+  tap(0, 0);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::noScreen; }));
+}
+
+// a switch set by its index as the Global Settings grid sets it, both pedals included, the same
+// assignment again switching it off
+void the_bridge_assigns_the_switches_as_the_grid_does() {
+  auto& e = engine();
+  int before[5], both[5], sustain[5], cc65[5];
+  for (int i = 0; i < 5; ++i) {
+    before[i] = e.firmware().switchAssignment(i);
+    both[i] = e.firmware().switchBothSplits(i);
+    sustain[i] = e.firmware().switchCC(i, true);
+    cc65[i] = e.firmware().switchCC(i, false);
+  }
+  e.onFirmware([](firmware::Instance& f) { f.assignSwitch(4, 9); f.setSwitchBothSplits(4, true); f.setSwitchCC(4, true, 70); f.setSwitchCC(4, false, 71); f.setSwitchCC(4, true, 128); });
+  CHECK(waitFor([&e] { return e.firmware().switchCC(4, false) == 71; }));
+  CHECK(e.firmware().switchAssignment(4) == 9 && e.firmware().switchBothSplits(4) && e.firmware().switchCC(4, true) == 70);
+  CHECK(e.firmware().switchAssignment(0) == before[0] && !e.firmware().switchBothSplits(0) && e.firmware().switchCC(0, true) == sustain[0]);
+  e.onFirmware([](firmware::Instance& f) { f.assignSwitch(4, 9); });
+  CHECK(waitFor([&e] { return e.firmware().switchAssignment(4) == 255; }));
+  e.onFirmware([](firmware::Instance& f) { f.assignSwitch(4, 20); });
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  CHECK(e.firmware().switchAssignment(4) == 255);
+  e.onFirmware([&before, &both, &sustain, &cc65](firmware::Instance& f) {
+    for (int i = 0; i < 5; ++i) {
+      int now = f.switchAssignment(i);
+      if (before[i] == 255 && now != 255) f.assignSwitch(i, now);
+      else if (now != before[i]) f.assignSwitch(i, before[i]);
+      f.setSwitchBothSplits(i, both[i]);
+      f.setSwitchCC(i, true, sustain[i]);
+      f.setSwitchCC(i, false, cc65[i]);
+    }
+  });
+  CHECK(waitFor([&] { return e.firmware().switchAssignment(3) == before[3] && e.firmware().switchCC(4, false) == cc65[4]; }));
+}
+
+// the sequencer's drum pages, opened from its settings after their name shows, set the notes its drum
+// rows play
+void the_bridge_reads_and_sets_the_drum_notes() {
+  auto& e = engine();
+  auto tap = [&e](int col, int row) {
+    e.press(col, row, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    e.release(col, row);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  };
+  int special = e.firmware().nrpn(35);
+  nrpn(e, 35, 4);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::sequencerScreen; }));
+  int split = e.firmware().shownSplit();
+  CHECK(e.firmware().drumNote(split, 0) == 36 && e.firmware().drumNote(split, 2) == 37 && e.firmware().drumNote(split, 9) == 50);
+  tap(0, 3);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::sequencerProjectsScreen; }));
+  CHECK(e.firmware().valueScreen() == firmware::Instance::ValueScreen::none);
+  for (int page : { 7, 8 }) {
+    tap(page, 0);
+    CHECK(waitFor([&e] { return e.firmware().valueScreen() == firmware::Instance::ValueScreen::drumNotes; }));
+    // the page's name over the cells first, then the page, after a moment or at the next touch
+    CHECK(e.firmware().sequencerLegendShown());
+    if (page == 8) tap(1, 1);
+    CHECK(waitFor([&e] { return !e.firmware().sequencerLegendShown(); }));
+  }
+  e.onFirmware([split](firmware::Instance& f) { f.setDrumNote(split, 2, 40); f.setDrumNote(split, 3, 128); f.setDrumNote(split, 14, 41); });
+  CHECK(waitFor([&e, split] { return e.firmware().drumNote(split, 2) == 40; }));
+  CHECK(e.firmware().drumNote(split, 3) == 42);
+  e.onFirmware([split](firmware::Instance& f) { f.setDrumNote(split, 2, 37); });
+  CHECK(waitFor([&e, split] { return e.firmware().drumNote(split, 2) == 37; }));
+  // the colours page beside them, whose three step colours take any colour but off and black
+  tap(9, 0);
+  CHECK(waitFor([&e] { return e.firmware().valueScreen() == firmware::Instance::ValueScreen::sequencerColours; }));
+  auto colours = e.firmware().sequencerColours(split);
+  e.onFirmware([split](firmware::Instance& f) {
+    f.setSequencerColour(split, 0, 9);
+    f.setSequencerColour(split, 1, 7);
+    f.setSequencerColour(split, 2, 0);
+    f.setSequencerColour(split, 3, 2);
+    f.setSequencerColour(split, 2, 11);
+  });
+  CHECK(waitFor([&e, split] { return e.firmware().sequencerColours(split).beyond == 11; }));
+  auto changed = e.firmware().sequencerColours(split);
+  CHECK(changed.empty == 9 && changed.withNotes == colours.withNotes && e.firmware().led(5, 3).color == 9);
+  e.onFirmware([split, colours](firmware::Instance& f) {
+    f.setSequencerColour(split, 0, colours.empty);
+    f.setSequencerColour(split, 2, colours.beyond);
+  });
+  CHECK(waitFor([&e, split, colours] { return e.firmware().sequencerColours(split).empty == colours.empty && e.firmware().sequencerColours(split).beyond == colours.beyond; }));
+  tap(0, 3);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::sequencerScreen; }));
+  nrpn(e, 35, special == firmware::Instance::nrpnUnknown ? 0 : special);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::noScreen; }));
+}
+
+// an audience message's cell held for a second edits it; set one with the characters the instrument
+// can show, up to 30; one shown scrolls across the surface while the firmware animates
+void the_bridge_edits_and_shows_the_audience_messages() {
+  auto& e = engine();
+  auto tap = [&e](int col, int row, int millis) {
+    e.press(col, row, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(millis));
+    e.release(col, row);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  };
+  // the big font's M reaches a row higher than the small font's, and only it has lower case
+  auto big = e.firmware().bigGlyph('M');
+  const std::vector<std::string> bigM { "     ", "0   0", "00 00", "0 0 0", "0   0", "0   0", "0   0", "     " };
+  CHECK(big.rows == bigM && e.firmware().bigGlyph('m').width > 0 && e.firmware().bigGlyph('\x01').rows.empty());
+  std::string before = e.firmware().audienceMessage(4);
+  tap(0, 0, 150);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::globalScreen; }));
+  tap(5, 7, 1300);
+  CHECK(waitFor([&e] { return e.firmware().valueScreen() == firmware::Instance::ValueScreen::audienceMessage; }));
+  CHECK(e.firmware().audienceMessageEdited() == 4 && e.firmware().audienceMessage(4) == before);
+  e.onFirmware([](firmware::Instance& f) { f.setAudienceMessage(4, "HELLO\x01 TOKYO\xc3\xa9"); f.setAudienceMessage(6, std::string(40, 'X')); });
+  CHECK(waitFor([&e] { return e.firmware().audienceMessage(4) == "HELLO TOKYO"; }));
+  CHECK(e.firmware().audienceMessage(6) == std::string(30, 'X'));
+  e.onFirmware([](firmware::Instance& f) { f.setAudienceMessage(6, ""); });
+  e.onFirmware([](firmware::Instance& f) { f.showAudienceMessage(4); });
+  CHECK(waitFor([&e] { return e.firmware().animating(); }));
+  // a column every 40 ms, a few seconds for a short message, more on a busy machine
+  bool ended = false;
+  for (int i = 0; i < 6 && !ended; ++i) ended = waitFor([&e] { return !e.firmware().animating(); });
+  CHECK(ended);
+  // leaving the screen as the settings button does keeps it
+  tap(0, 0, 150);
+  CHECK(waitFor([&e] { return e.firmware().screen() == firmware::noScreen; }));
+  CHECK(e.firmware().audienceMessage(4) == "HELLO TOKYO" && e.firmware().audienceMessage(6).empty());
+  e.onFirmware([before](firmware::Instance& f) { f.setAudienceMessage(4, before); });
+  CHECK(waitFor([&e, before] { return e.firmware().audienceMessage(4) == before; }));
 }
 
 // pitch quantize pulls a resting finger to the middle of its pad, so it's off to see raw positions
@@ -439,6 +867,47 @@ void a_slide_into_a_cell_still_lifting_ends_its_note() {
   drained(e);
 }
 
+// a quick double tap, as a finger on glass makes it, each tap and the gap between them shorter
+// than a finger takes to lift and the firmware to let go of a switch: the second tap closes the
+// per-split screen the first opened
+void a_quick_double_tap_on_a_switch_opens_and_closes_its_screen() {
+  auto& e = engine();
+  // within half a second of its start, the firmware takes a toggle for the end of a hold
+  waitFor([&e] { return e.scanCount() * Engine::scanMicros(e.firmware().cellsPerScan(), 0) > 600000; });
+  auto tap = [&e] {
+    e.press(0, 7, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    e.release(0, 7);
+  };
+  tap();
+  std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  CHECK(e.firmware().showingSettings());
+  tap();
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  CHECK(!e.firmware().showingSettings());
+  // two taps so short and close that the second is let go of before the firmware has let go of the
+  // first
+  auto flick = [&e] {
+    e.press(0, 7, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    e.release(0, 7);
+  };
+  flick();
+  std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  flick();
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  CHECK(!e.firmware().showingSettings());
+  // and three of those at a fast human pace, ten a second, open it again
+  for (int i = 0; i < 3; ++i) {
+    flick();
+    std::this_thread::sleep_for(std::chrono::milliseconds(80));
+  }
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  CHECK(e.firmware().showingSettings());
+  tap();
+  CHECK(waitFor([&e] { return !e.firmware().showingSettings(); }));
+}
+
 void a_slide_stays_among_the_pads() {
   auto& e = engine();
   // held long enough to press, so that only the column keeps them from sliding
@@ -530,7 +999,21 @@ void each_copy_of_the_firmware_is_handed_to_one_engine_at_a_time() {
   for (auto* instance : taken) firmware::release(instance);
 }
 
-// the two screens a touch app labels, and neither once Per-Split Settings is closed again
+// Per-Split and Global Settings, and neither once Per-Split Settings is closed again
+// a label printed on a switch reads on its light in every colour the firmware gives it, at the
+// contrast small text needs (WCAG's 4.5:1)
+void a_switch_label_reads_on_every_light() {
+  auto luminance = [](juce::Colour c) {
+    auto part = [](juce::uint8 v) { double x = v / 255.0; return x <= 0.03928 ? x / 12.92 : std::pow((x + 0.055) / 1.055, 2.4); };
+    return 0.2126 * part(c.getRed()) + 0.7152 * part(c.getGreen()) + 0.0722 * part(c.getBlue());
+  };
+  double ink = luminance(Surface::switchInk());
+  for (int color : { 1, 2, 3, 4, 5, 6, 8, 9, 10, 11 }) {
+    double light = luminance(Surface::ledColourFor(color));
+    CHECK((juce::jmax(light, ink) + 0.05) / (juce::jmin(light, ink) + 0.05) >= 4.5);
+  }
+}
+
 void the_bridge_reports_which_settings_screen_is_up() {
   auto& e = engine();
   auto tap = [&e](int row) {
@@ -556,6 +1039,351 @@ void the_bridge_reports_which_settings_screen_is_up() {
   CHECK(waitFor([&e] { return e.firmware().screen() == firmware::presetScreen; }));
   tap(6);
   CHECK(waitFor([&e] { return e.firmware().screen() == firmware::noScreen; }));
+}
+
+// the sequencer's notes read and changed as its own touches change them: a new note in the first
+// empty place and selected, the oldest let go when the step is full, a quick tap's removal moving
+// the rest up, values kept in their ranges, a step cleared and copied, and the steps bar lit to match
+void the_bridge_reads_and_edits_the_sequencers_notes() {
+  auto& e = engine();
+  auto& f = e.firmware();
+  int special = f.nrpn(35);
+  nrpn(e, 35, 4);
+  CHECK(waitFor([&f] { return f.screen() == firmware::sequencerScreen; }));
+  int s = f.sequencerShown();
+  // from a known start, whatever the tests before left: stopped, Scales, nothing selected
+  e.onFirmware([s](firmware::Instance& i) { i.playSequencer(s, false); i.setSequencerView(s, 1); i.selectSequencerNote(s, -1, -1); });
+  CHECK(waitFor([&f, s] { auto st = f.sequencerState(s); return !st.running && st.view == 1 && st.selectedStep == -1; }));
+  auto state = f.sequencerState(s);
+  CHECK(s == f.shownSplit() && state.on && !state.running && state.view == 1 && state.selectedStep == -1);
+  CHECK(f.sequencerPatterns() == 4 && f.sequencerSteps() == 32 && f.sequencerNotesPerStep() == 4 && f.sequencerStepsShown() == (f.model() == 200 ? 16 : 8));
+  auto lengths = f.sequencerLengths();
+  CHECK(lengths.size() == 17 && lengths.front() == 1 && lengths[7] == 12 && lengths.back() == 96);
+  int p = state.pattern, size = f.sequencerPattern(s, p).stepSize;
+  auto colours = f.sequencerColours(s);
+  CHECK(f.led(3, 0).color == colours.empty);
+  e.onFirmware([s](firmware::Instance& i) { i.addSequencerNote(s, 2, 60, 3, 100, 70); });
+  CHECK(waitFor([&f, s, p] { return f.sequencerStep(s, p, 2)[0].used; }));
+  auto notes = f.sequencerStep(s, p, 2);
+  CHECK(notes[0].note == 60 && notes[0].velocity == 100 && notes[0].length == size && notes[0].timbre == 70 && notes[0].row == 3 && notes[0].fineTune == 0);
+  CHECK(!notes[1].used);
+  // never a second of the same note on the same row, as a touch on it would take it away instead,
+  // and never on the row the steps are on
+  auto asked = std::make_shared<std::atomic<bool>>(false);
+  e.onFirmware([s, asked](firmware::Instance& i) { i.addSequencerNote(s, 2, 60, 3, 50, 0); i.addSequencerNote(s, 2, 61, 0, 50, 0); asked->store(true); });
+  CHECK(waitFor([asked] { return asked->load(); }) && !f.sequencerStep(s, p, 2)[1].used && f.sequencerStep(s, p, 2)[0].velocity == 100);
+  state = f.sequencerState(s);
+  CHECK(state.selectedStep == 2 && state.selectedNote == 0 && f.sequencerNoteSelected());
+  CHECK(waitFor([&f, colours] { return f.led(3, 0).color == colours.withNotes; }));
+  // four more: the fifth lets the oldest go and takes the last place, selected
+  e.onFirmware([s](firmware::Instance& i) {
+    for (int n : { 62, 64, 65, 67 }) i.addSequencerNote(s, 2, n, 4, 300, 200);
+  });
+  CHECK(waitFor([&f, s, p] { return f.sequencerStep(s, p, 2)[3].note == 67; }));
+  notes = f.sequencerStep(s, p, 2);
+  CHECK(notes[0].note == 62 && notes[1].note == 64 && notes[2].note == 65 && notes[3].note == 67);
+  CHECK(notes[3].velocity == 127 && notes[3].timbre == 127 && f.sequencerState(s).selectedNote == 3);
+  // values within their ranges, and only the lengths the firmware offers
+  e.onFirmware([s](firmware::Instance& i) {
+    using V = firmware::Instance::NoteValue;
+    i.setSequencerNoteValue(s, 2, 1, V::velocity, 0);
+    i.setSequencerNoteValue(s, 2, 1, V::fineTune, -80);
+    i.setSequencerNoteValue(s, 2, 1, V::timbre, 33);
+    i.setSequencerNoteValue(s, 2, 1, V::length, 13);
+    i.setSequencerNoteValue(s, 2, 2, V::length, 18);
+  });
+  CHECK(waitFor([&f, s, p] { return f.sequencerStep(s, p, 2)[2].length == 18; }));
+  notes = f.sequencerStep(s, p, 2);
+  CHECK(notes[1].velocity == 1 && notes[1].fineTune == -50 && notes[1].timbre == 33 && notes[1].length == size);
+  // a note let go of moves the rest up; selecting none, a step, then a note
+  e.onFirmware([s](firmware::Instance& i) { i.removeSequencerNote(s, 2, 1); i.selectSequencerNote(s, -1, -1); });
+  CHECK(waitFor([&f, s, p] { return !f.sequencerStep(s, p, 2)[3].used; }));
+  notes = f.sequencerStep(s, p, 2);
+  CHECK(notes[0].note == 62 && notes[1].note == 65 && notes[2].note == 67 && f.sequencerState(s).selectedStep == -1);
+  e.onFirmware([s](firmware::Instance& i) { i.selectSequencerNote(s, 2, 1); });
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).selectedNote == 1; }));
+  // copied onto step 5, then step 2 cleared
+  e.onFirmware([s](firmware::Instance& i) { i.copySequencerStep(s, 2, 5); i.clearSequencerStep(s, 2); });
+  CHECK(waitFor([&f, s, p] { return !f.sequencerStep(s, p, 2)[0].used; }));
+  notes = f.sequencerStep(s, p, 5);
+  CHECK(notes[0].note == 62 && notes[2].note == 67 && !notes[3].used);
+  CHECK(f.sequencerState(s).selectedNote == -1 && waitFor([&f, colours] { return f.led(3, 0).color == colours.empty; }));
+  e.onFirmware([s](firmware::Instance& i) { i.clearSequencerStep(s, 5); i.selectSequencerNote(s, -1, -1); });
+  CHECK(waitFor([&f, s, p] { return !f.sequencerStep(s, p, 5)[0].used; }));
+  // a note sounded for a moment as a picked note sounds, its own end after it, and none for a note
+  // out of range
+  drained(e);
+  // a split transposed a fifth up, which the preview leaves out, as the note picked is the note heard
+  nrpn(e, 37 + 100 * s, 14);
+  std::this_thread::sleep_for(std::chrono::milliseconds(150));
+  e.onFirmware([s](firmware::Instance& i) { i.previewSequencerNote(s, 38, 96); i.previewSequencerNote(s, 128, 96); });
+  std::vector<std::vector<uint8_t>> heard;
+  int on = -1, off = -1;
+  auto judge = [&] {
+    on = off = -1;
+    for (size_t m = 0; m < heard.size(); ++m) {
+      auto& msg = heard[m];
+      if (msg.size() != 3) continue;
+      if ((msg[0] & 0xf0) == 0x90 && msg[2] > 0) on = on < 0 && msg[1] == 38 && msg[2] == 96 ? (int) m : 1000;
+      else if (((msg[0] & 0xf0) == 0x80 || (msg[0] & 0xf0) == 0x90) && msg[1] == 38) off = (int) m;
+    }
+  };
+  waitFor([&] {
+    for (auto& msg : e.takeMidiOut()) heard.push_back(msg);
+    judge();
+    return off > on && on >= 0;
+  });
+  // whatever the queue still held behind them
+  for (auto& msg : drained(e)) heard.push_back(msg);
+  judge();
+  nrpn(e, 37 + 100 * s, 7);
+  // a pad above the highest note has none: rows sixteen semitones apart, the octave's own offset
+  // replaced by a custom one
+  int rowOffset = f.nrpn(227), custom = f.nrpn(253);
+  nrpn(e, 253, 32);
+  nrpn(e, 227, 12);
+  CHECK(waitFor([&f] { return f.nrpn(227) == 12 && f.nrpn(253) == 32; }));
+  CHECK(f.padNote(s, 1, 7) == -1 && f.padNote(s, 1, 0) >= 0);
+  nrpn(e, 227, rowOffset);
+  nrpn(e, 253, custom);
+  CHECK(waitFor([&f, rowOffset, custom] { return f.nrpn(227) == rowOffset && f.nrpn(253) == custom; }));
+  CHECK(on >= 0 && on < 1000 && off > on);
+  nrpn(e, 35, special == firmware::Instance::nrpnUnknown ? 0 : special);
+  CHECK(waitFor([&f] { return f.screen() == firmware::noScreen; }));
+}
+
+// the patterns and their settings as the pattern selector, the step size cells, the navigation and
+// the muter set them, a pattern's data kept and given back, and the rows' notes per view
+void the_bridge_sets_the_sequencers_patterns_and_settings() {
+  auto& e = engine();
+  auto& f = e.firmware();
+  int special = f.nrpn(35);
+  nrpn(e, 35, 4);
+  CHECK(waitFor([&f] { return f.screen() == firmware::sequencerScreen; }));
+  int s = f.sequencerShown(), first = f.sequencerState(s).pattern, other = (first + 1) % 4;
+  auto kept = f.sequencerPatternData(s, other);
+  CHECK(!kept.empty());
+  // scales from the scale's notes, drums from the drum notes
+  CHECK(f.sequencerRowNote(s, 0) == 48 && f.sequencerRowNote(s, 1) == 50 && f.sequencerRowNote(s, 7) == 60 && f.sequencerRowNote(s, 14) == -1);
+  e.onFirmware([s](firmware::Instance& i) { i.setSequencerView(s, 2); });
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).view == 2; }));
+  CHECK(f.sequencerRowNote(s, 0) == f.drumNote(s, 0) && f.sequencerRowNote(s, 6) == f.drumNote(s, 6));
+  e.onFirmware([s](firmware::Instance& i) { i.showSequencerPage(s, 0, 7); });
+  // the rows counted from the bottom of all of them whichever are shown
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).rowOffset == 7; }) && f.sequencerRowNote(s, 0) == f.drumNote(s, 0) && f.sequencerRowNote(s, 13) == f.drumNote(s, 13));
+  // the notes view selects the first step, as the view cells do
+  e.onFirmware([s](firmware::Instance& i) { i.showSequencerPage(s, 0, 0); i.setSequencerView(s, 0); });
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).view == 0; }) && f.sequencerState(s).selectedStep == 0 && f.sequencerRowNote(s, 0) == -1);
+  e.onFirmware([s](firmware::Instance& i) { i.setSequencerView(s, 1); i.selectSequencerNote(s, -1, -1); });
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).view == 1; }));
+  // the second page, only at a page's first step
+  int shown = f.sequencerStepsShown();
+  // only at a page's first step
+  auto settled = std::make_shared<std::atomic<bool>>(false);
+  e.onFirmware([s, shown, settled](firmware::Instance& i) { i.showSequencerPage(s, shown + 1, 0); settled->store(true); });
+  CHECK(waitFor([settled] { return settled->load(); }) && f.sequencerState(s).pageStart == 0);
+  e.onFirmware([s, shown](firmware::Instance& i) { i.showSequencerPage(s, shown, 0); });
+  CHECK(waitFor([&f, s, shown] { return f.sequencerState(s).pageStart == shown; }));
+  e.onFirmware([s](firmware::Instance& i) { i.showSequencerPage(s, 0, 0); });
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).pageStart == 0; }));
+  // a note on the other pattern, chosen while stopped at once, copied to the other split, cleared
+  e.onFirmware([s, other](firmware::Instance& i) { i.selectSequencerPattern(s, other); i.addSequencerNote(s, 0, 50, 1, 90, 0); });
+  CHECK(waitFor([&f, s, other] { return f.sequencerState(s).pattern == other && f.sequencerStep(s, other, 0)[0].used; }));
+  auto otherKept = f.sequencerPatternData(1 - s, 3);
+  e.onFirmware([s, other](firmware::Instance& i) { i.copySequencerPattern(s, other, 1 - s, 3); });
+  CHECK(waitFor([&f, s] { return f.sequencerStep(1 - s, 3, 0)[0].note == 50; }));
+  // its settings: step size with swing, a dotted size without, direction, loop and length
+  e.onFirmware([s](firmware::Instance& i) {
+    i.setSequencerStepSize(s, 6, true);
+    i.setSequencerDirection(s, 2);
+    i.setSequencerLoopPage(s, true);
+    i.setSequencerLength(s, 5);
+    i.setSequencerLength(s, 33);
+    i.setSequencerStepSize(s, 7, false);
+  });
+  CHECK(waitFor([&f, s, other] { return f.sequencerPattern(s, other).length == 5; }));
+  auto settings = f.sequencerPattern(s, other);
+  CHECK(settings.stepSize == 6 && settings.swing && settings.direction == 2 && settings.loopPage);
+  e.onFirmware([s](firmware::Instance& i) { i.setSequencerStepSize(s, 18, true); });
+  CHECK(waitFor([&f, s, other] { return f.sequencerPattern(s, other).stepSize == 18; }) && !f.sequencerPattern(s, other).swing);
+  // muted and running, as the muter and Play/Stop do, and a pattern chosen while running waits
+  e.onFirmware([s](firmware::Instance& i) { i.muteSequencer(s, true); i.playSequencer(s, true); });
+  // once its first step has played, before which a pattern chosen takes over at once
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).running && f.sequencerState(s).muted && f.sequencerState(s).position >= 0; }));
+  e.onFirmware([s, first](firmware::Instance& i) { i.selectSequencerPattern(s, first); });
+  CHECK(waitFor([&f, s, first] { return f.sequencerState(s).nextPattern == first; }) && f.sequencerState(s).pattern == other);
+  // where it plays next, as Switch 2 held with a step moves it, going forward
+  // the step it plays next is the one moved to, not the one after where it was
+  auto from = std::make_shared<std::atomic<int>>(-2);
+  e.onFirmware([s, from](firmware::Instance& i) {
+    i.setSequencerDirection(s, 0);
+    int at = i.sequencerState(s).position, to = (at + 3) % 5;
+    i.moveSequencerPlayhead(s, to);
+    from->store(at * 10 + to);
+  });
+  CHECK(waitFor([from] { return from->load() >= 0; }));
+  int was = from->load() / 10, to = from->load() % 10;
+  CHECK(waitFor([&f, s, was] { return f.sequencerState(s).position != was; }) && f.sequencerState(s).position == to && f.sequencerState(s).forward);
+  e.onFirmware([s](firmware::Instance& i) { i.playSequencer(s, false); i.muteSequencer(s, false); });
+  CHECK(waitFor([&f, s] { return !f.sequencerState(s).running && !f.sequencerState(s).muted; }));
+  // asked for what it already is, it stays so
+  auto asked = std::make_shared<std::atomic<bool>>(false);
+  e.onFirmware([s, asked](firmware::Instance& i) { i.muteSequencer(s, false); i.playSequencer(s, false); asked->store(true); });
+  CHECK(waitFor([asked] { return asked->load(); }) && !f.sequencerState(s).muted && !f.sequencerState(s).running);
+  // the data given back as it was, and the copy cleared
+  e.onFirmware([s, other, kept](firmware::Instance& i) { i.setSequencerPatternData(s, other, kept); i.clearSequencerPattern(1 - s, 3); });
+  CHECK(waitFor([&f, s, other, kept] { return f.sequencerPatternData(s, other) == kept; }));
+  CHECK(waitFor([&f, s] { return !f.sequencerStep(1 - s, 3, 0)[0].used; }));
+  e.onFirmware([s, otherKept](firmware::Instance& i) { i.setSequencerPatternData(1 - s, 3, otherKept); });
+  CHECK(waitFor([&f, s, otherKept] { return f.sequencerPatternData(1 - s, 3) == otherKept; }));
+  e.onFirmware([s, first](firmware::Instance& i) { i.selectSequencerPattern(s, first); });
+  CHECK(waitFor([&f, s, first] { return f.sequencerState(s).pattern == first; }));
+  // the other split shown, as a tap on SPLIT shows it, which has no sequencer on, then this one again
+  e.onFirmware([s](firmware::Instance& i) { i.showSequencerSplit(1 - s); });
+  CHECK(waitFor([&f, s] { return f.shownSplit() == 1 - s; }) && f.sequencerShown() == -1);
+  e.onFirmware([s](firmware::Instance& i) { i.showSequencerSplit(s); });
+  CHECK(waitFor([&f, s] { return f.sequencerShown() == s; }));
+  nrpn(e, 35, special == firmware::Instance::nrpnUnknown ? 0 : special);
+  CHECK(waitFor([&f] { return f.screen() == firmware::noScreen; }));
+}
+
+// a tap through the bridge timed as the Tap Tempo switch times it, the tempo shown at once on Global
+// Settings, as the switch shows it
+void the_bridge_taps_the_tempo_as_its_switch_does() {
+  auto& e = engine();
+  auto& f = e.firmware();
+  int before = f.tempo();
+  auto tapCell = [&e](int row) {
+    e.press(0, row, 0.5f, 0.5f);
+    std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    e.release(0, row);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  };
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
+  tapCell(0);
+  CHECK(waitFor([&f] { return f.screen() == firmware::globalScreen; }));
+  auto lights = [&f] {
+    std::vector<int> all;
+    for (int col = 0; col < f.columns(); ++col)
+      for (int row = 0; row < 8; ++row) all.push_back(f.led(col, row).color * 16 + f.led(col, row).display);
+    return all;
+  };
+  e.onFirmware([](firmware::Instance& i) { i.setNrpn(238, 60); });
+  CHECK(waitFor([&f] { return f.tempo() == 60; }));
+  auto shown = lights();
+  for (int k = 0; k < 3; ++k) {
+    e.onFirmware([](firmware::Instance& i) { i.tapTempo(); });
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+  }
+  CHECK(f.tempo() > 80 && lights() != shown);
+  e.onFirmware([before](firmware::Instance& i) { i.setNrpn(238, before); });
+  CHECK(waitFor([&f, before] { return f.tempo() == before; }));
+  tapCell(0);
+  CHECK(waitFor([&f] { return f.screen() == firmware::noScreen; }));
+}
+
+// the projects in the flash as the projects screen loads and saves them: the one played saved with
+// its tempo, loaded back with both sequencers stopped, another project stored in a slot with its
+// own tempo leaving the one played alone, and the one played given back with the slot it came from
+void the_bridge_loads_saves_and_stores_projects() {
+  auto& e = engine();
+  auto& f = e.firmware();
+  int special = f.nrpn(35);
+  nrpn(e, 35, 4);
+  CHECK(waitFor([&f] { return f.screen() == firmware::sequencerScreen; }));
+  // none loaded, whatever an earlier test left
+  e.onFirmware([](firmware::Instance& i) { i.restoreSequencerProject(i.currentProject(), -1); });
+  CHECK(waitFor([&f] { return f.loadedProject() == -1; }));
+  int s = f.sequencerShown(), loaded = f.loadedProject(), tempo = f.tempo();
+  CHECK(f.sequencerProjects() == 16);
+  auto kept5 = f.storedProject(5), kept6 = f.storedProject(6);
+  CHECK(!kept5.empty());
+  // every slot as the firmware keeps it taken, never bytes it couldn't have stored
+  bool slotsValid = true;
+  for (int slot = 0; slot < 16; ++slot) slotsValid = slotsValid && f.sequencerProjectValid(f.storedProject(slot));
+  CHECK(slotsValid && f.sequencerProjectValid(f.currentProject()) && !f.sequencerProjectValid({ 1, 2, 3 }));
+  // on an empty pattern, whatever the tests before left on it
+  e.onFirmware([s](firmware::Instance& i) { i.clearSequencerPattern(s, i.sequencerState(s).pattern); i.addSequencerNote(s, 0, 60, 1, 99, 0); i.setNrpn(238, 140); });
+  CHECK(waitFor([&f] { return f.tempo() == 140; }));
+  auto played = f.currentProject();
+  CHECK(f.projectTempo(played) == 140 && f.projectStep(played, s, f.sequencerState(s).pattern, 0)[0].note == 60);
+  CHECK(f.projectPattern(played, s, 0).length == f.sequencerPattern(s, 0).length);
+  // a project with a pattern longer than the firmware's steps, a step size it doesn't have, a note
+  // on the steps' row or no tempo refused, the one played and the slot left as they were
+  {
+    size_t patternSize = f.sequencerPatternData(0, 0).size(), steps = (size_t) (f.sequencerSteps() * f.sequencerNotesPerStep() * 6);
+    size_t pattern = (size_t) s * (played.size() / 2 & ~(size_t) 3) + (size_t) f.sequencerState(s).pattern * patternSize;
+    auto bad = [&](std::function<void(std::vector<uint8_t>&)> spoil, std::function<bool(const std::vector<uint8_t>&)> spoilt) {
+      auto blob = played;
+      spoil(blob);
+      CHECK(spoilt(blob) && !f.sequencerProjectValid(blob));
+      return blob;
+    };
+    auto longer = bad([&](std::vector<uint8_t>& b) { b[pattern + steps + 10] = 40; }, [&](const std::vector<uint8_t>& b) { return f.projectPattern(b, s, f.sequencerState(s).pattern).length == 40; });
+    auto sizeless = bad([&](std::vector<uint8_t>& b) { b[pattern + steps] = 0; }, [&](const std::vector<uint8_t>& b) { return f.projectPattern(b, s, f.sequencerState(s).pattern).stepSize == 0; });
+    auto lowRow = bad([&](std::vector<uint8_t>& b) { b[pattern] &= 0xfe; b[pattern + 1] = 0; b[pattern + 2] &= 0x7f; }, [&](const std::vector<uint8_t>& b) { return f.projectStep(b, s, f.sequencerState(s).pattern, 0)[0].length == 0; });
+    // a note on the low row taken, which Notes view's painting can move it to
+    auto onLowRow = played;
+    onLowRow[pattern + 4] &= 0xfe;
+    onLowRow[pattern + 5] &= 0x3f;
+    CHECK(f.projectStep(onLowRow, s, f.sequencerState(s).pattern, 0)[0].row == 0 && f.sequencerProjectValid(onLowRow));
+    // the tempo's two bytes, wherever the padding puts them near the end
+    size_t at = played.size() - 2;
+    while (at > played.size() - 8 && !(played[at] == 140 && played[at + 1] == 0)) --at;
+    auto still = bad([&](std::vector<uint8_t>& b) { b[at] = b[at + 1] = 0; }, [&](const std::vector<uint8_t>& b) { return f.projectTempo(b) == 0; });
+    // a tempo taps or a MIDI clock took past the settings' 360 taken
+    auto fast = played;
+    fast[at] = (uint8_t) (365 & 0xff);
+    fast[at + 1] = (uint8_t) (365 >> 8);
+    CHECK(f.projectTempo(fast) == 365 && f.sequencerProjectValid(fast));
+    // the left split's first drum note, after its four patterns
+    bad([&](std::vector<uint8_t>& b) { b[4 * patternSize] = 200; }, [](const std::vector<uint8_t>&) { return true; });
+    auto data = f.sequencerPatternData(s, f.sequencerState(s).pattern), longPattern = data;
+    longPattern[steps + 10] = 40;
+    auto kept0 = f.storedProject(0);
+    e.onFirmware([longer, sizeless, lowRow, still, longPattern, s](firmware::Instance& i) {
+      i.storeSequencerProject(0, longer);
+      i.restoreSequencerProject(sizeless, 3);
+      i.restoreSequencerProject(lowRow, 3);
+      i.restoreSequencerProject(still, 3);
+      i.setSequencerPatternData(s, i.sequencerState(s).pattern, longPattern);
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    CHECK(f.storedProject(0) == kept0 && f.currentProject() == played && f.loadedProject() == -1 && f.sequencerPatternData(s, f.sequencerState(s).pattern) == data);
+  }
+  // saved, then changed, then loaded back
+  e.onFirmware([](firmware::Instance& i) { i.saveSequencerProject(5); });
+  CHECK(waitFor([&f, played] { return f.storedProject(5) == played; }) && f.loadedProject() == loaded);
+  e.onFirmware([s](firmware::Instance& i) { i.clearSequencerPattern(s, i.sequencerState(s).pattern); i.setNrpn(238, 100); i.playSequencer(s, true); });
+  CHECK(waitFor([&f, s] { return f.tempo() == 100 && f.sequencerState(s).running; }));
+  auto other = f.currentProject();
+  e.onFirmware([](firmware::Instance& i) { i.loadSequencerProject(5); });
+  CHECK(waitFor([&f] { return f.loadedProject() == 5 && f.tempo() == 140; }));
+  CHECK(f.settingsVersion() == 17);
+  CHECK(f.currentProject() == played && !f.sequencerState(s).running);
+  // another project stored with its own tempo, the one played left as it was
+  e.onFirmware([other](firmware::Instance& i) { i.storeSequencerProject(6, other); });
+  CHECK(waitFor([&f, other] { return f.storedProject(6) == other; }) && f.projectTempo(f.storedProject(6)) == 100);
+  CHECK(f.currentProject() == played && f.tempo() == 140);
+  // a note selected let go of where the project loaded has none in its place, so that the step's
+  // faders never make one of nothing
+  int shownPattern = f.sequencerState(s).pattern;
+  e.onFirmware([s](firmware::Instance& i) { i.selectSequencerNote(s, 0, 0); });
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).selectedNote == 0; }));
+  e.onFirmware([](firmware::Instance& i) { i.loadSequencerProject(6); });
+  CHECK(waitFor([&f] { return f.loadedProject() == 6; }) && f.sequencerState(s).selectedNote == -1 && f.sequencerState(s).selectedStep == -1 && f.sequencerState(s).pattern == shownPattern);
+  e.onFirmware([played](firmware::Instance& i) { i.restoreSequencerProject(played, 5); });
+  CHECK(waitFor([&f, played] { return f.currentProject() == played; }));
+  e.onFirmware([s](firmware::Instance& i) { i.selectSequencerNote(s, 0, 0); });
+  CHECK(waitFor([&f, s] { return f.sequencerState(s).selectedNote == 0; }));
+  // the one played before the load given back, with the slot it came from
+  e.onFirmware([other, loaded](firmware::Instance& i) { i.restoreSequencerProject(other, loaded); });
+  CHECK(waitFor([&f, other] { return f.currentProject() == other; }) && f.loadedProject() == loaded && f.tempo() == 100 && f.sequencerState(s).selectedNote == -1 && f.sequencerState(s).selectedStep == -1);
+  // the slots and the tempo as they were
+  e.onFirmware([kept5, kept6, tempo](firmware::Instance& i) { i.storeSequencerProject(5, kept5); i.storeSequencerProject(6, kept6); i.setNrpn(238, tempo); });
+  CHECK(waitFor([&f, kept5, kept6] { return f.storedProject(5) == kept5 && f.storedProject(6) == kept6; }));
+  nrpn(e, 35, special == firmware::Instance::nrpnUnknown ? 0 : special);
+  CHECK(waitFor([&f] { return f.screen() == firmware::noScreen; }));
 }
 
 // the sequencer has no screen of its own in the firmware: it takes over the playing display
@@ -702,6 +1530,13 @@ void a_note_sent_on_a_splits_note_channel_lights_its_pads() {
     auto before = lights();
     auto channels = e.firmware().noteChannels(0);
     CHECK(!channels.empty());
+    // every channel the split plays on, its main one first, then its per-note or per-row ones, each
+    // once: the left split's defaults, main channel 1, per-note channels 2 to 8 and rows from channel
+    // 1, which no NRPN query answers
+    std::vector<int> expected = mode == 1 ? std::vector<int> { 1, 2, 3, 4, 5, 6, 7, 8 }
+                              : mode == 2 ? std::vector<int> { 1, 2, 3, 4, 5, 6, 7, 8 } : std::vector<int> { 1 };
+    auto midi = e.firmware().splitMidi(0);
+    CHECK(midi.channels() == expected && midi.mode == mode && midi.main == 1 && midi.mainSends && midi.bendRange == e.firmware().bendRangeOf(0));
     for (int channel : channels) {
       uint8_t on[] = { (uint8_t) (0x90 | (channel - 1)), 60, 100 };
       e.sendMidi(on, sizeof(on));
@@ -715,6 +1550,12 @@ void a_note_sent_on_a_splits_note_channel_lights_its_pads() {
     }
     CHECK(waitFor([&] { return lights() == before; }));
   }
+  // whether split is on, as NRPN 200 sets it
+  CHECK(!e.firmware().splitMidi(0).splitOn);
+  nrpn(e, 200, 1);
+  CHECK(waitFor([&e] { return e.firmware().splitMidi(0).splitOn && e.firmware().splitMidi(1).splitOn; }));
+  nrpn(e, 200, 0);
+  CHECK(waitFor([&e] { return !e.firmware().splitMidi(0).splitOn; }));
 }
 
 // the velocity of a press on a cell, struck that hard with that pressure to rise to, the cell
@@ -880,6 +1721,320 @@ void a_fresh_flash_starts_with_the_settings_given_and_a_saved_one_without() {
   for (auto& m : e.takeMidiOut()) CHECK(!(m.size() == 3 && (m[0] & 0xf0) == 0xb0 && (m[1] == 100 || m[1] == 101)));
 }
 
+void an_engine_without_ports_opens_none_and_keeps_its_flash_out_of_files() {
+  auto& e = engine();
+  e.stop();
+  testFlash().deleteRecursively();
+  // the app's flash, which an engine without a file never boots from
+  e.start(128);
+  nrpn(e, 19, 12);
+  const uint8_t keep[] = { 0xb0, 23, 0 };
+  e.sendMidi(keep, sizeof(keep));
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  e.stop();
+  juce::MemoryBlock appFlash;
+  CHECK(testFlash().getChildFile("flash-128.bin").loadFileAsData(appFlash));
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.bootFlash.clear();
+  int fresh = 0;
+  e.onFreshFlash = [&e, &fresh] {
+    ++fresh;
+    configureMpe(e);
+  };
+  e.start(128);
+  CHECK(!e.hasVirtualPorts());
+  CHECK(!e.status().contains("MIDI port"));
+  CHECK(fresh == 1);
+  CHECK(waitFor([&e] { return e.firmware().bendRange() == 48; }));
+  // nothing stored yet, so a fresh flash stays fresh, its starting settings given again
+  CHECK(e.currentFlash().empty());
+  e.stop();
+  CHECK(e.bootFlash.empty());
+  e.start(128);
+  CHECK(fresh == 2);
+  // a change stored, as saving a light pattern stores everything, is kept, read while it runs
+  nrpn(e, 19, 24);
+  const uint8_t store[] = { 0xb0, 23, 0 };
+  e.sendMidi(store, sizeof(store));
+  // read once the firmware has taken the store in, which a busy machine's engine may not have yet:
+  // it answers a query sent after the store only once it has
+  e.takeMidiOut();
+  nrpn(e, 299, 19);
+  bool answered = false;
+  CHECK(waitFor([&] {
+    for (auto& m : e.takeMidiOut()) answered = answered || (m.size() == 3 && (m[0] & 0xf0) == 0xb0 && m[1] == 98 && m[2] == 19);
+    return answered;
+  }));
+  CHECK(e.firmware().bendRange() == 24);
+  std::vector<uint8_t> running = e.currentFlash();
+  CHECK(running.size() == firmware::flashSize());
+  e.stop();
+  CHECK(e.bootFlash == running);
+  CHECK(e.currentFlash() == running);
+  e.start(128);
+  CHECK(fresh == 2);
+  CHECK(e.firmware().bendRange() == 24);
+  e.stop();
+  CHECK(e.bootFlash == running);
+  juce::MemoryBlock still;
+  CHECK(testFlash().getChildFile("flash-128.bin").loadFileAsData(still) && still == appFlash);
+  testFlash().deleteRecursively();
+  e.onFreshFlash = nullptr;
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  e.start(128);
+  CHECK(e.hasVirtualPorts());
+  CHECK(e.firmware().bendRange() == 2);
+}
+
+// OS update (serial) mode, which plays nothing over MIDI, and User Firmware Mode left again
+void the_bridge_goes_back_to_midi_from_update_and_user_firmware_mode() {
+  auto& e = engine();
+  nrpn(e, 271, 1);
+  CHECK(waitFor([&e] { return e.firmware().serialMode(); }));
+  e.onFirmware([](firmware::Instance& f) { f.backToMidi(); });
+  CHECK(waitFor([&e] { return !e.firmware().serialMode(); }));
+  nrpn(e, 245, 1);
+  CHECK(waitFor([&e] { return e.firmware().userFirmwareMode(); }));
+  e.onFirmware([](firmware::Instance& f) { f.backToMidi(); });
+  CHECK(waitFor([&e] { return !e.firmware().userFirmwareMode(); }));
+}
+
+// a flash file saved with what the firmware plays with, which it hasn't stored, as while a
+// sequencer runs, at once when asked and when the engine stops
+void a_flash_file_saved_live_keeps_the_settings_the_firmware_hasnt_stored() {
+  auto& e = engine();
+  e.stop();
+  testFlash().deleteRecursively();
+  e.saveLive = true;
+  e.start(128);
+  nrpn(e, 19, 24);
+  CHECK(waitFor([&e] { return e.firmware().bendRange() == 24; }));
+  e.saveNow();
+  juce::MemoryBlock saved;
+  CHECK(testFlash().getChildFile("flash-128.bin").loadFileAsData(saved));
+  nrpn(e, 19, 12);
+  CHECK(waitFor([&e] { return e.firmware().bendRange() == 12; }));
+  e.stop();
+  e.saveLive = false;
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 12);
+  e.stop();
+  juce::MemoryBlock block = saved;
+  testFlash().getChildFile("flash-128.bin").replaceWithData(block.getData(), block.getSize());
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 24);
+  e.stop();
+  testFlash().deleteRecursively();
+  e.start(128);
+}
+
+// the flash taken while the instrument plays with settings it hasn't stored, as one
+// changed over MIDI is until a settings screen is left
+void a_flash_kept_in_memory_holds_the_settings_the_firmware_hasnt_stored() {
+  auto& e = engine();
+  // the settings as they play kept for the start from the file at the end, as
+  // a_flash_kept_in_memory_keeps_the_tempo_it_plays_at keeps them
+  e.saveLive = true;
+  e.stop();
+  e.saveLive = false;
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.bootFlash.clear();
+  e.onFreshFlash = [&e] { configureMpe(e); };
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 48);
+  CHECK(e.currentFlash().empty());
+  nrpn(e, 19, 24);
+  CHECK(waitFor([&e] { return e.firmware().bendRange() == 24; }));
+  auto changed = e.currentFlash();
+  CHECK(changed.size() == firmware::flashSize());
+  e.stop();
+  CHECK(e.bootFlash == changed);
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 24);
+  // unchanged since, the same flash
+  CHECK(e.currentFlash() == changed);
+  e.onFreshFlash = nullptr;
+  e.stop();
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  e.start(128);
+}
+
+// a flash saved by a firmware that kept its settings in another layout, elsewhere in the
+// flash: they're converted as the Updater's restore converts them, or the flash starts fresh
+void a_boot_flash_of_another_layout_gives_its_settings_converted() {
+  auto& e = engine();
+  // the settings as they play kept for the start from the file at the end, as
+  // a_flash_kept_in_memory_keeps_the_tempo_it_plays_at keeps them
+  e.saveLive = true;
+  e.stop();
+  e.saveLive = false;
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.onFreshFlash = [&e] { configureMpe(e); };
+  auto flashWith = [&e](int range) {
+    e.stop();
+    e.bootFlash.clear();
+    e.start(128);
+    nrpn(e, 19, range);
+    return e.currentFlash();
+  };
+  auto wanted = flashWith(24);
+  auto other = flashWith(5);
+  CHECK(e.firmware().bendRange() == 5);
+  size_t size = e.firmware().settingsSize(), offset = e.firmware().settingsOffset();
+  size_t moved = offset + sizeof(unsigned long) + 2 * size;
+  CHECK(moved + sizeof(unsigned long) + 2 * size <= other.size());
+  // wanted's settings, in the first of two copies at another place, in a flash that holds others
+  // where this firmware keeps them
+  auto from = wanted.begin() + (long) (offset + sizeof(unsigned long) + (wanted[offset] == 0 ? 0 : size));
+  other[moved] = 0;
+  std::copy(from, from + (long) size, other.begin() + (long) (moved + sizeof(unsigned long)));
+  e.stop();
+  e.setBootFlash(other, size, moved);
+  e.start(128);
+  // with nothing a fresh flash is given after
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  CHECK(e.firmware().bendRange() == 24);
+  CHECK(e.currentFlash().size() == firmware::flashSize());
+  // kept since in this firmware's layout
+  nrpn(e, 19, 12);
+  e.stop();
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 12);
+  // a size no layout of the firmware's has
+  e.stop();
+  e.setBootFlash(other, size + 1, moved);
+  e.start(128);
+  CHECK(e.firmware().bendRange() == 48);
+  e.onFreshFlash = nullptr;
+  e.stop();
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  e.start(128);
+}
+
+// the flash taken on one thread while the engine starts or stops on another
+void a_flash_kept_in_memory_is_whole_and_prompt_while_the_engine_starts_and_stops() {
+  auto& e = engine();
+  e.stop();
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.bootFlash.clear();
+  e.start(128);
+  nrpn(e, 19, 24);
+  CHECK(waitFor([&e] { return !e.currentFlash().empty(); }));
+  std::atomic<bool> done { false };
+  std::thread loads([&] {
+    for (int i = 0; i < 15; ++i) {
+      e.stop();
+      e.start(128);
+      std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    done = true;
+  });
+  double slowest = 0;
+  int torn = 0;
+  while (!done) {
+    auto asked = juce::Time::getMillisecondCounterHiRes();
+    auto flash = e.currentFlash();
+    slowest = juce::jmax(slowest, juce::Time::getMillisecondCounterHiRes() - asked);
+    torn += flash.size() == firmware::flashSize() ? 0 : 1;
+  }
+  loads.join();
+  CHECK(torn == 0);
+  CHECK(slowest < 500);
+  e.stop();
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  testFlash().deleteRecursively();
+  e.start(128);
+}
+
+// ticks at a tempo, in real time, after a start or without one
+void clockAt(Engine& e, double bpm, int ticks, bool start) {
+  const uint8_t go[] = { 0xfa }, tick[] = { 0xf8 };
+  if (start) e.sendMidi(go, 1);
+  auto next = std::chrono::steady_clock::now();
+  for (int i = 0; i < ticks; ++i) {
+    e.sendMidi(tick, 1);
+    next += std::chrono::microseconds((long long) (60.0e6 / bpm / 24));
+    std::this_thread::sleep_until(next);
+  }
+}
+
+void a_copy_booted_again_forgets_the_clock_it_followed() {
+  auto& e = engine();
+  // until the firmware follows it away from the 120 it boots with: a busy machine's late ticks can
+  // keep its average from settling on 100, and what's checked is what a boot forgets
+  clockAt(e, 100, 48, true);
+  for (int beat = 0; beat < 10 && std::abs(e.firmware().tempo() - 120) < 10; ++beat) clockAt(e, 100, 24, false);
+  CHECK(std::abs(e.firmware().tempo() - 120) >= 10);
+  e.stop();
+  e.start(128);
+  CHECK(e.firmware().tempo() == 120);
+  // ticks without a start are no clock to follow
+  clockAt(e, 90, 36, false);
+  CHECK(e.firmware().tempo() == 120);
+  // nor a parameter chosen before, an NRPN's or an RPN's, which a data entry alone would change
+  for (bool registered : { false, true }) {
+    const uint8_t choose[] = { 0xb0, (uint8_t) (registered ? 101 : 99), 0, 0xb0, (uint8_t) (registered ? 100 : 98), (uint8_t) (registered ? 0 : 19) };
+    e.sendMidi(choose, sizeof(choose));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    e.stop();
+    e.start(128);
+    int range = e.firmware().bendRange();
+    int other = range == 24 ? 12 : 24;
+    const uint8_t value[] = { 0xb0, 6, (uint8_t) (registered ? other : 0), 0xb0, 38, (uint8_t) (registered ? 0 : other) };
+    e.sendMidi(value, sizeof(value));
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    CHECK(e.firmware().bendRange() == range);
+  }
+}
+
+// as storing the settings would, which the firmware doesn't while its clock runs
+void a_flash_kept_in_memory_keeps_the_tempo_it_plays_at() {
+  auto& e = engine();
+  // the settings as they play, stored or not, for the start from the file at the end, so that the
+  // tests after this one find them as the ones before left them
+  e.saveLive = true;
+  e.stop();
+  e.saveLive = false;
+  e.virtualPorts = false;
+  e.flashInFile = false;
+  e.bootFlash.clear();
+  e.start(128);
+  clockAt(e, 100, 48, true);
+  for (int beat = 0; beat < 10 && std::abs(e.firmware().tempo() - 120) < 10; ++beat) clockAt(e, 100, 24, false);
+  const uint8_t halt[] = { 0xfc };
+  e.sendMidi(halt, 1);
+  // the engine takes its MIDI in on its own pace, so the ticks still on their way and the stop can
+  // move the tempo after this: it's read once it holds still
+  int tempo = e.firmware().tempo();
+  for (int wait = 0; wait < 40; ++wait) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    int now = e.firmware().tempo();
+    if (now == tempo && wait >= 2) break;
+    tempo = now;
+  }
+  CHECK(std::abs(tempo - 120) >= 10);
+  e.stop();
+  e.start(128);
+  CHECK(e.firmware().tempo() == tempo);
+  e.stop();
+  e.bootFlash.clear();
+  e.virtualPorts = true;
+  e.flashInFile = true;
+  e.start(128);
+}
+
 // ---------------------------------------------------------------------------------------------
 // the instrument's pace
 
@@ -937,6 +2092,209 @@ void a_touch_lands_on_the_pad_under_it() {
   }
 }
 
+// the front panel's printed headings: on each model every settings column under one heading above
+// and below, and on a 200 the sequencer's columns under one more and its slider rows under one
+// right of them; each in the panel's room and over neither a pad nor a switch, the nameplate moved
+// aside for the one on the right, and printed only while they're shown
+void the_headings_print_over_the_settings_columns() {
+  using P = Surface::Place;
+  int was = engine().firmware().columns() == 17 ? 128 : 200;
+  for (int model : { 200, 128 }) {
+    engine().start(model);
+    Whole l;
+    auto printed = l.surface.headingsPrinted();
+    for (auto place : { P::above, P::below, P::right }) {
+      std::vector<int> under(26, 0);
+      for (auto& h : printed)
+        if (h.place == place)
+          for (int i = h.from; i <= h.to; ++i) ++under[(size_t) i];
+      for (int i = 0; i < 26; ++i) {
+        bool settings = (place == P::above || place == P::below) && i >= 1 && i <= 16;
+        bool sequencer = model == 200 && ((place == P::above && i >= 20 && i <= 25) || (place == P::right && i <= 3));
+        CHECK(under[(size_t) i] == (settings || sequencer ? 1 : 0));
+      }
+    }
+    auto plain = l.surface.brandArea();
+    l.surface.setHeadingsShown(true);
+    auto brand = l.surface.brandArea();
+    CHECK(juce::exactlyEqual(brand.getRight(), plain.getRight()) && (model == 200 ? brand.getX() > plain.getX() : brand == plain));
+    auto plate = l.surface.nameplateArea();
+    CHECK(brand.contains(plate) && std::abs(plate.getCentreX() - brand.getCentreX()) < 0.01f);
+    std::vector<juce::Rectangle<float>> areas;
+    for (auto& h : printed) {
+      auto area = l.surface.headingArea(h);
+      CHECK(area.getWidth() >= 9 && area.getHeight() >= 9 && l.surface.getLocalBounds().toFloat().contains(area) && !area.intersects(brand));
+      CHECK(!area.intersects(l.surface.nameplateArea()));
+      for (int col = 0; col < engine().firmware().columns(); ++col)
+        for (int row = 0; row < 8; ++row) CHECK(!area.intersects(l.surface.padBounds(col, row)));
+      if (h.place == P::above || h.place == P::below) {
+        auto first = l.surface.padBounds(h.from, 0), end = l.surface.padBounds(h.to, 0);
+        CHECK(area.getX() <= first.getX() && area.getRight() >= end.getRight());
+        CHECK(h.place == P::above ? area.getBottom() < l.surface.padBounds(h.from, 7).getY() : area.getY() > first.getBottom());
+      }
+      else {
+        auto high = l.surface.padBounds(1, h.to), low = l.surface.padBounds(1, h.from);
+        CHECK(area.getY() <= high.getY() + 0.01f && area.getBottom() >= low.getBottom() - 0.01f);
+      }
+      for (auto& other : areas) CHECK(!area.reduced(0.5f).intersects(other));
+      areas.push_back(area);
+    }
+    l.surface.setHeadingsShown(false);
+    CHECK(l.surface.brandArea() == plain);
+    auto lit = [&](juce::Rectangle<float> where) {
+      auto image = l.surface.createComponentSnapshot(where.toNearestInt(), true, 1.0f);
+      int bright = 0;
+      for (int y = 0; y < image.getHeight(); ++y)
+        for (int x = 0; x < image.getWidth(); ++x) bright += image.getPixelAt(x, y).getBrightness() > 0.6f ? 1 : 0;
+      return bright;
+    };
+    CHECK(!l.surface.headingsShown());
+    for (auto& h : printed) CHECK(lit(l.surface.headingArea(h)) == 0);
+    l.surface.setHeadingsShown(true);
+    CHECK(l.surface.headingsShown());
+    for (auto& h : printed) CHECK(lit(l.surface.headingArea(h)) > 8);
+  }
+  engine().start(was);
+}
+
+// the window's model and headings kept between launches, unless the launch says otherwise, and
+// never read or written by a run driven by a script or taking a screenshot
+void the_window_keeps_its_model_and_headings_between_launches() {
+  auto file = juce::File::createTempFile("choices.xml");
+  auto launch = [&file](const juce::String& line) { return Choices(juce::StringArray::fromTokens(line, true), file); };
+  {
+    auto first = launch("");
+    CHECK(first.keeps() && first.model() == 200 && !first.headings());
+    juce::ComboBox box;
+    box.addItem("200", 200);
+    box.addItem("128", 128);
+    box.setSelectedId(200, juce::dontSendNotification);
+    juce::TextButton button;
+    button.setClickingTogglesState(true);
+    first.follow(box, button);
+    box.setSelectedId(128, juce::sendNotificationSync);
+    CHECK(launch("").model() == 128 && !launch("").headings());
+    button.setToggleState(true, juce::sendNotificationSync);
+    CHECK(launch("").headings());
+  }
+  auto second = launch("");
+  CHECK(second.model() == 128 && second.headings());
+  CHECK(launch("--model 200").model() == 200 && launch("--model 200").headings());
+  for (auto line : { "--script -", "--screenshot shot.png" }) {
+    auto scripted = launch(line);
+    CHECK(!scripted.keeps() && scripted.model() == 200 && !scripted.headings());
+    juce::ComboBox box;
+    box.addItem("200", 200);
+    box.addItem("128", 128);
+    box.setSelectedId(128, juce::dontSendNotification);
+    juce::TextButton button;
+    button.setClickingTogglesState(true);
+    button.setToggleState(true, juce::dontSendNotification);
+    scripted.follow(box, button);
+    box.setSelectedId(200, juce::sendNotificationSync);
+    button.setToggleState(false, juce::sendNotificationSync);
+  }
+  CHECK(launch("").model() == 128 && launch("").headings());
+  CHECK(launch("--script - --model 128 --headings").model() == 128 && launch("--script - --headings").headings());
+  {
+    auto third = launch("");
+    juce::ComboBox box;
+    box.addItem("200", 200);
+    box.addItem("128", 128);
+    box.setSelectedId(128, juce::dontSendNotification);
+    juce::TextButton button;
+    button.setClickingTogglesState(true);
+    button.setToggleState(true, juce::dontSendNotification);
+    third.follow(box, button);
+    box.setSelectedId(200, juce::sendNotificationSync);
+    button.setToggleState(false, juce::sendNotificationSync);
+  }
+  CHECK(launch("").model() == 200 && !launch("").headings());
+  file.deleteFile();
+}
+
+// an idle surface left as it is between timer ticks, repainted once a light or a touch changes
+void an_idle_surface_isnt_repainted() {
+  Whole l;
+  l.surface.repaintIfChanged();
+  CHECK(l.surface.repaintIfChanged().isEmpty());
+  engine().press(5, 3, 0.5f, 0.5f);
+  CHECK(waitFor([&l] { return !l.surface.repaintIfChanged().isEmpty(); }));
+  // a held finger moving, its light as it was, once its pressure has settled
+  CHECK(waitFor([&l] { return l.surface.repaintIfChanged().isEmpty(); }));
+  engine().move(5, 3, 0.8f, 0.5f);
+  CHECK(waitFor([&l] { return !l.surface.repaintIfChanged().isEmpty(); }));
+  engine().release(5, 3);
+  CHECK(waitFor([&l] { return !l.surface.repaintIfChanged().isEmpty(); }));
+  CHECK(waitFor([&l] { return l.surface.repaintIfChanged().isEmpty(); }));
+  // a light sent over MIDI
+  const uint8_t light[] = { 0xb0, 20, 5, 0xb0, 21, 2, 0xb0, 22, 1 };
+  engine().sendMidi(light, sizeof(light));
+  CHECK(waitFor([] { return engine().firmware().led(5, 2).color == 1; }));
+  CHECK(!l.surface.repaintIfChanged().isEmpty());
+  const uint8_t off[] = { 0xb0, 20, 5, 0xb0, 21, 2, 0xb0, 22, 0 };
+  engine().sendMidi(off, sizeof(off));
+  CHECK(waitFor([] { return engine().firmware().led(5, 2).color == 0; }));
+}
+
+// a light that changes repaints its column of pads and a switch's light or label its switch, not
+// the whole surface; anything else, such as the screen, everything
+void a_changed_light_repaints_only_its_column() {
+  Whole l;
+  auto before = l.surface.shownState();
+  int columns = engine().columnCount();
+  size_t first = before.size() - 2 * 8 * (size_t) columns - 8;
+  auto at = [&](int col, int row) { return first + 2 * (size_t) (col * 8 + row); };
+  auto covers = [](const juce::RectangleList<int>& area, juce::Rectangle<float> pad) { return area.containsRectangle(pad.getSmallestIntegerContainer()); };
+  // as far as a fingertip at a pad's edge reaches, and no further
+  float tip = l.surface.padBounds(1, 0).getWidth() * 0.27f;
+  auto touches = [tip](const juce::RectangleList<int>& area, juce::Rectangle<float> pad) { return area.intersectsRectangle(pad.reduced(tip + 2).getSmallestIntegerContainer()); };
+  // a light's own change only as far as the focus ring, its neighbours' edges left alone
+  auto grazes = [](const juce::RectangleList<int>& area, juce::Rectangle<float> pad) { return area.intersectsRectangle(pad.reduced(4).getSmallestIntegerContainer()); };
+  auto now = before;
+  now[at(5, 2)] ^= 1;
+  auto area = l.surface.changedArea(before, now);
+  for (int row = 0; row < 8; ++row) CHECK(covers(area, l.surface.padBounds(5, row)));
+  CHECK(!grazes(area, l.surface.padBounds(4, 2)) && !grazes(area, l.surface.padBounds(6, 2)) && !grazes(area, l.surface.padBounds(0, 2)));
+  // a touch too
+  now = before;
+  now[at(7, 4) + 1] = 0x80000001u;
+  area = l.surface.changedArea(before, now);
+  CHECK(covers(area, l.surface.padBounds(7, 4).expanded(tip - 1)) && !touches(area, l.surface.padBounds(8, 4)));
+  // a switch's light, and its label
+  now = before;
+  now[at(0, 3)] ^= 1;
+  area = l.surface.changedArea(before, now);
+  CHECK(covers(area, l.surface.padBounds(0, 3)) && !touches(area, l.surface.padBounds(0, 1)) && !touches(area, l.surface.padBounds(1, 3)));
+  now = before;
+  now[now.size() - 8 + 6] ^= 1;
+  area = l.surface.changedArea(before, now);
+  CHECK(covers(area, l.surface.padBounds(0, 6)) && !touches(area, l.surface.padBounds(0, 4)) && !touches(area, l.surface.padBounds(1, 6)));
+  // the screen, the whole surface
+  now = before;
+  now[1] ^= 1;
+  CHECK(l.surface.changedArea(before, now).containsRectangle(l.surface.getLocalBounds()));
+  // nothing for a column whose pads all lie under what covers them, which repaints itself
+  l.surface.hidden = [](int col, int) { return col == 9; };
+  now = before;
+  now[at(9, 2)] ^= 1;
+  CHECK(l.surface.changedArea(before, now).isEmpty());
+  l.surface.hidden = nullptr;
+  // and a light sent over MIDI, as a timer tick finds it, the surface's own held off meanwhile
+  {
+    const juce::MessageManagerLock held;
+    l.surface.repaintIfChanged();
+    const uint8_t light[] = { 0xb0, 20, 9, 0xb0, 21, 1, 0xb0, 22, 5 };
+    engine().sendMidi(light, sizeof(light));
+    CHECK(waitFor([] { return engine().firmware().led(9, 1).color == 5; }));
+    area = l.surface.repaintIfChanged();
+  }
+  CHECK(covers(area, l.surface.padBounds(9, 1)) && !touches(area, l.surface.padBounds(10, 1)) && !touches(area, l.surface.padBounds(8, 1)));
+  const uint8_t off[] = { 0xb0, 20, 9, 0xb0, 21, 1, 0xb0, 22, 0 };
+  engine().sendMidi(off, sizeof(off));
+  CHECK(waitFor([] { return engine().firmware().led(9, 1).color != 5; }));
+}
+
 juce::MouseEvent mouseAt(Surface& surface, juce::Point<float> at) {
   auto mouse = juce::Desktop::getInstance().getMainMouseSource();
   return juce::MouseEvent(mouse, at, {}, juce::MouseInputSource::defaultPressure, 0, 0, 0, 0, &surface, &surface,
@@ -981,25 +2339,34 @@ void the_focus_ring_shows_only_while_the_keyboard_moves_it() {
 // JUCE's own test framework: one suite per part of the app; filter, when set, keeps only the
 // tests whose name contains it
 juce::String filter;
+// --shard K/N: every Nth test from the Kth, counted across the suites, so that N of these run side
+// by side share the tests out
+int shard = 0, shards = 1, counted = 0;
 
 class Suite : public juce::UnitTest {
 public:
   Suite(const juce::String& name, std::vector<Case> list) : juce::UnitTest(name, "Virtual LinnStrument"), cases(std::move(list)) {}
   int matching() const {
     int n = 0;
-    for (auto& c : cases) n += juce::String(c.name).contains(filter) ? 1 : 0;
+    for (size_t i = 0; i < cases.size(); ++i) n += wanted(i) ? 1 : 0;
     return n;
   }
   void runTest() override {
     current = this;
-    for (auto& c : cases) {
-      if (!juce::String(c.name).contains(filter)) continue;
+    for (size_t i = 0; i < cases.size(); ++i) {
+      auto& c = cases[i];
+      if (!wanted(i)) continue;
       beginTest(juce::String(c.name).replace("_", " "));
       c.run();
     }
   }
 
+  // the first of its tests' places among all of them
+  int first = 0;
+  int size() const { return (int) cases.size(); }
+
 private:
+  bool wanted(size_t i) const { return juce::String(cases[i].name).contains(filter) && (first + (int) i) % shards == shard; }
   std::vector<Case> cases;
 };
 
@@ -1024,6 +2391,7 @@ Suite slides("Slides through the firmware", {
   { "a_slide_glides_from_one_note_to_the_next", a_slide_glides_from_one_note_to_the_next },
   { "lifting_and_pressing_the_next_cell_starts_a_new_note", lifting_and_pressing_the_next_cell_starts_a_new_note },
   { "a_slide_into_a_cell_still_lifting_ends_its_note", a_slide_into_a_cell_still_lifting_ends_its_note },
+  { "a_quick_double_tap_on_a_switch_opens_and_closes_its_screen", a_quick_double_tap_on_a_switch_opens_and_closes_its_screen },
   { "a_slide_stays_among_the_pads", a_slide_stays_among_the_pads },
 });
 
@@ -1034,6 +2402,10 @@ Suite expression("Expression", {
 Suite bridge("Firmware bridge", {
   { "the_bridge_reports_a_settings_screen", the_bridge_reports_a_settings_screen },
   { "the_bridge_reports_the_sequencer_and_its_settings", the_bridge_reports_the_sequencer_and_its_settings },
+  { "the_bridge_reads_and_edits_the_sequencers_notes", the_bridge_reads_and_edits_the_sequencers_notes },
+  { "the_bridge_sets_the_sequencers_patterns_and_settings", the_bridge_sets_the_sequencers_patterns_and_settings },
+  { "the_bridge_loads_saves_and_stores_projects", the_bridge_loads_saves_and_stores_projects },
+  { "the_bridge_taps_the_tempo_as_its_switch_does", the_bridge_taps_the_tempo_as_its_switch_does },
   { "the_bridge_reports_the_bend_range", the_bridge_reports_the_bend_range },
   { "a_note_sent_on_a_splits_note_channel_lights_its_pads", a_note_sent_on_a_splits_note_channel_lights_its_pads },
   { "every_unit_is_calibrated", every_unit_is_calibrated },
@@ -1048,13 +2420,36 @@ Suite bridge("Firmware bridge", {
   { "letting_go_lowers_the_pressure_before_the_note_ends", letting_go_lowers_the_pressure_before_the_note_ends },
   { "a_soft_press_rises_slowly_and_a_hard_one_at_once", a_soft_press_rises_slowly_and_a_hard_one_at_once },
   { "the_bridge_reports_which_settings_screen_is_up", the_bridge_reports_which_settings_screen_is_up },
+  { "a_switch_label_reads_on_every_light", a_switch_label_reads_on_every_light },
   { "each_copy_of_the_firmware_is_handed_to_one_engine_at_a_time", each_copy_of_the_firmware_is_handed_to_one_engine_at_a_time },
   { "two_engines_run_their_own_firmware_side_by_side", two_engines_run_their_own_firmware_side_by_side },
   { "a_fresh_flash_starts_with_the_settings_given_and_a_saved_one_without", a_fresh_flash_starts_with_the_settings_given_and_a_saved_one_without },
+  { "an_engine_without_ports_opens_none_and_keeps_its_flash_out_of_files", an_engine_without_ports_opens_none_and_keeps_its_flash_out_of_files },
+  { "the_bridge_reads_a_screens_values_and_the_small_font", the_bridge_reads_a_screens_values_and_the_small_font },
+  { "the_bridge_reads_a_splits_cc_faders", the_bridge_reads_a_splits_cc_faders },
+  { "the_bridge_reads_whether_scale_select_shows", the_bridge_reads_whether_scale_select_shows },
+  { "the_bridge_lights_only_the_chosen_steps_notes_in_notes_view", the_bridge_lights_only_the_chosen_steps_notes_in_notes_view },
+  { "the_bridge_times_a_hold_as_the_firmware_does", the_bridge_times_a_hold_as_the_firmware_does },
+  { "the_engine_sets_the_bend_range_as_its_screen_does", the_engine_sets_the_bend_range_as_its_screen_does },
+  { "the_bridge_reads_and_sets_the_panels_settings_as_nrpns_do", the_bridge_reads_and_sets_the_panels_settings_as_nrpns_do },
+  { "the_bridge_assigns_the_switches_as_the_grid_does", the_bridge_assigns_the_switches_as_the_grid_does },
+  { "the_bridge_reads_and_sets_the_drum_notes", the_bridge_reads_and_sets_the_drum_notes },
+  { "the_bridge_edits_and_shows_the_audience_messages", the_bridge_edits_and_shows_the_audience_messages },
+  { "a_copy_booted_again_forgets_the_clock_it_followed", a_copy_booted_again_forgets_the_clock_it_followed },
+  { "a_flash_kept_in_memory_keeps_the_tempo_it_plays_at", a_flash_kept_in_memory_keeps_the_tempo_it_plays_at },
+  { "a_flash_kept_in_memory_holds_the_settings_the_firmware_hasnt_stored", a_flash_kept_in_memory_holds_the_settings_the_firmware_hasnt_stored },
+  { "a_flash_file_saved_live_keeps_the_settings_the_firmware_hasnt_stored", a_flash_file_saved_live_keeps_the_settings_the_firmware_hasnt_stored },
+  { "the_bridge_goes_back_to_midi_from_update_and_user_firmware_mode", the_bridge_goes_back_to_midi_from_update_and_user_firmware_mode },
+  { "a_boot_flash_of_another_layout_gives_its_settings_converted", a_boot_flash_of_another_layout_gives_its_settings_converted },
+  { "a_flash_kept_in_memory_is_whole_and_prompt_while_the_engine_starts_and_stops", a_flash_kept_in_memory_is_whole_and_prompt_while_the_engine_starts_and_stops },
 });
 
 Suite surface("The surface", {
   { "a_touch_lands_on_the_pad_under_it", a_touch_lands_on_the_pad_under_it },
+  { "the_headings_print_over_the_settings_columns", the_headings_print_over_the_settings_columns },
+  { "the_window_keeps_its_model_and_headings_between_launches", the_window_keeps_its_model_and_headings_between_launches },
+  { "an_idle_surface_isnt_repainted", an_idle_surface_isnt_repainted },
+  { "a_changed_light_repaints_only_its_column", a_changed_light_repaints_only_its_column },
   { "a_press_is_told_after_the_engine_has_it", a_press_is_told_after_the_engine_has_it },
   { "the_focus_ring_shows_only_while_the_keyboard_moves_it", the_focus_ring_shows_only_while_the_keyboard_moves_it },
 });
@@ -1062,25 +2457,45 @@ Suite surface("The surface", {
 Suite pace("The instrument's pace", {
   { "a_scan_takes_as_long_as_on_the_instrument", a_scan_takes_as_long_as_on_the_instrument },
   { "the_engine_scans_at_the_instruments_rate", the_engine_scans_at_the_instruments_rate },
+  { "the_bridge_reads_each_splits_special_feature", the_bridge_reads_each_splits_special_feature },
+  { "the_bridge_lets_go_of_every_note_of_both_splits", the_bridge_lets_go_of_every_note_of_both_splits },
 });
 
 
 }
 
-// runs every test, or with NAME only those whose name contains it, and fails on any failure
+// runs every test, or with NAME only those whose name contains it, or with --shard K/N its share,
+// and fails on any failure
 int main(int argc, char* argv[]) {
   juce::ScopedJuceInitialiser_GUI gui;
   LinnLookAndFeel lookAndFeel;
   juce::LookAndFeel::setDefaultLookAndFeel(&lookAndFeel);
-  filter = argc > 1 ? argv[1] : "";
+  for (int i = 1; i < argc; ++i) {
+    juce::String arg(argv[i]);
+    if (arg == "--shard" && i + 1 < argc) {
+      juce::String part(argv[++i]);
+      shard = part.upToFirstOccurrenceOf("/", false, false).getIntValue();
+      shards = juce::jmax(1, part.fromFirstOccurrenceOf("/", false, false).getIntValue());
+    }
+    else filter = arg;
+  }
   juce::Array<juce::UnitTest*> chosen;
   int tests = 0;
+  for (auto* suite : { &fingers, &slides, &expression, &bridge, &pace, &surface }) {
+    suite->first = counted;
+    counted += suite->size();
+  }
   for (auto* suite : { &fingers, &slides, &expression, &bridge, &pace, &surface }) {
     if (suite->matching() == 0) continue;
     chosen.add(suite);
     tests += suite->matching();
   }
   if (chosen.isEmpty()) {
+    // a shard with nothing left to it has nothing to fail
+    if (shards > 1 && filter.isEmpty()) {
+      std::cout << "0 tests, 0 failed checks" << std::endl;
+      return 0;
+    }
     std::cout << "no test name contains " << filter << std::endl;
     return 1;
   }
@@ -1090,6 +2505,7 @@ int main(int argc, char* argv[]) {
   int failures = 0;
   for (int i = 0; i < runner.getNumResults(); ++i) failures += runner.getResult(i)->failures;
   if (started != nullptr) started->stop();
+  testFlash().deleteRecursively();
   juce::LookAndFeel::setDefaultLookAndFeel(nullptr);
   std::cout << tests << " tests, " << failures << " failed checks" << std::endl;
   return failures == 0 ? 0 : 1;
