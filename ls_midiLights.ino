@@ -44,7 +44,7 @@ int midiScrollEnd = 0;
 unsigned long midiScrollLastStep = 0;
 boolean midiScrollActive = false;
 
-struct Font* midiTextFontFor(byte index) {
+const struct Font* midiTextFontFor(byte index) {
   switch (index) {
     case 0: return &tinyFont;
     case 1: return &smallFont;
@@ -53,12 +53,12 @@ struct Font* midiTextFontFor(byte index) {
   return &bigFont;
 }
 
-boolean midiLightsAllowed() {
+inline boolean midiLightsAllowed() {
   return displayMode == displayNormal || displayMode == displayCustomLedsEditor;
 }
 
 // user firmware mode lights live in their own layer, which is cleared when the mode is left
-byte midiLightsLayer() {
+inline byte midiLightsLayer() {
   return userFirmwareActive ? LED_LAYER_CUSTOM2 : LED_LAYER_CUSTOM1;
 }
 
@@ -84,7 +84,7 @@ void midiPaintAndAdvance(byte color) {
   }
 }
 
-void midiTextSetFont(byte font) {
+inline void midiTextSetFont(byte font) {
   if (font <= 3) {
     midiTextFont = font;
   }
@@ -100,7 +100,7 @@ void midiTextAppend(byte character) {
   midiText[midiTextLength] = '\0';
 }
 
-void midiTextDraw(byte color) {
+inline void midiTextDraw(byte color) {
   int col = midiCellColCC < 1 ? 1 : midiCellColCC;
   drawMidiText(col, midiCellRowCC, midiTextFontFor(midiTextFont), midiText, color, midiLightsLayer());
   midiTextAppend(0);
@@ -123,7 +123,7 @@ void midiTextScroll(byte color) {
   midiScrollActive = true;
 }
 
-void stopMidiTextScroll() {
+inline void stopMidiTextScroll() {
   midiScrollActive = false;
 }
 
@@ -155,11 +155,11 @@ void checkAdvanceMidiTextScroll(unsigned long nowMillis) {
 
 // col is the first pixel column and row the bottom pixel row, like the firmware's own screens;
 // blank pixels inside the text's box are cleared, so redrawing one column over erases the old text
-void drawMidiText(int col, int row, struct Font* font, const char* text, byte color, byte layer) {
+void drawMidiText(int col, int row, const struct Font* font, const char* text, byte color, byte layer) {
   for (const char* t = text; *t; ++t) {
     const char* p = strchr(font->chars, *t);
     if (!p) continue;
-    Character* ch = font->data[p - font->chars];
+    const Character* ch = font->data[p - font->chars];
     if (col + ch->width - 1 >= 1 && col < NUMCOLS) {
       font_draw_char(col - 1, row, ch->data, color, ch->width, font->height, true, false, layer);
     }
