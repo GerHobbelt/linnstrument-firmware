@@ -1077,10 +1077,10 @@ limitations under the License.
           },
           {
             "value": 2,
-            "label": "CC defined in #25"
+            "label": "CC defined in #25; a query answers 3 for it unless that CC is 1"
           }
         ],
-        "description": "Split Left MIDI Expression For Y (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #25)"
+        "description": "Split Left MIDI Expression For Y (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #25; a query answers 3 for it unless that CC is 1)"
       },
       {
         "number": 40,
@@ -2480,10 +2480,10 @@ limitations under the License.
           },
           {
             "value": 2,
-            "label": "CC defined in #125"
+            "label": "CC defined in #125; a query answers 3 for it unless that CC is 1"
           }
         ],
-        "description": "Split Right MIDI Expression For Y (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #125)"
+        "description": "Split Right MIDI Expression For Y (0: Poly Aftertouch, 1: Channel Aftertouch, 2: CC defined in #125; a query answers 3 for it unless that CC is 1)"
       },
       {
         "number": 140,
@@ -3388,7 +3388,7 @@ limitations under the License.
         "name": "Switch 1 Assignment",
         "kind": "enum",
         "min": 0,
-        "max": 17,
+        "max": 19,
         "options": [
           {
             "value": 0,
@@ -3461,6 +3461,14 @@ limitations under the License.
           {
             "value": 17,
             "label": "Sequencer Mute"
+          },
+          {
+            "value": 18,
+            "label": "Transpose Down"
+          },
+          {
+            "value": 19,
+            "label": "Transpose Up"
           }
         ],
         "description": "Global Switch 1 Assignment, see the switch assignment values below"
@@ -3471,7 +3479,7 @@ limitations under the License.
         "name": "Switch 2 Assignment",
         "kind": "enum",
         "min": 0,
-        "max": 17,
+        "max": 19,
         "options": [
           {
             "value": 0,
@@ -3544,6 +3552,14 @@ limitations under the License.
           {
             "value": 17,
             "label": "Sequencer Mute"
+          },
+          {
+            "value": 18,
+            "label": "Transpose Down"
+          },
+          {
+            "value": 19,
+            "label": "Transpose Up"
           }
         ],
         "description": "Global Switch 2 Assignment, see the switch assignment values below"
@@ -3554,7 +3570,7 @@ limitations under the License.
         "name": "Foot Left Assignment",
         "kind": "enum",
         "min": 0,
-        "max": 17,
+        "max": 19,
         "options": [
           {
             "value": 0,
@@ -3627,6 +3643,14 @@ limitations under the License.
           {
             "value": 17,
             "label": "Sequencer Mute"
+          },
+          {
+            "value": 18,
+            "label": "Transpose Down"
+          },
+          {
+            "value": 19,
+            "label": "Transpose Up"
           }
         ],
         "description": "Global Foot Left Assignment, see the switch assignment values below"
@@ -3637,7 +3661,7 @@ limitations under the License.
         "name": "Foot Right Assignment",
         "kind": "enum",
         "min": 0,
-        "max": 17,
+        "max": 19,
         "options": [
           {
             "value": 0,
@@ -3710,6 +3734,14 @@ limitations under the License.
           {
             "value": 17,
             "label": "Sequencer Mute"
+          },
+          {
+            "value": 18,
+            "label": "Transpose Down"
+          },
+          {
+            "value": 19,
+            "label": "Transpose Up"
           }
         ],
         "description": "Global Foot Right Assignment, see the switch assignment values below"
@@ -4466,6 +4498,14 @@ limitations under the License.
         {
           "value": 17,
           "label": "Sequencer Mute"
+        },
+        {
+          "value": 18,
+          "label": "Transpose Down"
+        },
+        {
+          "value": 19,
+          "label": "Transpose Up"
         }
       ],
       "touchAnimation": [
