@@ -97,6 +97,9 @@ public:
   // MIDI into the firmware as if it came in on the virtual port, and the MIDI it sent since the
   // last call (the newest keptMessages are kept), for a driver without a MIDI port of its own
   void sendMidi(const uint8_t* data, size_t length);
+  // a change to make in the firmware, made on its own thread between two of its loops, in the order
+  // asked, as its own touch handlers would make it; from any thread
+  void onFirmware(std::function<void(firmware::Instance&)> change);
   std::vector<std::vector<uint8_t>> takeMidiOut();
   static constexpr size_t keptMessages = 4096;
   // every message the firmware sends, on the firmware's thread; set it before start()
@@ -105,6 +108,28 @@ public:
   std::function<void()> onFreshFlash;
   // where each model's flash is saved, the app's data folder unless set before start()
   juce::File flashFolder;
+  // where the app keeps what it remembers between runs
+  static juce::File appFolder();
+  // an engine whose MIDI and settings the program that made it carries has no virtual port and no
+  // flash file: set before start(), it then boots with bootFlash, a fresh flash when that's
+  // empty, and keeps the flash there when it stops
+  bool virtualPorts = true;
+  bool flashInFile = true;
+  // a flash file saved with the settings the firmware plays with, stored or not, not only those it
+  // stored, which it doesn't while a sequencer plays; set before start()
+  bool saveLive = false;
+  // the flash file saved now, from any thread, as it is when the engine stops
+  void saveNow();
+  std::vector<uint8_t> bootFlash;
+  // the size and the place of the settings in bootFlash when a firmware with another layout saved
+  // it, or 0 for this one's; only its settings are then taken, converted
+  size_t bootSettingsSize = 0, bootSettingsOffset = 0;
+  // the same, from a thread other than the one that asks for currentFlash()
+  void setBootFlash(const std::vector<uint8_t>& image, size_t settingsSize = 0, size_t settingsOffset = 0);
+  // the flash a later boot would start from, from any thread, taken between two of the firmware's
+  // loops while it runs; without a file, with the settings the firmware plays with whether it
+  // stored them or not, and empty while a fresh flash has only its starting settings
+  std::vector<uint8_t> currentFlash();
 
   juce::String portName() const { return "Virtual LinnStrument"; }
   // the ports this engine plays out of and listens on, as the lists of MIDI inputs and outputs name
@@ -180,6 +205,19 @@ private:
   juce::CriticalSection outLock;
   std::deque<std::vector<uint8_t>> midiOut;
   std::vector<uint8_t> lastSavedFlash;
+  std::atomic<bool> saveWanted { false };
+  juce::WaitableEvent saved;
+  bool booted = false;
+  std::vector<uint8_t> bootedFrom;
+  std::vector<uint8_t> keptFlash();
+  // a fresh flash with its starting settings
+  std::vector<uint8_t> freshLive;
+  std::atomic<bool> flashWanted { false };
+  juce::CriticalSection flashLock;
+  juce::CriticalSection changesLock;
+  std::vector<std::function<void(firmware::Instance&)>> changes;
+  juce::WaitableEvent flashTaken;
+  std::vector<uint8_t> takenFlash;
 
   JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR (Engine)
 };
