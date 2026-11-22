@@ -103,6 +103,11 @@ void Engine::stop() {
   midiOut.clear();
 }
 
+void Engine::onFirmware(std::function<void(firmware::Instance&)> change) {
+  const juce::ScopedLock lock(changesLock);
+  changes.push_back(std::move(change));
+}
+
 // The scan in slices with a pause after each, so that the firmware's continuous tasks, its MIDI
 // output among them, run spread over the scan as on the instrument instead of in one burst.
 void Engine::run() {
@@ -127,13 +132,19 @@ void Engine::run() {
     }
     start += std::chrono::microseconds((long long) length);
     held = advanceTouches(length / 1000.0);
+    std::vector<std::function<void(firmware::Instance&)>> due;
+    {
+      const juce::ScopedLock lock(changesLock);
+      due.swap(changes);
+    }
+    for (auto& change : due) change(*instance);
     if (flashWanted.exchange(false)) {
       takenFlash = flashInFile ? instance->flashImage() : keptFlash();
       flashTaken.signal();
     }
-    if (++scansRun % 2000 == 0) {
-      saveFlash();
-    }
+    bool wanted = saveWanted.exchange(false);
+    if (++scansRun % 2000 == 0 || wanted) saveFlash();
+    if (wanted) saved.signal();
   }
 }
 
@@ -370,15 +381,16 @@ std::vector<std::vector<uint8_t>> Engine::takeMidiOut() {
   return taken;
 }
 
-juce::File Engine::flashFile(int forModel) const {
-  juce::File dir = flashFolder;
-  if (dir == juce::File()) {
-    dir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory);
+juce::File Engine::appFolder() {
+  auto dir = juce::File::getSpecialLocation(juce::File::userApplicationDataDirectory);
 #if JUCE_MAC
-    dir = dir.getChildFile("Application Support");
+  dir = dir.getChildFile("Application Support");
 #endif
-    dir = dir.getChildFile("Virtual LinnStrument");
-  }
+  return dir.getChildFile("Virtual LinnStrument");
+}
+
+juce::File Engine::flashFile(int forModel) const {
+  juce::File dir = flashFolder == juce::File() ? appFolder() : flashFolder;
   return dir.getChildFile("flash-" + juce::String(forModel) + ".bin");
 }
 
@@ -411,9 +423,20 @@ std::vector<uint8_t> Engine::keptFlash() {
   return bootedFrom.empty() && live == freshLive ? std::vector<uint8_t>() : live;
 }
 
+void Engine::saveNow() {
+  if (isThreadRunning()) {
+    saved.reset();
+    saveWanted = true;
+    for (int waited = 0; waited < 1000 && isThreadRunning(); waited += 5)
+      if (saved.wait(5)) return;
+    saveWanted = false;
+  }
+  if (booted && !isThreadRunning()) saveFlash();
+}
+
 void Engine::saveFlash() {
   if (!flashInFile) return;
-  std::vector<uint8_t> image = instance->flashImage();
+  std::vector<uint8_t> image = saveLive ? instance->liveFlashImage() : instance->flashImage();
   if (image == lastSavedFlash) return;
   juce::File file = flashFile(model);
   file.getParentDirectory().createDirectory();
