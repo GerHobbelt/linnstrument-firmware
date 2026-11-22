@@ -486,6 +486,28 @@ def cmd_replay(args):
         if different:
             failed.append('the MIDI differs')
 
+    checks = replay.pitchonly_check(tc, target, plan, results, jobs=args.jobs, log=log)
+    if checks:
+        log('')
+        log('pitch only: each run of a configuration with pitchonly=SETTING=VALUE, replayed again with that setting '
+            'on the same build; the MIDI other than pitch bends must be identical (in order; times can differ)')
+        bad = 0
+        for r, report, shift in checks:
+            setting = '%s=%s' % r.config.pitchonly
+            log('%-22s %-14s %s' % (r.config.name, r.name, 'identical to %s (times within %.1f ms)' % (setting, shift)
+                                    if report is None else 'DIFFERENT from %s' % setting))
+            bad += report is not None
+        for r, report, _ in checks:
+            if report is not None:
+                log('')
+                log('%s, %s, against %s=%s (- that run, + this one):' % ((r.config.name, r.name) + r.config.pitchonly))
+                for line in report:
+                    log(line)
+        log('pitch only: %s' % ('identical in all %d runs' % len(checks) if not bad else
+                                '%d of %d runs differ' % (bad, len(checks))))
+        if bad:
+            failed.append('a setting that may change only pitch changes other MIDI')
+
     if args.repeat:
         checks = replay.repeat_check(tc, target, plan, results, jobs=args.jobs, log=log)
         bad = [(name, what) for name, what in checks if what]

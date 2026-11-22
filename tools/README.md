@@ -160,7 +160,8 @@ effect. `replay/configurations.txt` defines and documents the configurations: a 
 in microLinn's 12-EDO, channel per note on channels 2-16, the recordings' own sensor settings) and
 the variations replayed on it (7 note channels, column offset 1, EDO off, One Channel, hammer-ons
 in each MIDI mode and while microLinn recalculates its settings, the other calibration state, fixed
-velocity with each pressure sensitivity). `--config` and `--recording` pick some of them.
+velocity with each pressure sensitivity, and Column Slide Divisions 2 with Quantize on and Quantize
+Hold Slow, in channel per note and in One Channel). `--config` and `--recording` pick some of them.
 
 **What a run is:** one configuration, one recording, and either no events or the recording's
 scripted events (`replay/NAME.events`, if there is one; `--events-dir` chooses another folder). A
@@ -237,6 +238,11 @@ Quantize's offset, the X result, the X movement rate and Quantize Hold's count (
   replay and the sanitizer. `--allow-contained` replays an old firmware that still has them, for
   example to make its baseline: `--ref v0.1.0 --allow-contained`. The firmware it's compared with
   (BASE) may have them.
+- **Pitch only:** a configuration with `pitchonly=SETTING=VALUE` (in `configurations.txt`) has settings
+  that may change only pitch, such as Column Slide Divisions. Each of its runs is replayed again on the
+  same build with SETTING=VALUE, and the MIDI other than pitch bends must be the same messages in the
+  same order (their times can differ, since each pitch bend takes the UART for about 1 ms); the replay
+  fails if not, and shows the first difference.
 - `--save DIR` copies the logs to DIR, gzipped, with `SHA256SUMS` of the uncompressed files;
   `--baseline DIR` then compares with them instead of building BASE.
 

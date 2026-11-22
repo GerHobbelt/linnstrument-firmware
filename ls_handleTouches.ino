@@ -95,7 +95,8 @@ boolean potentialSlideTransferCandidate(byte col) {
 
   return cell(col, sensorRow).touched != untouchedCell &&                                                    // the sibling cell has an active touch
     (cell(col, sensorRow).pendingReleaseCount ||                                                             // either a release is pending to be performed, or
-     abs(sensorCell->calibratedX() - cell(col, sensorRow).currentCalibratedX) < TRANSFER_SLIDE_PROXIMITY);   // both cells are touched simultaneously on the edges
+     abs(sensorCell->calibratedX() - cell(col, sensorRow).currentCalibratedX) < TRANSFER_SLIDE_PROXIMITY ||  // both cells are touched simultaneously on the edges, or
+     isMicroLinnHandoverLatched(col));                                                                       // microLinn: this cell was waiting for that note and is ready to take it
 }
 
 inline boolean isReadyForSlideTransfer(byte col) {
@@ -117,9 +118,6 @@ void transferFromSameRowCell(byte col) {
   sensorCell->initialX = fromCell->initialX;
   sensorCell->initialColumn = fromCell->initialColumn;  
   sensorCell->quantizationOffsetX = 0; // as soon as we transfer to an adjacent cell, the pitch quantization is reset to play the absolute pitch position instead
-  if (isMicroLinnColumnSlideOn(sensorSplit)) {
-    sensorCell->quantizationOffsetX = fromCell->quantizationOffsetX;     // microLinn: Column Slide Divisions fades it out instead
-  }
   sensorCell->lastMovedX = fromCell->lastMovedX;
   sensorCell->fxdRateX = fromCell->fxdRateX;
   sensorCell->fxdRateCountX = fromCell->fxdRateCountX;
@@ -163,6 +161,7 @@ void transferFromSameRowCell(byte col) {
   if (channel > 0 && col == focus(sensorSplit, channel).col && sensorRow == focus(sensorSplit, channel).row) {
     focus(sensorSplit, channel).col = sensorCol;
     focus(sensorSplit, channel).row = sensorRow;
+    moveMicroLinnColumnSlide(channel, col, sensorCol);                 // microLinn: Column Slide Divisions' pitch goes with the focus
   }
 }
 
@@ -174,9 +173,6 @@ void transferToSameRowCell(byte col) {
   toCell->initialX = sensorCell->initialX;
   toCell->initialColumn = sensorCell->initialColumn;
   toCell->quantizationOffsetX = 0; // as soon as we transfer to an adjacent cell, the pitch quantization is reset to play the absolute pitch position instead
-  if (isMicroLinnColumnSlideOn(sensorSplit)) {
-    toCell->quantizationOffsetX = sensorCell->quantizationOffsetX;       // microLinn: Column Slide Divisions fades it out instead
-  }
   toCell->lastMovedX = sensorCell->lastMovedX;
   toCell->fxdRateX = sensorCell->fxdRateX;
   toCell->fxdRateCountX = sensorCell->fxdRateCountX;
@@ -220,6 +216,7 @@ void transferToSameRowCell(byte col) {
   if (channel > 0 && sensorCol == focus(sensorSplit, channel).col && sensorRow == focus(sensorSplit, channel).row) {
     focus(sensorSplit, channel).col = col;
     focus(sensorSplit, channel).row = sensorRow;
+    moveMicroLinnColumnSlide(channel, sensorCol, col);                 // microLinn: Column Slide Divisions' pitch goes with the focus
   }
 }
 
@@ -394,11 +391,14 @@ void handleSlideTransferCandidate(byte siblingCol) {
   // otherwise act as if this new touch never happend
   else {
     cellTouched(transferCell);
+    waitForMicroLinnHandover(siblingCol);                   // microLinn: this cell waits for that note
   }
 }
 
 boolean handleNewTouch() {
   DEBUGPRINT_FUNCNAME();
+
+  beginMicroLinnHandover();                                 // microLinn: whether this cell was waiting for a note to slide onto it
 
   lastTouchMoment = millis();
   
@@ -1574,14 +1574,12 @@ short handleXExpression() {
     calibratedX = FXD_TO_INT(fxdTransferCalibratedX + fxdCellCalibratedX);
   }
 
-  // microLinn: Column Slide Divisions has its own Quantize and Quantize Hold, starting from where the finger is
+  // microLinn: Column Slide Divisions has its own Quantize and Quantize Hold for the pitch, starting from where the finger is
   boolean columnSlide = sensorCell->hasNote() && isMicroLinnColumnSlideOn(sensorSplit);
-  if (columnSlide) {
-    if (firstX) initMicroLinnColumnSlide();
-    movedX = calibratedX - FXD_TO_INT(sensorCell->fxdInitialReferenceX());
-  }
+  if (columnSlide && firstX) initMicroLinnColumnSlide();
+
   // calculate the distance from the initial X position
-  else if (!userFirmwareActive && Split[sensorSplit].pitchCorrectQuantize) {
+  if (!userFirmwareActive && Split[sensorSplit].pitchCorrectQuantize) {
     movedX = calibratedX - (FXD_TO_INT(sensorCell->fxdInitialReferenceX()) + sensorCell->quantizationOffsetX);
 
     // if initial quantize offset and quantize hold are active, ensure that movement on that cell will never exceed half the cell width
@@ -1627,9 +1625,6 @@ short handleXExpression() {
     sensorCell->fxdRateX -= FXD_DIV(sensorCell->fxdRateX, fxdRateXSamples);
     sensorCell->fxdRateX += FXD_DIV(FXD_FROM_INT(deltaX), fxdRateXSamples);
 
-    if (columnSlide) {
-      return handleMicroLinnColumnSlide(movedX, calibratedX);          // it remembers the last X movement itself
-    }
 
     // if pitch quantize on hold is disabled, just output the current touch pitch
     if (!doQuantizeHold()) {
@@ -1668,6 +1663,11 @@ short handleXExpression() {
       if (sensorCell->fxdRateCountX > 0) {
         sensorCell->fxdRateCountX -= FXD_CONST_1;
       }
+    }
+
+    // microLinn: with Column Slide Divisions, the pitch of the cell the channel sends is its own, the rest as above
+    if (columnSlide && isFocusedCell()) {
+      result = handleMicroLinnColumnSlide(calibratedX - FXD_TO_INT(sensorCell->fxdInitialReferenceX()), calibratedX);
     }
   }
 
