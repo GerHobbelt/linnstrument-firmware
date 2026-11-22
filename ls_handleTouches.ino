@@ -117,6 +117,9 @@ void transferFromSameRowCell(byte col) {
   sensorCell->initialX = fromCell->initialX;
   sensorCell->initialColumn = fromCell->initialColumn;  
   sensorCell->quantizationOffsetX = 0; // as soon as we transfer to an adjacent cell, the pitch quantization is reset to play the absolute pitch position instead
+  if (isMicroLinnColumnSlideOn(sensorSplit)) {
+    sensorCell->quantizationOffsetX = fromCell->quantizationOffsetX;     // microLinn: Column Slide Divisions fades it out instead
+  }
   sensorCell->lastMovedX = fromCell->lastMovedX;
   sensorCell->fxdRateX = fromCell->fxdRateX;
   sensorCell->fxdRateCountX = fromCell->fxdRateCountX;
@@ -171,6 +174,9 @@ void transferToSameRowCell(byte col) {
   toCell->initialX = sensorCell->initialX;
   toCell->initialColumn = sensorCell->initialColumn;
   toCell->quantizationOffsetX = 0; // as soon as we transfer to an adjacent cell, the pitch quantization is reset to play the absolute pitch position instead
+  if (isMicroLinnColumnSlideOn(sensorSplit)) {
+    toCell->quantizationOffsetX = sensorCell->quantizationOffsetX;       // microLinn: Column Slide Divisions fades it out instead
+  }
   toCell->lastMovedX = sensorCell->lastMovedX;
   toCell->fxdRateX = sensorCell->fxdRateX;
   toCell->fxdRateCountX = sensorCell->fxdRateCountX;
@@ -1540,6 +1546,7 @@ constexpr const int32_t fxdRateXSamples = FXD_FROM_INT(5);    // the number of s
 short handleXExpression() {
   DEBUGPRINT_FUNCNAME();
 
+  boolean firstX = sensorCell->initialX == INVALID_DATA;           // microLinn: a note's first X reading, see refreshX()
   sensorCell->refreshX();
 
   short movedX;
@@ -1567,8 +1574,14 @@ short handleXExpression() {
     calibratedX = FXD_TO_INT(fxdTransferCalibratedX + fxdCellCalibratedX);
   }
 
+  // microLinn: Column Slide Divisions has its own Quantize and Quantize Hold, starting from where the finger is
+  boolean columnSlide = sensorCell->hasNote() && isMicroLinnColumnSlideOn(sensorSplit);
+  if (columnSlide) {
+    if (firstX) initMicroLinnColumnSlide();
+    movedX = calibratedX - FXD_TO_INT(sensorCell->fxdInitialReferenceX());
+  }
   // calculate the distance from the initial X position
-  if (!userFirmwareActive && Split[sensorSplit].pitchCorrectQuantize) {
+  else if (!userFirmwareActive && Split[sensorSplit].pitchCorrectQuantize) {
     movedX = calibratedX - (FXD_TO_INT(sensorCell->fxdInitialReferenceX()) + sensorCell->quantizationOffsetX);
 
     // if initial quantize offset and quantize hold are active, ensure that movement on that cell will never exceed half the cell width
@@ -1613,6 +1626,10 @@ short handleXExpression() {
     // calculate the average rate of X value changes over a number of samples
     sensorCell->fxdRateX -= FXD_DIV(sensorCell->fxdRateX, fxdRateXSamples);
     sensorCell->fxdRateX += FXD_DIV(FXD_FROM_INT(deltaX), fxdRateXSamples);
+
+    if (columnSlide) {
+      return handleMicroLinnColumnSlide(movedX, calibratedX);          // it remembers the last X movement itself
+    }
 
     // if pitch quantize on hold is disabled, just output the current touch pitch
     if (!doQuantizeHold()) {

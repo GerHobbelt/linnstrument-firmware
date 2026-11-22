@@ -1179,7 +1179,7 @@ boolean upgradeConfigurationSettings(int32_t confSize, const byte* buff2) {
             }
           } else if (microLinnVersion == 1) {
             updaterImpliedSettingsSize = sizeof(Configuration);
-            if (confSize == sizeof(Configuration)) {                      // 72.1 has the same layout as 72.2
+            if (confSize == sizeof(Configuration)) {                      // 72.1 has the same layout as 72.3
               copyConfigurationMicroLinnV72_1(&config, buff2);
               setupMicroLinn();
               result = true;
@@ -1187,6 +1187,15 @@ boolean upgradeConfigurationSettings(int32_t confSize, const byte* buff2) {
               result = false;
             }
           } else if (microLinnVersion == 2) {
+            updaterImpliedSettingsSize = sizeof(Configuration);
+            if (confSize == sizeof(Configuration)) {                      // 72.2 has the same layout as 72.3
+              copyConfigurationMicroLinnV72_2(&config, buff2);
+              setupMicroLinn();
+              result = true;
+            } else {
+              result = false;
+            }
+          } else if (microLinnVersion == 3) {
             updaterImpliedSettingsSize = sizeof(Configuration);
             if (confSize == sizeof(Configuration)) {
               memcpy(&config, buff2, confSize);
@@ -2422,9 +2431,37 @@ void initMicroLinnData() {
     }
   }
 
+  initMicroLinnPressureSettings(&config);
+
   config.device.microLinn.MLversion = MICROLINN_MLVERSION;
   config.device.microLinn.uninstall = false;
   config.device.ignoreMidiClock = false;                       // microLinn: EXT, follow incoming MIDI clock
+}
+
+// 72.3 put Pressure Release, Lift Hold and Reattach Glide in MicroLinnSplit's reserved bytes, and Piano Fade and
+// Column Slide Divisions in MicroLinnGlobal's, so settings from before 72.3 get their defaults, whatever those bytes held
+void initMicroLinnPressureSplit(MicroLinnSplit& s) {
+  s.pressureRelease = 0;                                       // OFF
+  s.liftHold = MICROLINN_DEFAULT_LIFT_HOLD;
+  s.reattachGlide = 0;                                         // OFF
+}
+
+void initMicroLinnPressureGlobal(MicroLinnGlobal& g) {
+  g.pianoFade = MICROLINN_DEFAULT_PIANO_FADE;
+  g.setColumnSlideDivisions(MICROLINN_DEFAULT_COLUMN_SLIDE_DIVISIONS);
+}
+
+void initMicroLinnPressureSettings(Configuration* t) {         // the current settings and the 6 memories
+  initMicroLinnPressureGlobal(t->settings.global.microLinn);
+  for (byte split = 0; split < NUMSPLITS; split++) {
+    initMicroLinnPressureSplit(t->settings.split[split].microLinn);
+  }
+  for (byte p = 0; p < NUMPRESETS; p++) {
+    initMicroLinnPressureGlobal(t->preset[p].global.microLinn);
+    for (byte split = 0; split < NUMSPLITS; split++) {
+      initMicroLinnPressureSplit(t->preset[p].split[split].microLinn);
+    }
+  }
 }
 
 void copyGlobalSettingsVLatest(void* target, const void* source) {           // copies V15, V16 or V17 global settings to microLinn
@@ -2586,6 +2623,7 @@ void migrateFromMicroLinnGlobalV72_0 (MicroLinnGlobal* t, const void* source) {
     t->guitarTuning[row] = s->guitarTuning[row];
   t->dotsCarryOver = false;
   }
+  initMicroLinnPressureGlobal(*t);
 }
 
 void migrateFromMicroLinnSplitV72_0 (MicroLinnSplit* t, const void* source) {
@@ -2603,6 +2641,7 @@ void migrateFromMicroLinnSplitV72_0 (MicroLinnSplit* t, const void* source) {
   t->tuningTable = s->tuningTable;
   t->groupingCC = 255;
   t->transposeEDOsteps = s->transposeEDOsteps;
+  initMicroLinnPressureSplit(*t);
 }
 
 void copyConfigurationMicroLinnV72_0(void* target, const void* source) {   // copies from 72.0 to the current 72.x layout
@@ -2646,16 +2685,22 @@ void migrateSwitchesFromMicroLinnV72_1(GlobalSettings* g) {
   }
 }
 
-void copyConfigurationMicroLinnV72_1(void* target, void* source) {   // copies from 72.1 to 72.2
+void copyConfigurationMicroLinnV72_1(void* target, void* source) {   // copies from 72.1 to 72.3
   Configuration* t = (Configuration*)target;
 
-  memcpy(t, source, sizeof(Configuration));
-  t->device.microLinn.MLversion = MICROLINN_MLVERSION;
-
+  copyConfigurationMicroLinnV72_2(t, source);                       // 72.1 has 72.2's layout
   migrateSwitchesFromMicroLinnV72_1(&t->settings.global);
   for (byte p = 0; p < NUMPRESETS; p++) {
     migrateSwitchesFromMicroLinnV72_1(&t->preset[p].global);
   }
+}
+
+void copyConfigurationMicroLinnV72_2(void* target, void* source) {   // copies from 72.2 to 72.3
+  Configuration* t = (Configuration*)target;
+
+  memcpy(t, source, sizeof(Configuration));                         // the same layout, Device.ignoreMidiClock included
+  t->device.microLinn.MLversion = MICROLINN_MLVERSION;
+  initMicroLinnPressureSettings(t);                                  // the bytes 72.2 reserved
 }
 
 void restoreNonMicroLinnGlobal(void* target) {                          // V16 has no microLinn values, see below
@@ -2670,6 +2715,10 @@ void restoreNonMicroLinnGlobal(void* target) {                          // V16 h
     if (g->switchAssignment[i] > ASSIGNED_SEQUENCER_MUTE && g->switchAssignment[i] != ASSIGNED_DISABLED) {
       if (i == SWITCH_FOOT_B) g->switchAssignment[i] = ASSIGNED_DISABLED;             // disable virtual 3rd footswitch
       else g->switchAssignment[i] = g->customSwitchAssignment[i];                     // keep the custom option selected
+    }
+    // V16 has no PRES values for the Sustain switches, so make them the sustain they fall back to
+    if (g->ccForSwitchSustain[i] > 127) {
+      g->ccForSwitchSustain[i] = 64;
     }
   }
 }

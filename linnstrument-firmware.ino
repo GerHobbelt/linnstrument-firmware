@@ -356,6 +356,12 @@ constexpr const byte NUMROWS = 8;    // number of touch sensor rows
 #define MAX_ASSIGNED                    ASSIGNED_MICROLINN_EDO_DOWN
 #define ASSIGNED_DISABLED               255
 
+// microLinn: a Sustain switch's CC selector goes past the CC numbers to these pressure capture modes
+#define MICROLINN_PRES_FOLLOW           128
+#define MICROLINN_PRES_LATCH            129
+#define MICROLINN_PRES_PIANO            130
+#define MICROLINN_MAX_SUSTAIN_CC        MICROLINN_PRES_PIANO
+
 #define GLOBAL_SETTINGS_ROW  0
 #define SPLIT_ROW            1
 #define SWITCH_2_ROW         2
@@ -408,7 +414,7 @@ const unsigned long LED_ARRAY_SIZE = (MAX_LED_LAYERS + 1) * LED_LAYER_SIZE;
 // (we would rather have used 128, but the updater interprets version as a signed character type,
 // and rejects negative version numbers.)
 #define MICROLINN_VERSION_OFFSET 56
-#define MICROLINN_MLVERSION 2                     // Device.microLinn.MLversion, the 2 in 72.2
+#define MICROLINN_MLVERSION 3                     // Device.microLinn.MLversion, the 3 in 72.3
 
 /*************************************** CONVENIENCE MACROS **************************************/
 
@@ -788,6 +794,9 @@ enum SequencerDirection {
   sequencerPingPong
 };
 
+const byte MICROLINN_MAX_LIFT_HOLD = 10;          // 25%, MicroLinnSplit.liftHold is in 2.5% steps
+const byte MICROLINN_DEFAULT_LIFT_HOLD = 5;       // 12.5%
+
 struct MicroLinnSplit {
   // pullOfMode: 0 = velocity is 2nd note's noteOff velocity, 1 = 1st noteOn veloc, 2 = 2nd noteOn veloc, 3 = average them
   inline byte hammerOnMode()          {return (hammerOnModes & B00000011);}
@@ -826,9 +835,9 @@ struct MicroLinnSplit {
   byte ccForLowRowX;                      // the X' CC in XYZ joystick mode, 128 = Channel Pressure, 255 = OFF
   byte ccForLowRowY;                      // the Y' CC in XYZ (don't confuse Split.microLinn.ccForLowRowY = Y' with Split.ccForLowRowY = Y)
   byte flags;                             // Byxwrhhqs, s = sendX, q = quantize, hh = quantize hold, r = pitch reset, yxw = joystick WXY CCs
-  byte reserved1;                         // reserved for future use, 1 byte per empty menu row
-  byte reserved2;                         //    "
-  byte reserved3;                         //    "
+  byte pressureRelease;                   // in tens of ms, the time a note at full level takes to fade to silence after a lift, 0..255, 0 = OFF
+  byte liftHold;                          // in 2.5% steps, the sudden pressure drop that holds a lifting note's level, 0..10, 0 = OFF
+  byte reattachGlide;                     // in tens of ms, pitch and Y glide to a re-press that takes over a note, 0..255, 0 = OFF
 //boolean onlyInitialY;                   // possible new feature, only send Y-data from the first strike, doesn't apply to relative mode
 };
 
@@ -994,6 +1003,9 @@ enum SustainBehavior {
   sustainLatch
 };
 
+const byte MICROLINN_DEFAULT_PIANO_FADE = 100;    // 10 seconds, MicroLinnGlobal.pianoFade is in tenths of a second
+const byte MICROLINN_DEFAULT_COLUMN_SLIDE_DIVISIONS = 1;   // a slide comes to rest on the pads' own notes
+
 struct MicroLinnGlobal {
   /********************
   inline byte drumPadMode()          {return (packedByte1 & B00000011);}
@@ -1011,6 +1023,11 @@ struct MicroLinnGlobal {
   inline void setUseRainbow(bool b)  {bitWrite(packedByte2, 6, b);}
   inline void setDotsCarryOver()     {bitWrite(packedByte2, 7, b);}
   ***********************/
+  // Column Slide Divisions is stored minus 1, so that 0 is its default, 1, and settings saved when this byte was
+  // an on/off switch (Wicki-Hayden Slides) read OFF as 1 and ON as 2; both are in ls_microLinn.ino, and always
+  // give or keep 1..MICROLINN_MAX_COL_OFFSET
+  byte columnSlideDivisions();
+  void setColumnSlideDivisions(byte divisions);
   byte drumPadMode;                          // creates an array of 2x3 (if 1) or 3x3 (if 2) drum pads, array is 2x7, but only 2x5 if 3x3 on the 128
   byte locatingCC1;                          // CC to send with row/column location for each note-on in cols 1-16 or cols 17-25...
   byte locatingCC2;                          // ...ranges from 0 to 127, 255 = OFF
@@ -1029,9 +1046,9 @@ struct MicroLinnGlobal {
 //signed char largeEDOoffset[MICROLINN_MAX_EDO];  // ranges -128..127, edosteps from nearest large-edo approximation
   short guitarTuning[MAXROWS];               // independent of Global.guitarTuning, interval in edosteps from the string below it, can be negative, [0] is DIA/CHRO
   boolean dotsCarryOver;                     // red SAME or BLNK dots carry over to the other split
-  byte reserved1;                            // reserved for future use, 1 byte per empty menu row
-  byte reserved2;                            //    "
-  byte reserved3;                            //    "
+  byte pianoFade;                            // in tenths of a second, a PRES Piano pedal's fade from full level to silence, 1..255
+  byte columnSlideDivisionsMinus1;           // the equal steps a pad's interval is divided into where a slide comes to rest, minus 1, 0..9
+  byte reserved3;                            // reserved for future use, 1 byte per empty menu row
 //byte padding;                              // added by the compiler, makes the MicroLinnGlobal struct an even number of bytes
 };
 
@@ -1057,7 +1074,7 @@ struct GlobalSettings {
   byte switchAssignment[5];                  // The element values are ASSIGNED_*.  The index values are SWITCH_*.
   boolean switchBothSplits[5];               // Indicate whether the switches should operate on both splits or only on the focused one
   unsigned short ccForSwitchCC65[5];         // 0-127
-  unsigned short ccForSwitchSustain[5];      // 0-127
+  unsigned short ccForSwitchSustain[5];      // 0-127, plus microLinn's PRES values 128-130 (MICROLINN_PRES_*)
   unsigned short customSwitchAssignment[5];  // ASSIGNED_TAP_TEMPO, ASSIGNED_LEGATO, ASSIGNED_LATCH, ASSIGNED_PRESET_UP, ASSIGNED_PRESET_DOWN, ASSIGNED_REVERSE_PITCH_X, ASSIGNED_SEQUENCER_PLAY, ASSIGNED_SEQUENCER_PREV, ASSIGNED_SEQUENCER_NEXT, ASSIGNED_STANDALONE_MIDI_CLOCK and ASSIGNED_SEQUENCER_MUTE
   byte midiIO;                               // 0 = MIDI jacks, 1 = USB
   ArpeggiatorDirection arpDirection;         // the arpeggiator direction that has to be used for the note sequence

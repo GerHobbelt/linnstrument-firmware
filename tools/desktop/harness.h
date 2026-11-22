@@ -134,6 +134,8 @@ static const NamedValue OFF_NAMES[] = {{"off", 4}, {nullptr, 0}};
 static const NamedValue MIDI_MODE_NAMES[] = {{"oneChannel", 0}, {"channelPerNote", 1}, {"channelPerRow", 2}, {nullptr, 0}};
 static const NamedValue PRESSURE_NAMES[] = {{"low", 0}, {"medium", 1}, {"high", 2}, {nullptr, 0}};
 static const NamedValue VELOCITY_NAMES[] = {{"low", 0}, {"medium", 1}, {"high", 2}, {"fixed", 3}, {nullptr, 0}};
+static const NamedValue ON_OFF_NAMES[] = {{"off", 0}, {"on", 1}, {nullptr, 0}};
+static const NamedValue QUANTIZE_HOLD_NAMES[] = {{"off", 0}, {"medium", 1}, {"fast", 2}, {"slow", 3}, {nullptr, 0}};
 static const NamedValue HAMMER_ON_NAMES[] = {{"off", 0}, {"R", 1}, {"L", 2}, {"R+L", 3}, {nullptr, 0}};
 static const NamedValue ASSIGNMENT_NAMES[] = {
   {"octaveDown", ASSIGNED_OCTAVE_DOWN}, {"octaveUp", ASSIGNED_OCTAVE_UP}, {"sustain", ASSIGNED_SUSTAIN},
@@ -157,6 +159,17 @@ template <int SWITCH> void setAssignment(int v) {
 template <int SWITCH> int getAssignment() { return Global.switchAssignment[SWITCH]; }
 template <int SWITCH> void setSustainCC(int v) { Global.ccForSwitchSustain[SWITCH] = v; }
 template <int SWITCH> int getSustainCC() { return Global.ccForSwitchSustain[SWITCH]; }
+
+// Column Slide Divisions (MicroLinnGlobal::columnSlideDivisions(), since 1dc5ded): firmware without it reads as 1
+// and can't be set, so a run asking for another value fails its check after boot
+template <typename G> auto setDivisions(G& g, int v, int) -> decltype(g.setColumnSlideDivisions(v), void()) {
+  g.setColumnSlideDivisions(v);
+}
+template <typename G> void setDivisions(G&, int, long) {}
+template <typename G> auto getDivisions(G& g, int) -> decltype((int)g.columnSlideDivisions()) {
+  return g.columnSlideDivisions();
+}
+template <typename G> int getDivisions(G&, long) { return 1; }
 
 inline int mpePolyphony() {
   if (!Split[LEFT].mpe) return 0;
@@ -185,6 +198,14 @@ static const Setting SETTINGS[] = {
   {"midiMode", 0, 2, MIDI_MODE_NAMES, true, false,
    [](int v) { Split[LEFT].midiMode = v; if (v != channelPerNote) disableMpe(LEFT); },
    []() -> int { return Split[LEFT].midiMode; }, "the MIDI mode, as the per-split settings set it"},
+  {"quantize", 0, 1, ON_OFF_NAMES, true, false, [](int v) { Split[LEFT].pitchCorrectQuantize = v; },
+   []() -> int { return Split[LEFT].pitchCorrectQuantize; }, "Quantize (per-split settings, Pitch/X)"},
+  {"quantizeHold", 0, 3, QUANTIZE_HOLD_NAMES, true, false, [](int v) { Split[LEFT].pitchCorrectHold = v; },
+   []() -> int { return Split[LEFT].pitchCorrectHold; },
+   "Quantize Hold (per-split settings, Pitch/X): its pad alone is medium, QHold Fast's alone fast, both slow"},
+  {"columnSlideDivisions", 1, 10, nullptr, true, false, [](int v) { setDivisions(Global.microLinn, v, 0); },
+   []() -> int { return getDivisions(Global.microLinn, 0); },
+   "Column Slide Divisions (microLinn's GLOBAL SETTINGS), 1-10; 1 is off"},
   {"hammerOnMode", 0, 3, HAMMER_ON_NAMES, true, false, [](int v) { Split[LEFT].microLinn.setHammerOnMode(v); },
    []() -> int { return Split[LEFT].microLinn.hammerOnMode(); }, "microLinn's hammer-ons"},
   {"hammerOnZone", 1, 121, nullptr, true, false, [](int v) { Split[LEFT].microLinn.hammerOnZone = v; },

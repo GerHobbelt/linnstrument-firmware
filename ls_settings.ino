@@ -371,6 +371,8 @@ void loadSettingsFromPreset(byte p) {
     Global.microLinn.dotsCarryOver = config.preset[p].global.microLinn.dotsCarryOver;
     Global.microLinn.locatingCC1   = config.preset[p].global.microLinn.locatingCC1;
     Global.microLinn.locatingCC2   = config.preset[p].global.microLinn.locatingCC2;
+    Global.microLinn.pianoFade         = config.preset[p].global.microLinn.pianoFade;           // not microtonal
+    Global.microLinn.columnSlideDivisionsMinus1 = config.preset[p].global.microLinn.columnSlideDivisionsMinus1;
     for (byte side = 0; side < NUMSPLITS; ++side) {
       memcpy(&Split[side], &config.preset[p].split[side], sizeof(SplitSettings) - sizeof(MicroLinnSplit));
       // only load the column and per-split row offsets if they are not OFF (such offsets are often related to the edo)
@@ -389,6 +391,9 @@ void loadSettingsFromPreset(byte p) {
       Split[side].microLinn.ccForLowRowX   = config.preset[p].split[side].microLinn.ccForLowRowX;
       Split[side].microLinn.ccForLowRowY   = config.preset[p].split[side].microLinn.ccForLowRowY;
       Split[side].microLinn.flags          = config.preset[p].split[side].microLinn.flags;
+      Split[side].microLinn.pressureRelease = config.preset[p].split[side].microLinn.pressureRelease;   // not microtonal
+      Split[side].microLinn.liftHold        = config.preset[p].split[side].microLinn.liftHold;
+      Split[side].microLinn.reattachGlide   = config.preset[p].split[side].microLinn.reattachGlide;
     }
   }
 
@@ -2328,7 +2333,7 @@ inline void handleCCForSwitchCC65ConfigRelease() {
 inline void handleCCForSwitchSustainConfigNewTouch() {
   DEBUGPRINT_FUNCNAME();
 
-  handleNumericDataNewTouchCol(Global.ccForSwitchSustain[switchSelect], 0, 127, false);
+  handleNumericDataNewTouchCol(Global.ccForSwitchSustain[switchSelect], 0, MICROLINN_MAX_SUSTAIN_CC, false);    // microLinn: and PRES
 }
 
 inline void handleCCForSwitchSustainConfigRelease() {

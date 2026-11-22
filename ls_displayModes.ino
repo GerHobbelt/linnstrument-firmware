@@ -363,7 +363,7 @@ void updateSwitchLeds() {
     displaySwitch1 = isArpeggiatorEnabled(Global.currentPerSplit) ? cellOn : cellOff;
   }
   else if (isLowRowSustainPressed(Global.currentPerSplit) &&
-           ((Global.switchAssignment[SWITCH_SWITCH_1] == ASSIGNED_SUSTAIN && Global.ccForSwitchSustain[SWITCH_SWITCH_1] == 64) ||
+           ((Global.switchAssignment[SWITCH_SWITCH_1] == ASSIGNED_SUSTAIN && getMicroLinnSwitchSustainCC(SWITCH_SWITCH_1) == 64) ||
             (Global.switchAssignment[SWITCH_SWITCH_1] == ASSIGNED_CC_65 && Global.ccForSwitchCC65[SWITCH_SWITCH_1] == 64))) {
     displaySwitch1 = cellOn;
   }
@@ -381,7 +381,7 @@ void updateSwitchLeds() {
     displaySwitch2 = isArpeggiatorEnabled(Global.currentPerSplit) ? cellOn : cellOff;
   }
   else if (isLowRowSustainPressed(Global.currentPerSplit) &&
-           ((Global.switchAssignment[SWITCH_SWITCH_2] == ASSIGNED_SUSTAIN && Global.ccForSwitchSustain[SWITCH_SWITCH_2] == 64) ||
+           ((Global.switchAssignment[SWITCH_SWITCH_2] == ASSIGNED_SUSTAIN && getMicroLinnSwitchSustainCC(SWITCH_SWITCH_2) == 64) ||
             (Global.switchAssignment[SWITCH_SWITCH_2] == ASSIGNED_CC_65 && Global.ccForSwitchCC65[SWITCH_SWITCH_2] == 64))) {
     displaySwitch2 = cellOn;
   }
@@ -1443,7 +1443,20 @@ void paintCCForSwitchSustainConfigDisplay() {
   DEBUGPRINT_FUNCNAME_L5();
 
   clearDisplay();
-  paintNumericDataDisplay(globalColor, Global.ccForSwitchSustain[switchSelect], 0, false);
+  switch (Global.ccForSwitchSustain[switchSelect]) {                   // microLinn: the PRES values past 127
+    case MICROLINN_PRES_FOLLOW:
+      adaptfont_draw_string(0, 0, "FLW", globalColor, true);
+      break;
+    case MICROLINN_PRES_LATCH:
+      adaptfont_draw_string(0, 0, "LAT", globalColor, true);
+      break;
+    case MICROLINN_PRES_PIANO:
+      adaptfont_draw_string(0, 0, "PNO", globalColor, true);
+      break;
+    default:
+      paintNumericDataDisplay(globalColor, Global.ccForSwitchSustain[switchSelect], 0, false);
+      break;
+  }
 }
 
 void paintCustomSwitchAssignmentConfigDisplay() {

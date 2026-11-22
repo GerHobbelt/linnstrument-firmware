@@ -5,7 +5,7 @@
 //   linnstrument-desktop --provision [--calibration-from EXPORT] [--calibration export|other]
 //                        [--set NAME=VALUE]... [--events FILE] --flash-out FILE [--settings-out FILE]
 //   linnstrument-desktop --flash-in FILE --recording PREFIX [--events FILE] [--expect-file FILE]
-//                        [--midi-log FILE] [--touch-log FILE] [--lead-in MS] [--tail MS]
+//                        [--midi-log FILE] [--touch-log FILE] [--x-log FILE] [--lead-in MS] [--tail MS]
 //                        [--timing ADC_NS,PASS_NS]
 //
 // The first form provisions a flash image with harness::provisionTestSettings(): the firmware's own
@@ -80,6 +80,12 @@
 //   - when no recorded sample is served); the firmware's currentRawZ and pressureZ after the scan; the
 //   touch state after the scan; and the pad's note and channel (before the scan, if this scan released
 //   the touch).
+// - --x-log: what the pitch code works with, one line per scan of a pad that has a note after the scan:
+//   the time, the pad, the touch state, note and channel; the firmware's calibrated X, the column the
+//   note's pitch is measured from (initialColumn) and Quantize's landing offset (quantizationOffsetX), in
+//   calibrated X units (a pad is 170.625); the last X result (lastValueX, the pitch bend before it's
+//   scaled to the bend range and the column offset); the X movement rate (fxdRateX) and Quantize
+//   Hold's count of still scans (fxdRateCountX), as decimals; and whether phantom coordinates are set.
 // The run's summary goes to stdout.
 
 #include "harness.h"
@@ -836,7 +842,7 @@ static void usage() {
   fprintf(stderr, "usage: linnstrument-desktop --provision [--calibration-from EXPORT] [--calibration export|other] "
                   "[--set NAME=VALUE]... [--events FILE] --flash-out FILE [--settings-out FILE]\n"
                   "       linnstrument-desktop --flash-in FILE --recording PREFIX [--events FILE] [--expect-file FILE] "
-                  "[--midi-log FILE] [--touch-log FILE] [--lead-in MS] [--tail MS] [--timing ADC_NS,PASS_NS]\n");
+                  "[--midi-log FILE] [--touch-log FILE] [--x-log FILE] [--lead-in MS] [--tail MS] [--timing ADC_NS,PASS_NS]\n");
   exit(2);
 }
 
@@ -851,6 +857,7 @@ int main(int argc, char** argv) {
   const char* eventsPath = nullptr;
   const char* midiLogPath = nullptr;
   const char* touchLogPath = nullptr;
+  const char* xLogPath = nullptr;
   const char* settingsOut = nullptr;
   const char* expectFile = nullptr;
   double leadInMs = 1000, tailMs = 5000;
@@ -880,6 +887,7 @@ int main(int argc, char** argv) {
     else if (a == "--events") eventsPath = argv[++i];
     else if (a == "--midi-log") midiLogPath = argv[++i];
     else if (a == "--touch-log") touchLogPath = argv[++i];
+    else if (a == "--x-log") xLogPath = argv[++i];
     else if (a == "--lead-in") leadInMs = atof(argv[++i]);
     else if (a == "--tail") tailMs = atof(argv[++i]);
     else if (a == "--timing") {                    // the clock model's costs, see hal::Timing
@@ -934,6 +942,13 @@ int main(int argc, char** argv) {
     touchLog = fopen(touchLogPath, "w");
     if (!touchLog) { fprintf(stderr, "cannot write %s\n", touchLogPath); return 1; }
     fprintf(touchLog, "# time_us col row rec_time_us raw_z read gap currentRawZ pressureZ state note channel\n");
+  }
+  FILE* xLog = nullptr;
+  if (xLogPath) {
+    xLog = fopen(xLogPath, "w");
+    if (!xLog) { fprintf(stderr, "cannot write %s\n", xLogPath); return 1; }
+    fprintf(xLog, "# time_us col row state note channel calibratedX initialColumn quantizationOffsetX lastValueX "
+                  "rateX rateCountX phantom\n");
   }
 
   setup();
@@ -1005,6 +1020,12 @@ int main(int argc, char** argv) {
         ++touchLines;
       }
     }
+    if (xLog && watchHit && col > 0 && c.note != -1) {
+      printTime(xLog, watchNs);
+      fprintf(xLog, " %d %d %s %d %d %d %d %d %d %.2f %.2f %d\n", col, row, STATE_NAME[c.touched & 3], (int)c.note,
+              (int)c.channel, (int)c.currentCalibratedX, (int)c.initialColumn, (int)c.quantizationOffsetX,
+              (int)c.lastValueX, c.fxdRateX / 256.0, c.fxdRateCountX / 256.0, (int)c.phantomSet);
+    }
 
     if (cellCount < previousCell) {                    // cellCount wrapped: a surface scan finished
       if (scans == 0) scanStartNs = hal::nowNs();
@@ -1016,6 +1037,7 @@ int main(int argc, char** argv) {
   parser.flush();
   if (midiLog) fclose(midiLog);
   if (touchLog) fclose(touchLog);
+  if (xLog) fclose(xLog);
 
   uint64_t servedSamples = 0, recordedSamples = 0;
   for (auto& padColumn : pads) {
