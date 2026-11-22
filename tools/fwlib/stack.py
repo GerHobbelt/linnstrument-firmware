@@ -15,8 +15,10 @@ and libgcc. The model and its assumptions:
   is stored in the program image, in a word-aligned word (except interrupt vectors, main and
   Reset_Handler); those call sites are listed. A word inside a data object whose type the debug info
   shows holds no pointer (a byte table, say) is data that happens to spell an address, and is
-  ignored. The scan would miss a function pointer stored at an offset that isn't a multiple of 4, so
-  the analysis fails if the debug info shows one, in a struct or in a data object.
+  ignored; so is a word of a function's code that the disassembly shows is made of instructions,
+  which no instruction loads as a literal. The scan would miss a function pointer stored at an offset
+  that isn't a multiple of 4, so the analysis fails if the debug info shows one, in a struct or in a
+  data object.
 - Re-entry: the call graph is cut at the scan loop (modeLoopPerformance) and at
   performContinuousTasks, which the firmware re-enters by design (delayUsecWithScanning() runs the
   scan loop while text scrolls; performContinuousTasks runs inside delayUsec(), inside setLed()
@@ -510,6 +512,10 @@ def load(tc, elf, binf, build_path):
                 return fn
         return None
 
+    # each line the disassembly shows inside a function's code, instruction or data (literal pools, jump tables), and
+    # the addresses pc-relative instructions refer to: which words of the code are made of instructions
+    code_lines = []                                     # (start, end, data)
+    literals = set()
     current = None
     for line in _run([tc.tool('objdump'), '-d', '--no-show-raw-insn', elf]).splitlines():
         h = _FUNC_HDR.match(line)
@@ -520,6 +526,13 @@ def load(tc, elf, binf, build_path):
         if not m or current is None:
             continue
         addr, op, args = int(m.group(1), 16), m.group(2), (m.group(3) or '')
+        if addr < current.addr + current.size:
+            if code_lines and code_lines[-1][1] is None:
+                code_lines[-1][1] = addr if addr > code_lines[-1][0] else None
+            code_lines.append([addr, None, op.startswith('.'), current.addr + current.size])
+            lit = _LITERAL.search(args)
+            if lit and not op.startswith('.'):
+                literals.add(int(lit.group(1), 16))
         if op.startswith('.') or addr >= current.addr + current.size:
             continue                                    # data in the code: literal pools, jump tables
         mnem, cond = _mnemonic(op)
@@ -594,14 +607,35 @@ def load(tc, elf, binf, build_path):
         name = next((n for lma, length, _, n in sections if lma <= a < lma + length), '?')
         return ('section', name, None, None)
 
+    # a word of a function's code is an instruction word if every one of its bytes lies in an instruction the
+    # disassembly shows, and no pc-relative instruction refers to it (a literal pool's word is shown as data, and
+    # loaded): such a word can spell a function's address by chance (an add.w did, in one build), and isn't stored
+    lines = []
+    for start, end, data, fn_end in code_lines:
+        lines.append((start, min(end, fn_end) if end is not None else fn_end, data))
+    lines.sort()
+    line_starts = [ln[0] for ln in lines]
+
+    def instruction_word(a):
+        if any(b in literals for b in range(a - 3, a + 4)):
+            return False
+        for b in range(a, a + 4):
+            i = bisect.bisect_right(line_starts, b) - 1
+            if i < 0 or lines[i][2] or b >= lines[i][1]:
+                return False
+        return True
+
     vectors = {word(FLASH_BASE + 4 * i) & ~1 for i in range(1, VECTOR_WORDS) if word(FLASH_BASE + 4 * i)}
-    taken, where, ignored = set(), collections.defaultdict(list), []
+    taken, where, ignored, ignored_insn = set(), collections.defaultdict(list), [], []
     for off in range(0, len(image) - 3, 4):
         v = int.from_bytes(image[off:off + 4], 'little')
         if v & 1 and (v & ~1) in funcs:
             place = stored_at(FLASH_BASE + off)
             if place[3] is False:
                 ignored.append((v & ~1, place))
+                continue
+            if place[0] == 'function' and instruction_word(FLASH_BASE + off):
+                ignored_insn.append((v & ~1, place))
                 continue
             taken.add(v & ~1)
             where[v & ~1].append(place)
@@ -629,7 +663,8 @@ def load(tc, elf, binf, build_path):
                 unresolved = False
             resolved.append((addr, frozenset(real), tail, unresolved))
         fn.sites = resolved
-    stored = {'taken': {a: where[a] for a in taken}, 'ignored': ignored, 'unaligned': unaligned}
+    stored = {'taken': {a: where[a] for a in taken}, 'ignored': ignored, 'ignored_insn': ignored_insn,
+              'unaligned': unaligned}
     return funcs, names, taken, checked, mismatches, annotated, stored
 
 
@@ -649,7 +684,9 @@ def _describe_stored(tc, names, funcs, stored):
 
     taken = sorted((names[funcs[a].name], [text(p) for p in places]) for a, places in stored['taken'].items())
     ignored = sorted('%s in %s' % (names[funcs[a].name], text(p)) for a, p in stored['ignored'])
-    return {'taken': taken, 'ignored': ignored}
+    insns = sorted('%s in an instruction of %s (+%d)' % (names[funcs[a].name], names.get(p[1], p[1]), p[2])
+                   for a, p in stored['ignored_insn'])
+    return {'taken': taken, 'ignored': ignored, 'ignored_instructions': insns}
 
 
 # ---------------------------------------------------------------- worst-case paths
@@ -953,6 +990,7 @@ def analyze(tc, elf, binf, build_path, without_float_formatting=False):
         'address_taken': len(taken),
         'stored_at': _describe_stored(tc, names, funcs, stored),
         'ignored_in_data': len(stored['ignored']),
+        'ignored_instructions': len(stored['ignored_insn']),
         'unaligned_function_pointers': stored['unaligned'],
         'dynamic': sorted(names[fn.name] for fn in funcs.values() if fn.dynamic),
         'cycles': [sorted(label[a] for a in comp) for comp in sccs if len(comp) > 1],

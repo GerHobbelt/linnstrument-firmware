@@ -93,6 +93,10 @@ boolean potentialSlideTransferCandidate(byte col) {
     return false;
   }
 
+  if (isMicroLinnOtherFingersNote(col)) {                                // microLinn: a lifted note doesn't carry on under another finger
+    return false;
+  }
+
   return cell(col, sensorRow).touched != untouchedCell &&                                                    // the sibling cell has an active touch
     (cell(col, sensorRow).pendingReleaseCount ||                                                             // either a release is pending to be performed, or
      abs(sensorCell->calibratedX() - cell(col, sensorRow).currentCalibratedX) < TRANSFER_SLIDE_PROXIMITY ||  // both cells are touched simultaneously on the edges, or
@@ -485,6 +489,9 @@ boolean handleNewTouch() {
         // only allow a certain number of touches in a single column to prevent cross talk
         else if (countTouchesInColumn() > MAX_TOUCHES_IN_COLUMN) {
           cellTouched(ignoredCell);
+        }
+        else if (isMicroLinnSlideEdgeKeptSilent()) {         // microLinn: the edge of a finger that has slid on stays silent
+          cellTouched(transferCell);
         }
         // this is really a new touch without any relationship to an ongoing slide
         // however, it could be the low row and in certain situations it doesn't allow new touches
@@ -1553,11 +1560,13 @@ short handleXExpression() {
   int calibratedX = sensorCell->calibratedX();
 
   // determine if a slide transfer is in progress and which column it is with
+  // microLinn: only with a cell the same finger is on, not one another finger presses, see isMicroLinnSlideNeighbour()
   short transferCol = 0;
-  if (cell(sensorCol - 1, sensorRow).touched == transferCell) {
+  if (cell(sensorCol-1, sensorRow).touched == transferCell && isMicroLinnSlideNeighbour(sensorCol-1, calibratedX)) {
     transferCol = sensorCol - 1;
   }
-  else if (sensorCol + 1 < NUMCOLS && cell(sensorCol + 1, sensorRow).touched == transferCell) {
+  else if (sensorCol+1 < NUMCOLS && cell(sensorCol+1, sensorRow).touched == transferCell &&
+           isMicroLinnSlideNeighbour(sensorCol+1, calibratedX)) {
     transferCol = sensorCol + 1;
   }
 
@@ -1667,7 +1676,7 @@ short handleXExpression() {
 
     // microLinn: with Column Slide Divisions, the pitch of the cell the channel sends is its own, the rest as above
     if (columnSlide && isFocusedCell()) {
-      result = handleMicroLinnColumnSlide(calibratedX - FXD_TO_INT(sensorCell->fxdInitialReferenceX()), calibratedX);
+      result = handleMicroLinnColumnSlide(calibratedX);
     }
   }
 

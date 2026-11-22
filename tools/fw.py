@@ -237,6 +237,9 @@ def print_stack(r, verbose, no_float=None, ram_free=None):
     log('  words spelling a function\'s address inside data that holds no pointers, ignored: %d%s'
         % (r['ignored_in_data'], '' if not r['ignored_in_data'] else ' (' + '; '.join(r['stored_at']['ignored'][:3])
                                      + ('...' if r['ignored_in_data'] > 3 else '') + ')'))
+    log('  words spelling a function\'s address that the disassembly shows are instructions, ignored: %d%s'
+        % (r['ignored_instructions'], '' if not r['ignored_instructions'] else
+           ' (' + '; '.join(r['stored_at']['ignored_instructions'][:3]) + ('...' if r['ignored_instructions'] > 3 else '') + ')'))
     for f in r['unaligned_function_pointers']:
         log('  FAILED: a function pointer at an offset that isn\'t a multiple of 4, which the scan for stored '
             'addresses would miss: %s' % f)
@@ -256,6 +259,8 @@ def print_stack(r, verbose, no_float=None, ram_free=None):
             log('address stored: %s: %s' % (name, '; '.join(places)))
         for text in r['stored_at']['ignored']:
             log('address-like word ignored: %s' % text)
+        for text in r['stored_at']['ignored_instructions']:
+            log('address-like instruction word ignored: %s' % text)
         for n, a, b in r['su_mismatches']:
             log('frame differs: %s: prologue %d, -fstack-usage %d (used)' % (n, a, b))
 

@@ -53,9 +53,11 @@ describes the model and its assumptions.
 
 An indirect call the analysis can't resolve may reach any function whose address is stored in the
 program image, in a word-aligned word. A word inside a data object that the debug info shows holds no
-pointer (a byte table, for example) only happens to spell an address, so it's ignored; `fw.py stack`
-counts the words ignored, and `-v` lists where each stored address lies (a literal pool, a data
-object, or no data object) and each word ignored. A function pointer stored at an offset that isn't a
+pointer (a byte table, for example) only happens to spell an address, so it's ignored; so is a word of
+a function's code that the disassembly shows is made of instructions (an `add.w` spelled one in a
+build), unless an instruction loads it as a literal. `fw.py stack` counts the words ignored, and `-v`
+lists where each stored address lies (a literal pool, a data object, or no data object) and each word
+ignored. A function pointer stored at an offset that isn't a
 multiple of 4 would escape the scan, so `fw.py stack` and `fw.py report` fail when the debug info shows
 one, in a struct or in a data object.
 
