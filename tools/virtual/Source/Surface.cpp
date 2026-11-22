@@ -34,7 +34,6 @@ const float switchWidthUnits = 0.78f;
 const float switchHeightUnits = 0.42f;
 // the silicone a mid grey and its grooves darker, as Roger Linn Design's pictures of the surface
 // draw them, so that a white LED shows against an unlit pad
-const juce::Colour padGrey(0xffc4c4c0);
 const juce::Colour plateGrey(0xff9d9d9a);
 const char* const colourNames[12] = { "off", "red", "yellow", "green", "cyan", "blue", "magenta", "off", "white", "orange", "lime", "pink" };
 
@@ -76,6 +75,8 @@ float Surface::aspectRatio() const {
 void Surface::resized() {
   columns = engine.firmware().columns();
   layOut();
+  // called on its own too, as a change of layout that keeps the bounds is, which the timer leaves
+  repaint();
 }
 
 void Surface::layOut() {
@@ -124,6 +125,10 @@ juce::Font Surface::labelFontOfHeight(float height) {
   return LinnLookAndFeel::boldFont(height).withExtraKerningFactor(0.04f);
 }
 
+juce::Colour Surface::switchInk() {
+  return juce::Colour(0xff111111);
+}
+
 juce::Colour Surface::ledColourFor(int color) {
   switch (color) {
     case 1: return juce::Colour(0xffff4a3d);
@@ -152,9 +157,96 @@ void Surface::paintBehind(juce::Graphics& g) {
 
 void Surface::paintInFront(juce::Graphics& g) {
   paintBrand(g);
+  if (headingsOn) paintHeadings(g);
+}
+
+const std::vector<Surface::Heading>& Surface::headings() {
+  using P = Place;
+  static const std::vector<Heading> all {
+    { "MIDI MODE", 1, 1, P::above }, { "VIEW", 2, 2, P::above }, { "MIDI CHANNELS", 3, 6, P::above }, { "BEND RANGE", 7, 7, P::above },
+    { "PITCH/X", 8, 8, P::above }, { "TIMBRE/Y", 9, 9, P::above }, { "LOUDNESS/Z", 10, 10, P::above }, { "COLOR", 11, 11, P::above },
+    { "LOW ROW", 12, 13, P::above }, { "SPECIAL", 14, 14, P::above }, { "SELECT SPLIT", 15, 16, P::above },
+    { "SEQUENCER", 20, 25, P::above, 200 },
+    { "VIEW", 1, 1, P::below }, { "NOTE LIGHTS ON/OFF", 2, 4, P::below }, { "ROW OFFSET", 5, 6, P::below }, { "SELECT SW", 7, 7, P::below },
+    { "ASSIGN SWITCH", 8, 9, P::below }, { "VELOCITY SENS", 10, 10, P::below }, { "PRESSURE SENS", 11, 11, P::below },
+    { "ARPEGGIATOR", 12, 14, P::below }, { "POWER/MIDI", 15, 15, P::below }, { "ACTIONS", 16, 16, P::below },
+    { "SEQUENCER", 0, 3, P::right, 200 },
+  };
+  return all;
+}
+
+std::vector<Surface::Heading> Surface::headingsPrinted() const {
+  int model = columns == 17 ? 128 : 200;
+  std::vector<Heading> printed;
+  for (auto& h : headings())
+    if (h.model == 0 || h.model == model) printed.push_back(h);
+  return printed;
+}
+
+void Surface::setHeadingsShown(bool shown) {
+  if (shown == headingsOn) return;
+  headingsOn = shown;
+  repaint();
+}
+
+namespace {
+// the headings' type, and a lane of it on its side
+float headingHeight(float padSize) { return juce::jlimit(6.0f, 11.0f, padSize * 0.2f); }
+float laneWidth(float padSize) { return headingHeight(padSize) * 1.6f; }
+}
+
+juce::Rectangle<float> Surface::headingArea(const Heading& heading) const {
+  float rule = gap * 2.5f;
+  if (heading.place == Place::right) {
+    auto low = padBounds(1, heading.from), high = padBounds(1, heading.to);
+    return { padsArea.getRight() + rule + gap, high.getY(), laneWidth(padSize), low.getBottom() - high.getY() };
+  }
+  auto first = padBounds(heading.from, 0), last = padBounds(heading.to, 0);
+  float x = first.getX() - gap / 2, w = last.getRight() + gap / 2 - x;
+  if (heading.place == Place::above) return { x, steel.getY() + gap, w, padsArea.getY() - rule - steel.getY() - 2 * gap };
+  float y = padsArea.getBottom() + rule + gap;
+  return { x, y, w, steel.getBottom() - gap - y };
+}
+
+juce::Rectangle<float> Surface::brandArea() const {
+  float left = padsArea.getRight() + gap;
+  if (headingsOn)
+    for (auto& h : headingsPrinted())
+      if (h.place == Place::right) left = juce::jmax(left, headingArea(h).getRight() + gap);
+  return { left, padsArea.getY(), steel.getRight() - left, padsArea.getHeight() };
+}
+
+// printed as the panel prints them: small capitals over a rule as wide as the columns, on two lines
+// where a single column is too narrow for one, and sideways beside the rows, reading upwards
+void Surface::paintHeadings(juce::Graphics& g) {
+  g.setFont(labelFontOfHeight(headingHeight(padSize)));
+  auto ink = juce::Colour(0xffe6e6e6);
+  for (auto& heading : headingsPrinted()) {
+    auto area = headingArea(heading);
+    if (heading.place == Place::right) {
+      float ruleX = padsArea.getRight() + gap * 2.5f;
+      g.setColour(ink.withMultipliedAlpha(0.55f));
+      g.fillRect(juce::Rectangle<float>(ruleX, area.getY() + gap, 1, area.getHeight() - 2 * gap));
+      g.saveState();
+      g.addTransform(juce::AffineTransform::rotation(-juce::MathConstants<float>::halfPi, area.getCentreX(), area.getCentreY()));
+      auto turned = area.withSizeKeepingCentre(area.getHeight(), area.getWidth());
+      g.setColour(ink);
+      g.drawFittedText(heading.text, turned.toNearestInt(), juce::Justification::centred, 1, 0.8f);
+      g.restoreState();
+      continue;
+    }
+    float ruleY = heading.place == Place::above ? padsArea.getY() - gap * 2.5f : padsArea.getBottom() + gap * 2.5f;
+    auto rule = area.withY(ruleY).withHeight(1).reduced(gap, 0);
+    g.setColour(ink.withMultipliedAlpha(0.55f));
+    g.fillRect(rule);
+    g.setColour(ink);
+    g.drawFittedText(heading.text, area.reduced(1, 0).toNearestInt(), heading.place == Place::above ? juce::Justification::centredBottom : juce::Justification::centredTop, 2, 0.8f);
+  }
 }
 
 // the printed labels grow with the pads, as on the instrument
+firmware::Led Surface::ledShown(int col, int row) const { return engine.firmware().led(col, row); }
+
 float Surface::switchLabelHeight() const {
   return juce::jlimit(7.0f, 13.0f, padSize * 0.27f);
 }
@@ -194,24 +286,87 @@ void Surface::paintCase(juce::Graphics& g) {
 
 }
 
+void Surface::setDarkMaterial(bool on) {
+  if (on == dark) return;
+  dark = on;
+  repaint();
+}
+
+void Surface::paintDarkPad(juce::Graphics& g, juce::Rectangle<float> pad, float rounding, juce::Colour lit) {
+  if (lit.isTransparent()) {
+    g.setGradientFill(juce::ColourGradient(darkPadTop, 0, pad.getY(), darkPadFoot, 0, pad.getBottom(), false));
+    g.fillRoundedRectangle(pad, rounding);
+  }
+  else {
+    // the LED under the silicone: a paler shade of its colour at the centre, as coloured silicone
+    // lit from below shows it, its colour, fading into the dark
+    float reach = juce::jmax(pad.getWidth(), pad.getHeight()) * 0.72f;
+    auto centre = lit.withAlpha(1.0f).interpolatedWith(juce::Colours::white, 0.45f).withAlpha(lit.getFloatAlpha());
+    juce::ColourGradient glow(centre, pad.getCentreX(), pad.getCentreY(), darkPadFoot, pad.getCentreX() + reach, pad.getCentreY(), true);
+    glow.addColour(0.06, centre.interpolatedWith(lit, 0.25f));
+    glow.addColour(0.3, lit);
+    glow.addColour(0.72, lit.interpolatedWith(darkPadFoot, 0.55f));
+    g.setGradientFill(glow);
+    g.fillRoundedRectangle(pad, rounding);
+  }
+  // the light along its top edge, as a raised pad catches it; its foot left to the pad's own shading
+  g.setColour(juce::Colour(0x14ffffff));
+  g.drawLine(pad.getX() + rounding, pad.getY() + 0.75f, pad.getRight() - rounding, pad.getY() + 0.75f, 1.0f);
+}
+
 void Surface::paintPads(juce::Graphics& g) {
-  // the plate the pads are raised out of
+  // the plate the pads are raised out of; in the dark material its rim around a dark face
   g.setColour(plateGrey);
   g.fillRoundedRectangle(padsArea.expanded(gap), padSize * 0.08f);
+  if (dark) {
+    g.setColour(darkFace);
+    g.fillRoundedRectangle(padsArea.expanded(gap * 0.45f), padSize * 0.07f);
+  }
 
   // the pads: grey plastic with the LED lighting the whole pad from below
-  float radius = padSize * 0.09f;
+  float radius = padCorner();
+  // in the dark material, CC faders lit as far as their values reach, the cell a value ends in partly
+  firmware::Instance::Faders faders[2];
+  if (dark && engine.firmware().screen() == firmware::noScreen)
+    for (int split = 0; split < 2; ++split) faders[split] = engine.firmware().ccFaders(split);
+  auto faderOf = [&](int col, int row) {
+    for (int split = 0; split < 2; ++split) {
+      auto& f = faders[split];
+      if (f.shown && f.length > 0 && col >= f.left && col <= f.left + f.length && f.values[row] >= 0) return split;
+    }
+    return -1;
+  };
   for (int col = 0; col < columns; ++col) {
+    // the pads, never the switches, within the dark face, so that one on its way in never crosses
+    // the rim
+    if (col == 1 && dark) {
+      g.saveState();
+      juce::Path face;
+      face.addRoundedRectangle(padsArea.expanded(gap * 0.45f), padSize * 0.07f);
+      g.reduceClipRegion(face);
+    }
     for (int row = 0; row < 8; ++row) {
       auto pad = padBounds(col, row);
       if (pad.isEmpty()) continue;
-      firmware::Led led = engine.firmware().led(col, row);
+      // none where what's drawn over the surface covers it anyway
+      if (col > 0 && hidden && hidden(col, row)) continue;
+      float rounding = col == 0 ? switchCorner() : radius;
+      firmware::Led led = ledShown(col, row);
       bool lit = led.color != 0 && led.color != 7 && engine.firmware().pulseOn(led.display);
       juce::Colour colour = lit ? ledColour(led.color) : juce::Colours::transparentBlack;
+      if (int split = col > 0 ? faderOf(col, row) : -1; split >= 0) {
+        auto& f = faders[split];
+        float level = (float) f.values[row] / 127.0f * (float) f.length;
+        float part = juce::jlimit(0.0f, 1.0f, level - (float) (col - f.left) + 1);
+        colour = part > 0 ? ledColour(engine.firmware().mainColor(split)).withMultipliedAlpha(part) : juce::Colours::transparentBlack;
+      }
 
+      if (dark) paintDarkPad(g, pad, rounding, colour);
+      else {
       g.setColour(padGrey);
-      g.fillRoundedRectangle(pad, radius);
-      if (lit) {
+      g.fillRoundedRectangle(pad, rounding);
+      }
+      if (lit && !dark) {
         // the same light as the console's: white hot centre, the colour, fading into the grey
         juce::ColourGradient glow(juce::Colours::white, pad.getCentreX(), pad.getCentreY(),
                                   padGrey, pad.getCentreX() + padSize * 0.707f, pad.getCentreY(), true);
@@ -219,19 +374,21 @@ void Surface::paintPads(juce::Graphics& g) {
         glow.addColour(0.6, colour.interpolatedWith(padGrey, 0.45f));
         glow.addColour(0.85, padGrey);
         g.setGradientFill(glow);
-        g.fillRoundedRectangle(pad, radius);
+        g.fillRoundedRectangle(pad, rounding);
       }
-      g.setColour(juce::Colour(0x4cffffff));
-      g.drawLine(pad.getX() + radius, pad.getBottom() - 0.5f, pad.getRight() - radius, pad.getBottom() - 0.5f, 1.0f);
-      if (col == 0) {
+      if (!dark) {
+        g.setColour(juce::Colour(0x4cffffff));
+        g.drawLine(pad.getX() + rounding, pad.getBottom() - 0.5f, pad.getRight() - rounding, pad.getBottom() - 0.5f, 1.0f);
+      }
+      if (col == 0 && !dark) {
         g.setColour(juce::Colour(0x2e000000));
-        g.drawRoundedRectangle(pad.reduced(0.5f), radius, 1.0f);
+        g.drawRoundedRectangle(pad.reduced(0.5f), rounding, 1.0f);
       }
 
       Engine::TouchView touch;
       if (engine.touchAt(col, row, touch)) {
         g.setColour(juce::Colour(0x99000000));
-        g.drawRoundedRectangle(pad.reduced(2.0f), radius * 0.8f, 2.0f);
+        g.drawRoundedRectangle(pad.reduced(2.0f), rounding * 0.8f, 2.0f);
         // the fingertip, flattening as it presses harder
         float r = padSize * (0.11f + 0.16f * touch.pressure);
         float cx = pad.getX() + touch.xFraction * pad.getWidth(), cy = pad.getBottom() - touch.yFraction * pad.getHeight();
@@ -242,20 +399,60 @@ void Surface::paintPads(juce::Graphics& g) {
       }
     }
   }
+  // each fader's value marked where it ends, the pad's height, from a pad of its row that shows
+  for (int split = 0; split < 2; ++split) {
+    auto& f = faders[split];
+    if (!f.shown || f.length <= 0) continue;
+    for (int row = 0; row < 8; ++row) {
+      if (f.values[row] < 0) continue;
+      float level = (float) f.values[row] / 127.0f * (float) f.length;
+      for (int col = f.left; col <= f.left + f.length; ++col) {
+        auto pad = padBounds(col, row);
+        if (pad.isEmpty()) continue;
+        float x = pad.getCentreX() + (level - (float) (col - f.left)) * (padSize + gap);
+        g.setColour(juce::Colours::white);
+        g.fillRoundedRectangle(juce::Rectangle<float>(juce::jmax(2.0f, padSize * 0.06f), pad.getHeight()).withCentre({ x, pad.getCentreY() }), 1.0f);
+        break;
+      }
+    }
+  }
+  if (dark && columns > 1) g.restoreState();
   if (showsFocusRing() && focusCell.valid() && focusCell.col < columns && !padBounds(focusCell.col, focusCell.row).isEmpty()) {
     g.setColour(linn::accent);
-    g.drawRoundedRectangle(padBounds(focusCell.col, focusCell.row).expanded(1.5f), radius * 1.2f, 3.0f);
+    g.drawRoundedRectangle(padBounds(focusCell.col, focusCell.row).expanded(1.5f), (focusCell.col == 0 ? switchCorner() : radius) * 1.2f, 3.0f);
   }
 
   // the printed label of each control switch, above it or, where the surface has it so, on it
   bool onSwitches = labelsOnSwitches();
   g.setFont(labelFontOfHeight(switchLabelHeight()));
-  g.setColour(onSwitches ? juce::Colour(0xff2a2a2a) : juce::Colour(0xffe6e6e6));
+  auto printed = onSwitches ? switchInk() : juce::Colour(0xffe6e6e6);
   for (int row = 0; row < 8; ++row) {
+    auto ink = printed;
     juce::Rectangle<float> label, sw;
     controlSlot(row, label, sw);
     if (sw.isEmpty()) continue;
-    g.drawFittedText(switchLabel(row), label.toNearestInt(), onSwitches ? juce::Justification::centred : juce::Justification::centredBottom, 2, 1.0f);
+    // on the dark material light on an unlit switch, dark on its light
+    if (dark && onSwitches) {
+      auto led = ledShown(0, row);
+      bool on = led.color != 0 && led.color != 7 && engine.firmware().pulseOn(led.display);
+      ink = on ? switchInk() : juce::Colour(0xffe6e5e1);
+    }
+    g.setColour(ink);
+    auto value = switchValue(row);
+    if (value.isEmpty()) {
+      g.drawFittedText(switchLabel(row), label.toNearestInt(), onSwitches ? juce::Justification::centred : juce::Justification::centredBottom, 2, 1.0f);
+      continue;
+    }
+    // the label and its value as one block, the value lighter, smaller and dimmer
+    auto name = switchLabel(row);
+    float height = switchLabelHeight(), valueHeight = height * 0.85f, lines = name.containsChar('\n') ? 2.0f : 1.0f;
+    float block = 1.1f * (height * lines + valueHeight);
+    float top = onSwitches ? label.getCentreY() - block / 2 : label.getBottom() - block;
+    g.drawFittedText(name, label.withY(top).withHeight(1.1f * height * lines).toNearestInt(), juce::Justification::centred, 2, 1.0f);
+    g.setFont(juce::Font(juce::FontOptions(valueHeight)).withExtraKerningFactor(0.04f));
+    g.setColour(ink.withMultipliedAlpha(0.7f));
+    g.drawFittedText(value, label.withY(top + 1.1f * height * lines).withHeight(1.1f * valueHeight).toNearestInt(), juce::Justification::centred, 1, 1.0f);
+    g.setFont(labelFontOfHeight(height));
   }
 }
 
@@ -275,18 +472,92 @@ void Surface::paintBrand(juce::Graphics& g) {
   // the name, its rule and its line as the panel prints them, sideways at the right end, as long
   // as the plate allows
   g.saveState();
-  juce::Rectangle<float> brand(padsArea.getRight() + gap, padsArea.getY(), steel.getRight() - padsArea.getRight() - gap, padsArea.getHeight());
-  g.addTransform(juce::AffineTransform::rotation(-juce::MathConstants<float>::halfPi, brand.getCentreX(), brand.getCentreY()));
-  juce::Rectangle<float> turned(brand.getCentreX() - brand.getHeight() / 2, brand.getCentreY() - brand.getWidth() / 2, brand.getHeight(), brand.getWidth());
-  auto plate = nameplate(columns == 17 ? 128 : 200);
-  float scale = juce::jmin(turned.getWidth() * 0.9f / (float) plate.getWidth(), turned.getHeight() * 0.85f / (float) plate.getHeight());
+  auto area = nameplateArea();
+  g.addTransform(juce::AffineTransform::rotation(-juce::MathConstants<float>::halfPi, area.getCentreX(), area.getCentreY()));
   g.setColour(nameplateGrey);
-  g.drawImage(plate, turned.withSizeKeepingCentre((float) plate.getWidth() * scale, (float) plate.getHeight() * scale), juce::RectanglePlacement::stretchToFit, true);
+  g.drawImage(nameplate(columns == 17 ? 128 : 200), area.withSizeKeepingCentre(area.getHeight(), area.getWidth()), juce::RectanglePlacement::stretchToFit, true);
   g.restoreState();
 }
 
+juce::Rectangle<float> Surface::nameplateArea() const {
+  auto brand = brandArea();
+  auto plate = nameplate(columns == 17 ? 128 : 200);
+  float scale = juce::jmin(brand.getHeight() * 0.9f / (float) plate.getWidth(), brand.getWidth() * 0.85f / (float) plate.getHeight());
+  return brand.withSizeKeepingCentre((float) plate.getHeight() * scale, (float) plate.getWidth() * scale);
+}
+
+std::vector<uint32_t> Surface::shownState() const {
+  auto& f = engine.firmware();
+  std::vector<uint32_t> state;
+  state.reserve(2 * 8 * (size_t) columns + 64);
+  state.push_back((uint32_t) columns);
+  state.push_back((uint32_t) f.screen());
+  for (int split = 0; split < 2; ++split) {
+    state.push_back((uint32_t) f.mainColor(split));
+    auto faders = f.ccFaders(split);
+    state.push_back((uint32_t) (faders.shown ? 1 : 0) | (uint32_t) (faders.left << 8) | (uint32_t) (faders.length << 16));
+    for (int value : faders.values) state.push_back((uint32_t) value);
+  }
+  for (int col = 0; col < columns; ++col) {
+    for (int row = 0; row < 8; ++row) {
+      auto led = f.led(col, row);
+      bool lit = led.color != 0 && led.color != 7 && f.pulseOn(led.display);
+      state.push_back((uint32_t) led.color | (uint32_t) (lit ? 0x100 : 0));
+      Engine::TouchView touch;
+      if (engine.touchAt(col, row, touch))
+        state.push_back(0x80000000u | (uint32_t) (touch.xFraction * 1023) | (uint32_t) (touch.yFraction * 1023) << 10 | (uint32_t) (touch.pressure * 1023) << 20);
+      else state.push_back(0);
+    }
+  }
+  for (int row = 0; row < 8; ++row) state.push_back((uint32_t) (switchLabel(row) + "\n" + switchValue(row)).hashCode());
+  return state;
+}
+
+// a column of pads at once, as what's drawn over a pad may follow the lights of others in its column
+juce::RectangleList<int> Surface::changedArea(const std::vector<uint32_t>& before, const std::vector<uint32_t>& now) const {
+  juce::RectangleList<int> area;
+  int shown = now.empty() ? 0 : (int) now[0];
+  size_t cells = 2 * 8 * (size_t) shown, first = now.size() - cells - 8;
+  if (before.size() != now.size() || shown != columns || now.size() < cells + 10 || !std::equal(now.begin(), now.begin() + (long) first, before.begin())) {
+    area.add(getLocalBounds());
+    return area;
+  }
+  // the focus ring reaches past its pad, and a fingertip at its pad's edge as far as its widest
+  float ring = 3.0f;
+  auto reach = [this, ring](int col, int row) { return juce::jmax(ring, padBounds(col, row).getWidth() * 0.27f); };
+  auto switchArea = [this](int row) {
+    juce::Rectangle<float> label, sw;
+    controlSlot(row, label, sw);
+    return padBounds(0, row).getUnion(label).getUnion(sw);
+  };
+  for (int col = 0; col < columns; ++col)
+    for (int row = 0; row < 8; ++row) {
+      size_t at = first + 2 * (size_t) (col * 8 + row);
+      if (now[at] == before[at] && now[at + 1] == before[at + 1]) continue;
+      juce::Rectangle<float> changed;
+      if (col == 0) changed = switchArea(row);
+      else
+        for (int r = 0; r < 8; ++r)
+          if (!outOfSight(col, r)) changed = changed.getUnion(padBounds(col, r));
+      if (changed.isEmpty()) continue;
+      area.add(changed.expanded(now[at + 1] != before[at + 1] ? reach(col, row) : ring).getSmallestIntegerContainer());
+    }
+  for (int row = 0; row < 8; ++row)
+    if (now[first + cells + (size_t) row] != before[first + cells + (size_t) row])
+      area.add(switchArea(row).expanded(ring).getSmallestIntegerContainer());
+  return area;
+}
+
+juce::RectangleList<int> Surface::repaintIfChanged() {
+  auto state = shownState();
+  auto area = changedArea(lastShown, state);
+  for (auto& r : area) repaint(r);
+  lastShown = std::move(state);
+  return area;
+}
+
 void Surface::timerCallback() {
-  repaint();
+  repaintIfChanged();
 }
 
 void Surface::mouseDown(const juce::MouseEvent& e) {
