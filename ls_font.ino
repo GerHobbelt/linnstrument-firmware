@@ -2209,11 +2209,11 @@ Character* condChars[] = {
 struct Font condFont = { 8, " +-./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZb", condChars };
 
 
-unsigned font_width_string(const char* str, struct Font* font) {
+unsigned font_width_string(const char* str, const struct Font* font) {
   unsigned width = 0;
   char c;
-  while ((c=*str++) != 0) {
-    const char* p = strchr(font->chars,c);
+  while ((c = *str++) != 0) {
+    const char* p = strchr(font->chars, c);
     if (p) {
       width += (font->data[p - font->chars]->width + 1);
     }
