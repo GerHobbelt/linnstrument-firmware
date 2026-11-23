@@ -46,7 +46,7 @@ For any questions about this, contact Roger Linn Design at support@rogerlinndesi
 /******************************************** CONSTANTS ******************************************/
 
 const char* OSVersion = "240.";
-const char* OSVersionBuild = ".075";
+const char* OSVersionBuild = ".076";
 
 // SPI addresses
 #define SPI_LEDS    10               // Arduino pin for LED control over SPI
@@ -121,11 +121,12 @@ byte NUMROWS = 8;                    // number of touch sensor rows
 #define LOWPOWER_MIDI_INTERVAL        350      // use a minimum interval of 350 microseconds between MIDI messages in low power mode
 
 // Values related to the Z sensor, continuous pressure
-#define DEFAULT_SENSOR_SENSITIVITY_Z  75       // by default the sensor Z sensitivity is unchanged, ie. 75%
-#define DEFAULT_SENSOR_LO_Z           120      // lowest acceptable raw Z value to start a touch
-#define DEFAULT_SENSOR_FEATHER_Z      80       // lowest acceptable raw Z value to continue a touch
-#define DEFAULT_SENSOR_RANGE_Z        648      // default range of the pressure
-#define MAX_SENSOR_RANGE_Z            1016     // upper value of the pressure                          
+#define DEFAULT_SENSOR_SENSITIVITY_Z      75       // by default the sensor Z sensitivity is unchanged, ie. 75%
+#define DEFAULT_SENSOR_SENSITIVITY_Z_128  90
+#define DEFAULT_SENSOR_LO_Z               120      // lowest acceptable raw Z value to start a touch
+#define DEFAULT_SENSOR_FEATHER_Z          80       // lowest acceptable raw Z value to continue a touch
+#define DEFAULT_SENSOR_RANGE_Z            648      // default range of the pressure
+#define MAX_SENSOR_RANGE_Z                1016     // upper value of the pressure                          
 
 #define MAX_TOUCHES_IN_COLUMN  3
 
@@ -470,6 +471,7 @@ enum DisplayMode {
   displayInitialForRelativeY,
   displayLimitsForZ,
   displayCCForZ,
+  displayLoudnessSource,
   displayPlayedTouchModeConfig,
   displayCCForFader,
   displayLowRowBendConfig,
@@ -607,6 +609,12 @@ enum LoudnessExpression {
   loudnessCC11
 };
 
+enum LoudnessSource {
+  loudnessSourceLast,
+  loudnessSourceFirst,
+  loudnessSourceHighest
+};
+
 enum SequencerView {
   sequencerNotes,
   sequencerScales,
@@ -646,6 +654,7 @@ struct SplitSettings {
   unsigned short minForZ;                 // 0-127
   unsigned short maxForZ;                 // 0-127
   boolean ccForZ14Bit;                    // true when 14-bit messages should be sent when Z CC is between 0-31, false when only 7-bit messages should be sent
+  byte sourceForZ;                        // see LoudnessSource values, which touch channel pressure follows when touches share a channel
   unsigned short ccForFader[8];           // each fader can control a CC number ranging from 0-128 (with 128 being placeholder for ChannelPressure)
   byte colorMain;                         // color for non-accented cells
   byte colorAccent;                       // color for accented cells
@@ -785,8 +794,17 @@ struct GlobalSettings {
   signed char arpOctave;                     // the number of octaves that the arpeggiator has to operate over: 0, +1, or +2
   SustainBehavior sustainBehavior;           // the way the sustain pedal influences the notes
   boolean splitActive;                       // false = split off, true = split on
+  unsigned short removedNotes[12];           // bitmask array per note lights preset of the notes that are left out of the playing rows
 };
 #define Global config.settings.global
+
+// rows of consecutive scale notes, in the note numbers of the lights, before the octave and pitch transposition
+struct ScaleRows {
+  int lowest;                                // the note of the first cell of the first row
+  byte size;                                 // the number of notes in an octave
+  byte steps[12];                            // the semitones of each of those notes above the one they start from
+  short rowSteps;                            // the scale notes between the first cells of consecutive rows
+};
 
 struct PresetSettings {
   GlobalSettings global;
