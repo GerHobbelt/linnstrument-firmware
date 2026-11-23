@@ -111,6 +111,9 @@ public:
     }
 
     if (fresh) {
+      // the 128's higher pressure prescale makes up for its sensor, which a screen doesn't have,
+      // so that a strike plays alike on both models
+      Device.sensorSensitivityZ = DEFAULT_SENSOR_SENSITIVITY_Z;
       controlButton = -1;
       setDisplayMode(displayNormal);
       updateDisplay();
@@ -159,6 +162,10 @@ public:
   int rows() override { return NUMROWS; }
   bool userFirmwareMode() override { return userFirmwareActive; }
   bool scaleSelectShown() override { return lightSettings == LIGHTS_ACTIVE; }
+  void noteLights(int set, int& main, int& accent) override {
+    main = Global.mainNotes[set];
+    accent = Global.accentNotes[set];
+  }
   bool serialMode() override { return Device.serialMode; }
   void backToMidi() override {
     if (userFirmwareActive) changeUserFirmwareMode(false);
@@ -577,7 +584,8 @@ public:
       case sequencerScales: {
         int found = -1;
         for (int i = 0; i < 128; ++i) {
-          if (((Global.mainNotes[Global.activeNotes] >> (i % 12)) & 1) || ((Global.accentNotes[Global.activeNotes] >> (i % 12)) & 1)) found += 1;
+          if ((((Global.mainNotes[Global.activeNotes] >> (i % 12)) & 1) || ((Global.accentNotes[Global.activeNotes] >> (i % 12)) & 1)) &&
+              !((removedScaleNotes() >> (i % 12)) & 1)) found += 1;
           if (found == row) return min(max(i + 48, 0), 127);
         }
         return -1;

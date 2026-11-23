@@ -63,6 +63,56 @@ byte countTouchesForMidiChannel(byte split, byte col, byte row) {
   return noteTouchMapping[split].getMusicalTouchCount(cell(col, row).channel);
 }
 
+// channel pressure has one value for all the touches sharing a channel, it follows either the touch pressing
+// hardest or the earliest one still held, the latest one is the focused cell that sends it
+unsigned short sharedChannelPressure(byte split, signed char channel, boolean includeSensorCell, unsigned short sensorPressure) {
+  boolean first = (Split[split].sourceForZ == loudnessSourceFirst);
+  boolean found = includeSensorCell;
+  unsigned long earliest = sensorCell->lastTouch;
+  unsigned short result = includeSensorCell ? sensorPressure : 0;
+  for (byte row = 0; row < NUMROWS; ++row) {
+    int32_t colsInRowTouched = colsInRowsTouched[row];
+    if (row == sensorRow) {
+      colsInRowTouched &= ~(1 << sensorCol);
+    }
+
+    while (colsInRowTouched) {
+      byte touchedCol = 31 - __builtin_clz(colsInRowTouched);
+      TouchInfo& other = cell(touchedCol, row);
+      if (other.touched == touchedCell && other.hasNote() && other.channel == channel &&
+          getSplitOf(touchedCol) == split) {
+        unsigned short pressure = constrain(FXD_TO_INT(other.fxdPrevPressure), 0, 1016);
+        if (first) {
+          if (!found || other.lastTouch < earliest) {
+            earliest = other.lastTouch;
+            result = pressure;
+            found = true;
+          }
+        }
+        else if (pressure > result) {
+          result = pressure;
+        }
+      }
+      colsInRowTouched &= ~(1 << touchedCol);
+    }
+  }
+
+  return result;
+}
+
+boolean isSharedChannelPressure(byte split) {
+  return Split[split].expressionForZ == loudnessChannelPressure && Split[split].sourceForZ != loudnessSourceLast;
+}
+
+// the loudness when a note starts or ends, zero unless other touches still hold channel pressure up
+void preSendRestingLoudness(byte split, byte note, signed char channel) {
+  unsigned short pressure = 0;
+  if (isSharedChannelPressure(split)) {
+    pressure = sharedChannelPressure(split, channel, false, 0);
+  }
+  preSendLoudness(split, scale1016to127(pressure, true), pressure, note, channel);
+}
+
 const int32_t PENDING_RELEASE_RATE_X = FXD_FROM_INT(5);
 
 boolean potentialSlideTransferCandidate(byte col) {
@@ -664,6 +714,9 @@ void handleNonPlayingTouch() {
     case displayCCForZ:
       handleCCForZNewTouch();
       break;
+    case displayLoudnessSource:
+      handleLoudnessSourceNewTouch();
+      break;
     case displayPlayedTouchModeConfig:
       handlePlayedTouchModeNewTouch();
       break;
@@ -959,6 +1012,9 @@ boolean handleXYZupdate() {
     if (valueX != INVALID_DATA && isLeftHandedSplit(sensorSplit)) {
       valueX = -1 * valueX;
     }
+    if (valueX != INVALID_DATA && !userFirmwareActive && !isLowRow()) {
+      valueX = scaleRowsPitchX(valueX);
+    }
 
     performContinuousTasks();
     sensorCell->lastValueX = valueX;
@@ -1113,6 +1169,10 @@ boolean handleXYZupdate() {
       // if sensing Z is enabled...
       // send different pressure update depending on midiMode
       if (Split[sensorSplit].sendZ && isZExpressiveCell()) {
+        if (isSharedChannelPressure(sensorSplit)) {
+          valueZHi = sharedChannelPressure(sensorSplit, sensorCell->channel, true, valueZHi);
+          valueZ = scale1016to127(valueZHi, true);
+        }
         preSendLoudness(sensorSplit, valueZ, valueZHi, sensorCell->note, sensorCell->channel);
       }
 
@@ -1316,7 +1376,7 @@ void sendNewNote() {
     // reset pressure to 0 before sending the note, the actually pressure value will
     // be sent right after the note on
     if (Split[sensorSplit].sendZ && isZExpressiveCell()) {
-      preSendLoudness(sensorSplit, 0, 0, sensorCell->note, sensorCell->channel);
+      preSendRestingLoudness(sensorSplit, sensorCell->note, sensorCell->channel);
     }
 
     // if the same channel and note is already active, send a note off first
@@ -1616,6 +1676,9 @@ boolean handleNonPlayingRelease() {
       case displayCCForZ:
         handleCCForZRelease();
         break;
+      case displayLoudnessSource:
+        handleLoudnessSourceRelease();
+        break;
       case displayPlayedTouchModeConfig:
         handlePlayedTouchModeRelease();
         break;
@@ -1809,7 +1872,7 @@ void handleTouchRelease() {
 
     // reset the pressure when the note is released and that setting is active
     if (Split[sensorSplit].sendZ && isZExpressiveCell()) {
-      preSendLoudness(sensorSplit, 0, 0, sensorCell->note, sensorCell->channel);
+      preSendRestingLoudness(sensorSplit, sensorCell->note, sensorCell->channel);
     }
 
     // unregister the note <> cell mapping
@@ -2007,9 +2070,144 @@ byte getNoteNumber(byte split, byte col, byte row) {
     noteCol = (NUMCOLS - col);
   }
 
+  ScaleRows scale;
+  if (scaleRowsOf(split, scale)) {
+    int note = scaleRowsNote(scale, scaleRowsPosition(scale, row, noteCol));
+    if (note < 0 || note > 255) {
+      return 255;
+    }
+    return note;
+  }
+
   notenum = determineRowOffsetNote(split, row) + noteCol - 1;
 
   return notenum - Split[split].transposeLights;
+}
+
+// the pitches that the active note lights leave out of the playing rows, the custom light patterns leave none out
+int removedScaleNotes() {
+  if (getActiveCustomLedPattern() >= 0) {
+    return 0;
+  }
+  return Global.removedNotes[Global.activeNotes] & 0xfff;
+}
+
+byte pitchClass(int note) {
+  return ((note % 12) + 12) % 12;
+}
+
+// guitar tuning and no overlap keep chromatic rows
+boolean scaleRowsOf(byte split, ScaleRows& scale) {
+  int removed = removedScaleNotes();
+  if (removed == 0 || removed == 0xfff) {
+    return false;
+  }
+
+  short offset;
+  if (Global.rowOffset == ROWOFFSET_NOOVERLAP || Global.rowOffset == ROWOFFSET_GUITAR) {
+    return false;
+  }
+  else if (Global.rowOffset == ROWOFFSET_OCTAVECUSTOM) {
+    if (Global.customRowOffset == -17) {
+      return false;
+    }
+    offset = Global.customRowOffset;
+  }
+  else if (Global.rowOffset < ROWOFFSET_OCTAVECUSTOM) {
+    offset = Global.rowOffset;
+  }
+  else {
+    offset = 0;
+  }
+
+  int lowest = determineRowOffsetNote(split, 0) - Split[split].transposeLights;
+  for (byte s = 0; s < 12 && (removed & (1 << pitchClass(lowest))); ++s) {
+    lowest++;
+  }
+  scale.lowest = lowest;
+
+  scale.size = 0;
+  for (byte s = 0; s < 12; ++s) {
+    if (!(removed & (1 << pitchClass(lowest + s)))) {
+      scale.steps[scale.size++] = s;
+    }
+  }
+
+  // an octave between rows stays an octave, other row offsets count scale notes
+  if (offset == 12) {
+    offset = scale.size;
+  }
+  else if (offset == -12) {
+    offset = -scale.size;
+  }
+  scale.rowSteps = offset;
+
+  return true;
+}
+
+int scaleRowsPosition(ScaleRows& scale, byte row, short noteCol) {
+  return row * scale.rowSteps + noteCol - 1;
+}
+
+// the note at a position counted in scale notes from the first cell of the first row, positions outside the surface included
+int scaleRowsNote(ScaleRows& scale, int position) {
+  int octaves = position / scale.size;
+  int rest = position % scale.size;
+  if (rest < 0) {
+    rest += scale.size;
+    octaves -= 1;
+  }
+  return scale.lowest + 12 * octaves + scale.steps[rest];
+}
+
+// the position of a note in the scale rows, false when the scale leaves the note out
+boolean scaleRowsPositionOfNote(ScaleRows& scale, int note, int& position) {
+  int distance = note - scale.lowest;
+  int octaves = distance / 12;
+  int rest = distance % 12;
+  if (rest < 0) {
+    rest += 12;
+    octaves -= 1;
+  }
+  for (byte i = 0; i < scale.size; ++i) {
+    if (scale.steps[i] == rest) {
+      position = octaves * scale.size + i;
+      return true;
+    }
+  }
+  return false;
+}
+
+// a move along the row, measured in cells, becomes the semitones between the scale notes it crosses,
+// part of the way to the next cell is the same part of the way to its note
+short scaleRowsPitchX(short valueX) {
+  ScaleRows scale;
+  if (!scaleRowsOf(sensorSplit, scale)) {
+    return valueX;
+  }
+
+  short noteCol = sensorCell->initialColumn == -1 ? sensorCol : sensorCell->initialColumn;
+  if (isLeftHandedSplit(sensorSplit)) {
+    noteCol = NUMCOLS - noteCol;
+  }
+  int start = scaleRowsPosition(scale, sensorRow, noteCol);
+
+  int32_t fxdMoved = FXD_FROM_INT((int32_t)valueX);
+  int32_t cells = fxdMoved / FXD_CALX_FULL_UNIT;
+  int32_t rest = fxdMoved % FXD_CALX_FULL_UNIT;
+  if (rest < 0) {
+    rest += FXD_CALX_FULL_UNIT;
+    cells -= 1;
+  }
+
+  int from = scaleRowsNote(scale, start);
+  int at = scaleRowsNote(scale, start + cells);
+  int next = scaleRowsNote(scale, start + cells + 1);
+
+  // beyond the bend range the pitch bend can't change anymore, and the scaling of the pitch bend would overflow
+  int32_t limit = (getBendRange(sensorSplit) + 1) * FXD_CALX_FULL_UNIT;
+  int32_t fxdPitch = constrain(at - from, -128, 128) * FXD_CALX_FULL_UNIT + rest * (next - at);
+  return FXD_TO_INT(constrain(fxdPitch, -limit, limit));
 }
 
 short determineRowOffsetNote(byte split, byte row) {

@@ -881,8 +881,35 @@ struct SplitSettingsV7 {
   boolean sequencer;                      // true when the sequencer of this split is displayed
   SequencerView sequencerView;            // see SequencerView
 };
+struct GlobalSettingsV10 {
+  byte splitPoint;                           // leftmost column number of right split (0 = leftmost column of playable area)
+  byte currentPerSplit;                      // controls which split's settings are being displayed
+  byte activeNotes;                          // controls which collection of note lights presets is active
+  int mainNotes[12];                         // bitmask array that determines which notes receive "main" lights
+  int accentNotes[12];                       // bitmask array that determines which notes receive accent lights (octaves, white keys, black keys, etc.)
+  byte rowOffset;                            // interval between rows. 0 = no overlap, 1-12 = interval, 13 = guitar
+  signed char customRowOffset;               // the custom row offset that can be configured at the location of the octave setting
+  byte guitarTuning[MAXROWS];                // the notes used for each row for the guitar tuning, 0-127
+  VelocitySensitivity velocitySensitivity;   // See VelocitySensitivity values
+  unsigned short minForVelocity;             // 1-127
+  unsigned short maxForVelocity;             // 1-127
+  unsigned short valueForFixedVelocity;      // 1-127
+  PressureSensitivity pressureSensitivity;   // See PressureSensitivity values
+  boolean pressureAftertouch;                // Indicates whether pressure should behave like traditional piano keyboard aftertouch or be continuous from the start
+  byte switchAssignment[5];                  // The element values are ASSIGNED_*.  The index values are SWITCH_*.
+  boolean switchBothSplits[5];               // Indicate whether the switches should operate on both splits or only on the focused one
+  unsigned short ccForSwitchCC65[5];         // 0-127
+  unsigned short ccForSwitchSustain[5];      // 0-127
+  unsigned short customSwitchAssignment[5];  // ASSIGNED_TAP_TEMPO, ASSIGNED_LEGATO, ASSIGNED_LATCH, ASSIGNED_PRESET_UP, ASSIGNED_PRESET_DOWN, ASSIGNED_REVERSE_PITCH_X, ASSIGNED_SEQUENCER_PLAY, ASSIGNED_SEQUENCER_PREV, ASSIGNED_SEQUENCER_NEXT, ASSIGNED_STANDALONE_MIDI_CLOCK and ASSIGNED_SEQUENCER_MUTE
+  byte midiIO;                               // 0 = MIDI jacks, 1 = USB
+  ArpeggiatorDirection arpDirection;         // the arpeggiator direction that has to be used for the note sequence
+  ArpeggiatorStepTempo arpTempo;             // the multiplier that needs to be applied to the current tempo to achieve the arpeggiator's step duration
+  signed char arpOctave;                     // the number of octaves that the arpeggiator has to operate over: 0, +1, or +2
+  SustainBehavior sustainBehavior;           // the way the sustain pedal influences the notes
+  boolean splitActive;                       // false = split off, true = split on
+};
 struct PresetSettingsV11 {
-  GlobalSettings global;
+  GlobalSettingsV10 global;
   SplitSettingsV7 split[NUMSPLITS];
 };
 struct ConfigurationV15 {
@@ -898,6 +925,72 @@ struct ConfigurationV16 {
   DeviceSettings device;
   PresetSettingsV11 settings;
   PresetSettingsV11 preset[NUMPRESETS];
+  SequencerProject project;
+};
+/**************************************** Configuration V17 ****************************************
+This is used by firmware v2.3.4
+**************************************************************************************************/
+struct SplitSettingsV8 {
+  byte midiMode;                          // 0 = one channel, 1 = note per channel, 2 = row per channel
+  byte midiChanMain;                      // main midi channel, 1 to 16
+  boolean midiChanMainEnabled;            // true when the midi main channel is enabled to send common data, false in not
+  byte midiChanPerRow;                    // per-row midi channel, 1 to 16
+  boolean midiChanPerRowReversed;         // indicates whether channel per row channels count upwards or downwards across the rows
+  boolean midiChanSet[16];                // Indicates whether each channel is used.  If midiMode!=channelPerNote, only one channel can be set.
+  BendRangeOption bendRangeOption;        // see BendRangeOption
+  byte customBendRange;                   // 1 - 96
+  boolean sendX;                          // true to send continuous X, false if not
+  boolean sendY;                          // true to send continuous Y, false if not
+  boolean sendZ;                          // true to send continuous Z, false if not
+  boolean pitchCorrectQuantize;           // true to quantize pitch of initial touch, false if not
+  byte pitchCorrectHold;                  // See PitchCorrectHoldSpeed values
+  boolean pitchResetOnRelease;            // true to enable pitch bend being set back to 0 when releasing a touch
+  TimbreExpression expressionForY;        // the expression that should be used for timbre
+  unsigned short customCCForY;            // 0-129 (with 128 and 129 being placeholders for PolyPressure and ChannelPressure)
+  unsigned short minForY;                 // 0-127
+  unsigned short maxForY;                 // 0-127
+  boolean relativeY;                      // true when Y should be sent relative to the initial touch, false when it's absolute
+  unsigned short initialRelativeY;        // 0-127
+  LoudnessExpression expressionForZ;      // the expression that should be used for loudness
+  unsigned short customCCForZ;            // 0-127
+  unsigned short minForZ;                 // 0-127
+  unsigned short maxForZ;                 // 0-127
+  boolean ccForZ14Bit;                    // true when 14-bit messages should be sent when Z CC is between 0-31, false when only 7-bit messages should be sent
+  unsigned short ccForFader[8];           // each fader can control a CC number ranging from 0-128 (with 128 being placeholder for ChannelPressure)
+  byte colorMain;                         // color for non-accented cells
+  byte colorAccent;                       // color for accented cells
+  byte colorPlayed;                       // color for played notes
+  byte colorLowRow;                       // color for low row if on
+  byte colorSequencerEmpty;               // color for sequencer low row step with no events
+  byte colorSequencerEvent;               // color for sequencer low row step with events
+  byte colorSequencerDisabled;            // color for sequencer low row step that's not being played
+  byte playedTouchMode;                   // see PlayedTouchMode values
+  byte lowRowMode;                        // see LowRowMode values
+  byte lowRowBendBehavior;                // see LowRowBendBehavior values
+  byte lowRowCCXBehavior;                 // see LowRowCCBehavior values
+  unsigned short ccForLowRow;             // 0-128 (with 128 being placeholder for ChannelPressure)
+  byte lowRowCCXYZBehavior;               // see LowRowCCBehavior values
+  unsigned short ccForLowRowX;            // 0-128 (with 128 being placeholder for ChannelPressure)
+  unsigned short ccForLowRowY;            // 0-128 (with 128 being placeholder for ChannelPressure)
+  unsigned short ccForLowRowZ;            // 0-128 (with 128 being placeholder for ChannelPressure)
+  signed char transposeOctave;            // -60, -48, -36, -24, -12, 0, +12, +24, +36, +48, +60
+  signed char transposePitch;             // transpose output midi notes. Range is -12 to +12
+  signed char transposeLights;            // transpose lights on display. Range is -12 to +12
+  boolean ccFaders;                       // true to activated 8 CC faders for this split, false for regular music performance
+  boolean arpeggiator;                    // true when the arpeggiator is on, false if notes should be played directly
+  boolean strum;                          // true when this split strums the touches of the other split
+  boolean mpe;                            // true when MPE is active for this split
+  boolean sequencer;                      // true when the sequencer of this split is displayed
+  SequencerView sequencerView;            // see SequencerView
+};
+struct PresetSettingsV12 {
+  GlobalSettingsV10 global;
+  SplitSettingsV8 split[NUMSPLITS];
+};
+struct ConfigurationV17 {
+  DeviceSettings device;
+  PresetSettingsV12 settings;
+  PresetSettingsV12 preset[NUMPRESETS];
   SequencerProject project;
 };
 /*************************************************************************************************/
@@ -1014,6 +1107,12 @@ boolean upgradeConfigurationSettings(int32_t confSize, const byte* buff2) {
         break;
       // this is the v17 of the configuration configuration, apply it if the size is right
       case 17:
+        if (confSize == sizeof(ConfigurationV17)) {
+          copyConfigurationFunction = &copyConfigurationV17;
+        }
+        break;
+      // this is the v18 of the configuration configuration, apply it if the size is right
+      case 18:
         if (confSize == sizeof(Configuration)) {
           // warning: 'void* memcpy(void*, const void*, size_t)' writing to an object of type 'struct Configuration' with no trivial copy-assignment; use copy-assignment or copy-initialization instead [-Wclass-memaccess]
           // 1018 |           memcpy(&config, buff2, confSize);
@@ -1031,6 +1130,12 @@ boolean upgradeConfigurationSettings(int32_t confSize, const byte* buff2) {
 
     // if a target config and a copy settings fuction were set, use them to transform the old settings into the new
     if (sourceConfig && copyConfigurationFunction) {
+      // no older layout stored the notes left out of the rows, and the older ones don't write every preset
+      memset(config.settings.global.removedNotes, 0, sizeof(config.settings.global.removedNotes));
+      for (byte p = 0; p < NUMPRESETS; ++p) {
+        memset(config.preset[p].global.removedNotes, 0, sizeof(config.preset[p].global.removedNotes));
+      }
+
       byte currentVersion = Device.version;
       copyConfigurationFunction(&config, sourceConfig);
       Device.version = currentVersion;
@@ -1175,6 +1280,7 @@ void copySplitSettingsV1(void* target, const void* source) {
   t->playedTouchMode = playedSame;
   t->lowRowMode = s->lowRowMode;
   t->lowRowBendBehavior = lowRowBendBend;
+  t->sourceForZ = loudnessSourceLast;
   t->lowRowCCXBehavior = lowRowCCHold;
   t->lowRowCCXYZBehavior = lowRowCCHold;
   t->transposeOctave = s->transposeOctave;
@@ -1258,6 +1364,7 @@ void copySplitSettingsV2(void* target, const void* source) {
   t->playedTouchMode = playedSame;
   t->lowRowMode = s->lowRowMode;
   t->lowRowBendBehavior = lowRowBendBend;
+  t->sourceForZ = loudnessSourceLast;
   t->lowRowCCXBehavior = lowRowCCHold;
   t->lowRowCCXYZBehavior = lowRowCCHold;
   t->transposeOctave = s->transposeOctave;
@@ -1483,6 +1590,7 @@ void copySplitSettingsV3(void* target, const void* source) {
   t->playedTouchMode = playedSame;
   t->lowRowMode = s->lowRowMode;
   t->lowRowBendBehavior = lowRowBendBend;
+  t->sourceForZ = loudnessSourceLast;
   t->lowRowCCXBehavior = s->lowRowCCXBehavior;
   t->ccForLowRow = s->ccForLowRow;
   t->lowRowCCXYZBehavior = s->lowRowCCXYZBehavior;
@@ -1581,6 +1689,7 @@ void copySplitSettingsV4(void* target, const void* source) {
   t->playedTouchMode = playedSame;
   t->lowRowMode = s->lowRowMode;
   t->lowRowBendBehavior = lowRowBendBend;
+  t->sourceForZ = loudnessSourceLast;
   t->lowRowCCXBehavior = s->lowRowCCXBehavior;
   t->ccForLowRow = s->ccForLowRow;
   t->lowRowCCXYZBehavior = s->lowRowCCXYZBehavior;
@@ -1825,6 +1934,7 @@ void copySplitSettingsV5(void* target, const void* source) {
   t->playedTouchMode = playedSame;
   t->lowRowMode = s->lowRowMode;
   t->lowRowBendBehavior = lowRowBendBend;
+  t->sourceForZ = loudnessSourceLast;
   t->lowRowCCXBehavior = s->lowRowCCXBehavior;
   t->ccForLowRow = s->ccForLowRow;
   t->lowRowCCXYZBehavior = s->lowRowCCXYZBehavior;
@@ -2138,6 +2248,7 @@ void copySplitSettingsV6(void* target, const void* source) {
   t->playedTouchMode = s->playedTouchMode;
   t->lowRowMode = s->lowRowMode;
   t->lowRowBendBehavior = lowRowBendBend;
+  t->sourceForZ = loudnessSourceLast;
   t->lowRowCCXBehavior = s->lowRowCCXBehavior;
   t->ccForLowRow = s->ccForLowRow;
   t->lowRowCCXYZBehavior = s->lowRowCCXYZBehavior;
@@ -2241,6 +2352,7 @@ void copySplitSettingsV7(void* target, const void* source) {
   t->playedTouchMode = s->playedTouchMode;
   t->lowRowMode = s->lowRowMode;
   t->lowRowBendBehavior = lowRowBendBend;
+  t->sourceForZ = loudnessSourceLast;
   t->lowRowCCXBehavior = s->lowRowCCXBehavior;
   t->ccForLowRow = s->ccForLowRow;
   t->lowRowCCXYZBehavior = s->lowRowCCXYZBehavior;
@@ -2262,7 +2374,7 @@ void copyPresetSettingsV11(void* target, const void* source) {
   PresetSettings* t = (PresetSettings*)target;
   const PresetSettingsV11* s = (const PresetSettingsV11*)source;
 
-  memcpy(&t->global, &s->global, sizeof(GlobalSettings));
+  copyGlobalSettingsV10(&t->global, &s->global);
 
   copySplitSettingsV7(&t->split[LEFT], &s->split[LEFT]);
   copySplitSettingsV7(&t->split[RIGHT], &s->split[RIGHT]);
@@ -2293,6 +2405,98 @@ void copyConfigurationV16(void* target, const void* source) {
   copyPresetSettingsV11(&t->settings, &s->settings);
   for (byte p = 0; p < 6; ++p) {
     copyPresetSettingsV11(&t->preset[p], &s->preset[p]);
+  }
+
+  memcpy(&t->project, &s->project, sizeof(SequencerProject));
+}
+
+void copyGlobalSettingsV10(void* target, void* source) {
+  GlobalSettings* t = (GlobalSettings*)target;
+  GlobalSettingsV10* s = (GlobalSettingsV10*)source;
+
+  // the layouts only differ in the removed notes at the end
+  memcpy(t, s, offsetof(GlobalSettingsV10, splitActive) + sizeof(s->splitActive));
+}
+
+/*************************************************************************************************/
+
+void copySplitSettingsV8(void* target, void* source) {
+  SplitSettings* t = (SplitSettings*)target;
+  SplitSettingsV8* s = (SplitSettingsV8*)source;
+
+  t->midiMode = s->midiMode;
+  t->midiChanMain = s->midiChanMain;
+  t->midiChanMainEnabled = s->midiChanMainEnabled;
+  t->midiChanPerRow = s->midiChanPerRow;
+  t->midiChanPerRowReversed = s->midiChanPerRowReversed;
+  memcpy(t->midiChanSet, s->midiChanSet, sizeof(boolean)*16);
+  t->bendRangeOption = s->bendRangeOption;
+  t->customBendRange = s->customBendRange;
+  t->sendX = s->sendX;
+  t->sendY = s->sendY;
+  t->sendZ = s->sendZ;
+  t->pitchCorrectQuantize = s->pitchCorrectQuantize;
+  t->pitchCorrectHold = s->pitchCorrectHold;
+  t->pitchResetOnRelease = s->pitchResetOnRelease;
+  t->expressionForY = s->expressionForY;
+  t->customCCForY = s->customCCForY;
+  t->minForY = s->minForY;
+  t->maxForY = s->maxForY;
+  t->relativeY = s->relativeY;
+  t->initialRelativeY = s->initialRelativeY;
+  t->expressionForZ = s->expressionForZ;
+  t->customCCForZ = s->customCCForZ;
+  t->minForZ = s->minForZ;
+  t->maxForZ = s->maxForZ;
+  t->ccForZ14Bit = s->ccForZ14Bit;
+  memcpy(t->ccForFader, s->ccForFader, sizeof(unsigned short)*8);
+  t->colorMain = s->colorMain;
+  t->colorAccent = s->colorAccent;
+  t->colorPlayed = s->colorPlayed;
+  t->colorLowRow = s->colorLowRow;
+  t->colorSequencerEmpty = s->colorSequencerEmpty;
+  t->colorSequencerEvent = s->colorSequencerEvent;
+  t->colorSequencerDisabled = s->colorSequencerDisabled;
+  t->playedTouchMode = s->playedTouchMode;
+  t->lowRowMode = s->lowRowMode;
+  t->lowRowBendBehavior = s->lowRowBendBehavior;
+  t->sourceForZ = loudnessSourceLast;
+  t->lowRowCCXBehavior = s->lowRowCCXBehavior;
+  t->ccForLowRow = s->ccForLowRow;
+  t->lowRowCCXYZBehavior = s->lowRowCCXYZBehavior;
+  t->ccForLowRowX = s->ccForLowRowX;
+  t->ccForLowRowY = s->ccForLowRowY;
+  t->ccForLowRowZ = s->ccForLowRowZ;
+  t->transposeOctave = s->transposeOctave;
+  t->transposePitch = s->transposePitch;
+  t->transposeLights = s->transposeLights;
+  t->ccFaders = s->ccFaders;
+  t->arpeggiator = s->arpeggiator;
+  t->strum = s->strum;
+  t->mpe = s->mpe;
+  t->sequencer = s->sequencer;
+  t->sequencerView = s->sequencerView;
+}
+
+void copyPresetSettingsV12(void* target, void* source) {
+  PresetSettings* t = (PresetSettings*)target;
+  PresetSettingsV12* s = (PresetSettingsV12*)source;
+
+  copyGlobalSettingsV10(&t->global, &s->global);
+
+  copySplitSettingsV8(&t->split[LEFT], &s->split[LEFT]);
+  copySplitSettingsV8(&t->split[RIGHT], &s->split[RIGHT]);
+}
+
+void copyConfigurationV17(void* target, void* source) {
+  Configuration* t = (Configuration*)target;
+  ConfigurationV17* s = (ConfigurationV17*)source;
+
+  memcpy(&t->device, &s->device, sizeof(DeviceSettings));
+
+  copyPresetSettingsV12(&t->settings, &s->settings);
+  for (byte p = 0; p < NUMPRESETS; ++p) {
+    copyPresetSettingsV12(&t->preset[p], &s->preset[p]);
   }
 
   memcpy(&t->project, &s->project, sizeof(SequencerProject));
