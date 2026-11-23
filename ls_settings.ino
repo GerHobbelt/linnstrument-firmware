@@ -145,6 +145,9 @@ void initializeStorage() {
       Device.serialMode = false;
     }
 
+    // here rather than in initializeSensors(), whose value the buttons held at power on are read with
+    Device.sensorSensitivityZ = LINNMODEL == 128 ? DEFAULT_SENSOR_SENSITIVITY_Z_128 : DEFAULT_SENSOR_SENSITIVITY_Z;
+
     writeSettingsToFlash();  // Store the initial default settings
     writeInitialProjectSettings();
 
@@ -378,7 +381,7 @@ inline void storeSettingsToPreset(byte p) {
 void initializeDeviceSettings() {
   DEBUGPRINT_FUNCNAME_L0();
 
-  Device.version = 17;
+  Device.version = 18;
   Device.serialMode = false;
   Device.sleepAnimationActive = false;
   Device.sleepActive = false;
@@ -423,6 +426,7 @@ void initializeNoteLights(GlobalSettings& g) {
   // initialize mainNotes array (all off).
   for (byte count = 0; count < 12; ++count) {
     g.mainNotes[count] = 0;
+    g.removedNotes[count] = 0;
   }
 
   // Major
@@ -666,6 +670,7 @@ void initializePresetSettings() {
       p.split[s].maxForZ = 127;
       p.split[s].customCCForZ = 11;
       p.split[s].ccForZ14Bit = false;
+      p.split[s].sourceForZ = loudnessSourceLast;
       memcpy(&p.split[s].ccForFader, ccFaderDefaults, sizeof(unsigned short) * 8);
       p.split[s].colorAccent = COLOR_CYAN;
       p.split[s].colorLowRow = COLOR_YELLOW;
@@ -1546,6 +1551,9 @@ void handlePerSplitSettingNewTouch() {
         case 7:
           setLed(sensorCol, sensorRow, getLimitsForZColor(sensorSplit), cellSlowPulse);
           break;
+        case 5:
+          setLed(sensorCol, sensorRow, getLoudnessSourceColor(sensorSplit), cellSlowPulse);
+          break;
         case 4:
           setLed(sensorCol, sensorRow, getCCForZColor(sensorSplit), cellSlowPulse);
           break;
@@ -1649,6 +1657,11 @@ void handlePerSplitSettingHold() {
             Split[Global.currentPerSplit].sendZ = true;
             resetNumericDataChange();
             setDisplayMode(displayLimitsForZ);
+            updateDisplay();
+            break;
+          case 5:
+            resetNumericDataChange();
+            setDisplayMode(displayLoudnessSource);
             updateDisplay();
             break;
           case 4:
@@ -2047,6 +2060,18 @@ inline void handleCCForZNewTouch() {
 }
 
 inline void handleCCForZRelease() {
+  DEBUGPRINT_FUNCNAME();
+
+  handleNumericDataReleaseCol(true);
+}
+
+inline void handleLoudnessSourceNewTouch() {
+  DEBUGPRINT_FUNCNAME();
+
+  handleNumericDataNewTouchCol(Split[Global.currentPerSplit].sourceForZ, loudnessSourceLast, loudnessSourceHighest, false);
+}
+
+inline void handleLoudnessSourceRelease() {
   DEBUGPRINT_FUNCNAME();
 
   handleNumericDataReleaseCol(true);
@@ -2530,6 +2555,43 @@ inline void toggleNoteLights(int& notelights) {
   notelights ^= 1 << light;
 }
 
+inline boolean isNoteLightRemoved() {
+  byte light = sensorCol-2 + (sensorRow*3);
+  return Global.removedNotes[Global.activeNotes] & (1 << light);
+}
+
+// a scale keeps at least one of its notes
+inline void toggleRemovedNote() {
+  if (sensorCol < 2 || sensorCol > 4 || sensorRow > 3 || getActiveCustomLedPattern() >= 0) {
+    return;
+  }
+
+  byte light = sensorCol-2 + (sensorRow*3);
+  unsigned short removed = Global.removedNotes[Global.activeNotes] ^ (1 << light);
+  if ((removed & 0xfff) != 0xfff) {
+    Global.removedNotes[Global.activeNotes] = removed;
+  }
+}
+
+// leaves out of the rows the notes that neither the main nor the accent lights show, or brings back
+// every note that's left out
+inline void toggleRemovedUnlitNotes() {
+  if (getActiveCustomLedPattern() >= 0) {
+    return;
+  }
+
+  unsigned short& removed = Global.removedNotes[Global.activeNotes];
+  if (removed & 0xfff) {
+    removed &= ~0xfff;
+  }
+  else {
+    unsigned short unlit = ~(Global.mainNotes[Global.activeNotes] | Global.accentNotes[Global.activeNotes]) & 0xfff;
+    if (unlit != 0xfff) {
+      removed |= unlit;
+    }
+  }
+}
+
 inline boolean isArpeggiatorTempoTriplet() {
   return Global.arpTempo == ArpEighthTriplet || Global.arpTempo == ArpSixteenthTriplet || Global.arpTempo == ArpThirtysecondTriplet;
 }
@@ -2757,18 +2819,8 @@ void handleGlobalSettingNewTouch() {
       case 3:
       case 4:
         if (sensorRow >= 0 && sensorRow <= 3) {
-          // select individual scale notes or accent notes
+          // the scale notes and accent notes are toggled at release, holding them leaves them out of the rows
           switch (lightSettings) {
-            case LIGHTS_MAIN:
-              if (!customLedPatternActive) {
-                toggleNoteLights(Global.mainNotes[Global.activeNotes]);
-              }
-              break;
-            case LIGHTS_ACCENT:
-              if (!customLedPatternActive) {
-                toggleNoteLights(Global.accentNotes[Global.activeNotes]);
-              }
-              break;
             case LIGHTS_ACTIVE:
               Global.activeNotes = sensorCol - 2 + (sensorRow * 3);
               loadCustomLedLayer(getActiveCustomLedPattern());
@@ -3013,6 +3065,12 @@ void handleGlobalSettingNewTouch() {
   switch (sensorCol) {
     case 1:
       switch (sensorRow) {
+        case LIGHTS_MAIN:
+        case LIGHTS_ACCENT:
+          if (lightSettings == sensorRow && getActiveCustomLedPattern() < 0 && !userFirmwareActive) {
+            setLed(sensorCol, sensorRow, globalColor, cellSlowPulse);
+          }
+          break;
         case 3:
           setLed(sensorCol, sensorRow, getSplitHandednessColor(), cellSlowPulse);
           break;
@@ -3024,6 +3082,10 @@ void handleGlobalSettingNewTouch() {
     case 4:
       if (lightSettings == LIGHTS_ACTIVE && sensorRow == 3) {
         setLed(sensorCol, sensorRow, globalColor, cellSlowPulse);
+      }
+      else if ((lightSettings == LIGHTS_MAIN || lightSettings == LIGHTS_ACCENT) && sensorRow <= 3 &&
+               getActiveCustomLedPattern() < 0 && !userFirmwareActive) {
+        setLed(sensorCol, sensorRow, isNoteLightRemoved() ? COLOR_RED : globalColor, cellSlowPulse);
       }
       break;
 
@@ -3121,6 +3183,14 @@ void handleGlobalSettingHold() {
     switch (sensorCol) {
       case 1:
         switch (sensorRow) {
+          case LIGHTS_MAIN:
+          case LIGHTS_ACCENT:
+            // only once the touch selected the view, which a stale custom pattern flag refuses
+            if (lightSettings == sensorRow && !userFirmwareActive) {
+              toggleRemovedUnlitNotes();
+              updateDisplay();
+            }
+            break;
           case 3:
             resetNumericDataChange();
             setDisplayMode(displaySplitHandedness);
@@ -3136,6 +3206,10 @@ void handleGlobalSettingHold() {
           cellTouched(ignoredCell);
           loadCustomLedLayer(getActiveCustomLedPattern());
           setDisplayMode(displayCustomLedsEditor);
+          updateDisplay();
+        }
+        else if ((lightSettings == LIGHTS_MAIN || lightSettings == LIGHTS_ACCENT) && sensorRow <= 3 && !userFirmwareActive) {
+          toggleRemovedNote();
           updateDisplay();
         }
         break;
@@ -3263,8 +3337,20 @@ void handleGlobalSettingHold() {
 
 void handleGlobalSettingRelease() {
   DEBUGPRINT_FUNCNAME();
-
-  if (sensorCol == 1 && sensorRow == 3 &&
+  
+  if (sensorCol >= 2 && sensorCol <= 4 && sensorRow <= 3 && !userFirmwareActive &&
+      (lightSettings == LIGHTS_MAIN || lightSettings == LIGHTS_ACCENT) && !customLedPatternActive) {
+    if (ensureCellBeforeHoldWait(globalColor, cellOff)) {
+      // a note left out comes back into the rows with the light it had
+      if (isNoteLightRemoved()) {
+        toggleRemovedNote();
+      }
+      else {
+        toggleNoteLights(lightSettings == LIGHTS_MAIN ? Global.mainNotes[Global.activeNotes] : Global.accentNotes[Global.activeNotes]);
+      }
+    }
+  }
+  else if (sensorCol == 1 && sensorRow == 3 &&
       ensureCellBeforeHoldWait(getSplitHandednessColor(), Device.otherHanded ? cellOn : cellOff)) {
     Device.otherHanded = !Device.otherHanded;
   } else if (sensorCol == 6 && sensorRow == 2 &&

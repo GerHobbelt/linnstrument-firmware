@@ -349,6 +349,47 @@ void the_bridge_lights_only_the_chosen_steps_notes_in_notes_view() {
   CHECK(waitFor([&f] { return f.screen() != firmware::sequencerScreen; }));
 }
 
+// a note light set's pitches as the firmware keeps them: C# of the active set, whichever it is,
+// turned on over NRPN 204, or off where it already was, changes that one bit of that set alone,
+// and is turned back
+void the_bridge_reads_a_note_light_set() {
+  auto& e = engine();
+  auto& f = e.firmware();
+  auto sets = [&f] {
+    std::vector<int> all;
+    for (int set = 0; set < 12; ++set) {
+      int main = 0, accent = 0;
+      f.noteLights(set, main, accent);
+      all.push_back(main);
+      all.push_back(accent);
+    }
+    return all;
+  };
+  auto before = sets();
+  int turned = 1;
+  e.onFirmware([](firmware::Instance& i) { i.setNrpn(204, 1); });
+  bool changed = false;
+  for (int wait = 0; wait < 30 && !changed; ++wait) {
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    changed = sets() != before;
+  }
+  if (!changed) {
+    turned = 0;
+    e.onFirmware([](firmware::Instance& i) { i.setNrpn(204, 0); });
+    CHECK(waitFor([&] { return sets() != before; }));
+  }
+  auto after = sets();
+  int differing = 0;
+  for (size_t k = 0; k < after.size(); ++k) {
+    if (after[k] == before[k]) continue;
+    ++differing;
+    CHECK(k % 2 == 0 && (after[k] ^ before[k]) == 2 && ((after[k] >> 1) & 1) == turned);
+  }
+  CHECK(differing == 1);
+  e.onFirmware([turned](firmware::Instance& i) { i.setNrpn(204, 1 - turned); });
+  CHECK(waitFor([&] { return sets() == before; }));
+}
+
 // Global Settings' Scale Select view as the firmware keeps it: its View cell touched, then Main again
 void the_bridge_reads_whether_scale_select_shows() {
   auto& e = engine();
@@ -1165,6 +1206,11 @@ void the_bridge_sets_the_sequencers_patterns_and_settings() {
   CHECK(!kept.empty());
   // scales from the scale's notes, drums from the drum notes
   CHECK(f.sequencerRowNote(s, 0) == 48 && f.sequencerRowNote(s, 1) == 50 && f.sequencerRowNote(s, 7) == 60 && f.sequencerRowNote(s, 14) == -1);
+  // without the notes left out of the rows, as the firmware's scale view skips them
+  nrpn(e, 278, 1);
+  CHECK(waitFor([&f, s] { return f.sequencerRowNote(s, 1) == 52; }) && f.sequencerRowNote(s, 0) == 48);
+  nrpn(e, 278, 0);
+  CHECK(waitFor([&f, s] { return f.sequencerRowNote(s, 1) == 50; }));
   e.onFirmware([s](firmware::Instance& i) { i.setSequencerView(s, 2); });
   CHECK(waitFor([&f, s] { return f.sequencerState(s).view == 2; }));
   CHECK(f.sequencerRowNote(s, 0) == f.drumNote(s, 0) && f.sequencerRowNote(s, 6) == f.drumNote(s, 6));
@@ -1359,7 +1405,7 @@ void the_bridge_loads_saves_and_stores_projects() {
   auto other = f.currentProject();
   e.onFirmware([](firmware::Instance& i) { i.loadSequencerProject(5); });
   CHECK(waitFor([&f] { return f.loadedProject() == 5 && f.tempo() == 140; }));
-  CHECK(f.settingsVersion() == 17);
+  CHECK(f.settingsVersion() == 18);
   CHECK(f.currentProject() == played && !f.sequencerState(s).running);
   // another project stored with its own tempo, the one played left as it was
   e.onFirmware([other](firmware::Instance& i) { i.storeSequencerProject(6, other); });
@@ -2428,6 +2474,7 @@ Suite bridge("Firmware bridge", {
   { "the_bridge_reads_a_screens_values_and_the_small_font", the_bridge_reads_a_screens_values_and_the_small_font },
   { "the_bridge_reads_a_splits_cc_faders", the_bridge_reads_a_splits_cc_faders },
   { "the_bridge_reads_whether_scale_select_shows", the_bridge_reads_whether_scale_select_shows },
+  { "the_bridge_reads_a_note_light_set", the_bridge_reads_a_note_light_set },
   { "the_bridge_lights_only_the_chosen_steps_notes_in_notes_view", the_bridge_lights_only_the_chosen_steps_notes_in_notes_view },
   { "the_bridge_times_a_hold_as_the_firmware_does", the_bridge_times_a_hold_as_the_firmware_does },
   { "the_engine_sets_the_bend_range_as_its_screen_does", the_engine_sets_the_bend_range_as_its_screen_does },
