@@ -1036,6 +1036,12 @@ void receivedNrpn(int parameter, int value, int channel) {
         sequencerToggleMute(split);
       }
       break;
+    // Split Channel Pressure Source For Z
+    case 67:
+      if (inRange(value, 0, 2)) {
+        Split[split].sourceForZ = value;
+      }
+      break;
     // Global Split Active
     case 200:
       if (inRange(value, 0, 1)) {
@@ -1377,6 +1383,17 @@ void receivedNrpn(int parameter, int value, int channel) {
         storeSettings();
       }
       break;
+    // Global Notes Removed From The Rows
+    case 276: case 277: case 278: case 279: case 280: case 281:
+    case 282: case 283: case 284: case 285: case 286: case 287:
+      if (inRange(value, 0, 1) && getActiveCustomLedPattern() < 0) {
+        unsigned short removed = Global.removedNotes[Global.activeNotes];
+        removed = value ? removed | (1 << (parameter-276)) : removed & ~(1 << (parameter-276));
+        if ((removed & 0xfff) != 0xfff) {
+          Global.removedNotes[Global.activeNotes] = removed;
+        }
+      }
+      break;
     // Query for the value of a particular parameter
     case 299:
       sendNrpnParameter(value, channel);
@@ -1569,6 +1586,9 @@ void sendNrpnParameter(int parameter, int channel) {
     case 65:
       value = sequencerCurrentPatternNumber(split);
       break;
+    case 67:
+      value = Split[split].sourceForZ;
+      break;
     case 200:
       value = Global.splitActive;
       break;
@@ -1736,6 +1756,10 @@ void sendNrpnParameter(int parameter, int channel) {
     case 275:
       value = Device.calibrated;
       break;
+    case 276: case 277: case 278: case 279: case 280: case 281:
+    case 282: case 283: case 284: case 285: case 286: case 287:
+      value = (Global.removedNotes[Global.activeNotes] & (1 << (param-276))) != 0;
+      break;
   }
 
   if (value != INT_MIN) {
@@ -1843,9 +1867,20 @@ void resetPossibleNoteCells(byte split, byte notenum) {
 }
 
 short getNoteNumColumn(byte split, byte notenum, byte row) {
-  short row_offset_note = determineRowOffsetNote(split, row);
-  short col = notenum - (row_offset_note + Split[split].transposeOctave) + 1           // calculate the column that this MIDI note can be played on
-            + Split[split].transposeLights - Split[split].transposePitch;;             // adapt for transposition settings
+  short col;
+  ScaleRows scale;
+  if (scaleRowsOf(split, scale)) {
+    int position;
+    if (!scaleRowsPositionOfNote(scale, notenum - Split[split].transposeOctave - Split[split].transposePitch, position)) {
+      return -1;
+    }
+    col = position - row * scale.rowSteps + 1;
+  }
+  else {
+    short row_offset_note = determineRowOffsetNote(split, row);
+    col = notenum - (row_offset_note + Split[split].transposeOctave) + 1               // calculate the column that this MIDI note can be played on
+        + Split[split].transposeLights - Split[split].transposePitch;;                 // adapt for transposition settings
+  }
   if (isLeftHandedSplit(split)) {
     col = NUMCOLS - col;
   }
