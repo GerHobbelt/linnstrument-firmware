@@ -43,7 +43,7 @@ currently debugging. After debugging something, either remove them or move them 
 #endif
 
 
-#define DEBUG_SERIAL_BAUDRATE           250000  /* was: 115200 */
+#define DEBUG_SERIAL_BAUDRATE           115200      /* MUST NOT CHANGE: 115K2 is the baudrate required to keep talking to the Atmel 16U2 (with custom firmware) that's always in the serial/usb signal path! */
 
 
 #define DEBUGPRINT_FUNCNAME()        debugprint_funcname(__func__)
